@@ -1,65 +1,89 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import { DollarSign, ShoppingCart, Receipt, Percent } from "lucide-react";
+import { useShopifyOrders } from "@/hooks/use-shopify-orders";
+import { useShopifyProducts } from "@/hooks/use-shopify-products";
+import { useShopifyAnalytics } from "@/hooks/use-shopify-analytics";
+import { KPICard } from "@/components/dashboard/kpi-card";
+import { RevenueChart } from "@/components/dashboard/revenue-chart";
+import { OrdersChart } from "@/components/dashboard/orders-chart";
+import { TopProductsTable } from "@/components/dashboard/top-products-table";
+import { PageHeader } from "@/components/shared/page-header";
+import { ErrorDisplay } from "@/components/shared/error-display";
+import { formatCurrency, formatNumber, formatPercentage } from "@/lib/utils";
+
+export default function SalesOverviewPage() {
+  const orders = useShopifyOrders();
+  const products = useShopifyProducts();
+  const analytics = useShopifyAnalytics();
+
+  const hasError = orders.error || products.error || analytics.error;
+  const comparison = analytics.data?.periodComparison;
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <div>
+      <PageHeader
+        title="Sales Overview"
+        description="Revenue, orders, and product performance from Shopify"
+      />
+
+      {hasError && <ErrorDisplay message="Failed to load sales data. Check your Shopify connection." />}
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
+        <KPICard
+          title="Total Revenue"
+          value={orders.data?.totalRevenue ?? 0}
+          formattedValue={formatCurrency(orders.data?.totalRevenue ?? 0)}
+          icon={DollarSign}
+          isLoading={orders.isLoading}
+          trend={
+            comparison
+              ? {
+                  value: comparison.percentChange,
+                  direction: comparison.percentChange > 0 ? "up" : comparison.percentChange < 0 ? "down" : "neutral",
+                  isPositive: comparison.percentChange >= 0,
+                }
+              : undefined
+          }
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+        <KPICard
+          title="Orders"
+          value={orders.data?.orderCount ?? 0}
+          formattedValue={formatNumber(orders.data?.orderCount ?? 0)}
+          icon={ShoppingCart}
+          isLoading={orders.isLoading}
+        />
+        <KPICard
+          title="Avg Order Value"
+          value={orders.data?.averageOrderValue ?? 0}
+          formattedValue={formatCurrency(orders.data?.averageOrderValue ?? 0)}
+          icon={Receipt}
+          isLoading={orders.isLoading}
+        />
+        <KPICard
+          title="Conversion Rate"
+          value={0}
+          formattedValue={analytics.data?.conversionRate != null ? formatPercentage(analytics.data.conversionRate) : "N/A"}
+          icon={Percent}
+          isLoading={analytics.isLoading}
+        />
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2 mb-6">
+        <RevenueChart
+          data={orders.data?.dailyRevenue ?? []}
+          isLoading={orders.isLoading}
+        />
+        <OrdersChart
+          data={orders.data?.dailyRevenue ?? []}
+          isLoading={orders.isLoading}
+        />
+      </div>
+
+      <TopProductsTable
+        products={products.data?.topProducts ?? []}
+        isLoading={products.isLoading}
+      />
     </div>
   );
 }

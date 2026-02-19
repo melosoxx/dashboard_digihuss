@@ -1,0 +1,73 @@
+import { format, subDays, startOfMonth, endOfMonth, subMonths } from "date-fns";
+import type { DateRange } from "@/types/dashboard";
+
+export function formatDateForApi(date: Date): string {
+  return format(date, "yyyy-MM-dd");
+}
+
+export function getDefaultDateRange(): DateRange {
+  const end = new Date();
+  const start = subDays(end, 30);
+  return {
+    startDate: formatDateForApi(start),
+    endDate: formatDateForApi(end),
+  };
+}
+
+export function getPreviousPeriod(range: DateRange): DateRange {
+  const start = new Date(range.startDate);
+  const end = new Date(range.endDate);
+  const durationMs = end.getTime() - start.getTime();
+  const previousEnd = new Date(start.getTime() - 1);
+  const previousStart = new Date(previousEnd.getTime() - durationMs);
+  return {
+    startDate: formatDateForApi(previousStart),
+    endDate: formatDateForApi(previousEnd),
+  };
+}
+
+export type DatePreset = {
+  label: string;
+  getValue: () => DateRange;
+};
+
+export const datePresets: DatePreset[] = [
+  {
+    label: "Last 7 days",
+    getValue: () => ({
+      startDate: formatDateForApi(subDays(new Date(), 7)),
+      endDate: formatDateForApi(new Date()),
+    }),
+  },
+  {
+    label: "Last 30 days",
+    getValue: () => ({
+      startDate: formatDateForApi(subDays(new Date(), 30)),
+      endDate: formatDateForApi(new Date()),
+    }),
+  },
+  {
+    label: "Last 90 days",
+    getValue: () => ({
+      startDate: formatDateForApi(subDays(new Date(), 90)),
+      endDate: formatDateForApi(new Date()),
+    }),
+  },
+  {
+    label: "This month",
+    getValue: () => ({
+      startDate: formatDateForApi(startOfMonth(new Date())),
+      endDate: formatDateForApi(new Date()),
+    }),
+  },
+  {
+    label: "Last month",
+    getValue: () => {
+      const lastMonth = subMonths(new Date(), 1);
+      return {
+        startDate: formatDateForApi(startOfMonth(lastMonth)),
+        endDate: formatDateForApi(endOfMonth(lastMonth)),
+      };
+    },
+  },
+];
