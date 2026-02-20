@@ -1,13 +1,5 @@
 "use client";
 
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -20,9 +12,9 @@ interface CampaignTableProps {
 }
 
 function getRoasBadge(roas: number) {
-  if (roas >= 3) return { label: `${roas.toFixed(1)}x`, variant: "default" as const, className: "bg-emerald-600" };
-  if (roas >= 1) return { label: `${roas.toFixed(1)}x`, variant: "secondary" as const, className: "bg-yellow-600 text-white" };
-  return { label: `${roas.toFixed(1)}x`, variant: "destructive" as const, className: "" };
+  if (roas >= 3) return { label: `${roas.toFixed(1)}x`, className: "bg-emerald-500/15 text-emerald-400 border-emerald-500/25" };
+  if (roas >= 1) return { label: `${roas.toFixed(1)}x`, className: "bg-amber-500/15 text-amber-400 border-amber-500/25" };
+  return { label: `${roas.toFixed(1)}x`, className: "bg-red-500/15 text-red-400 border-red-500/25" };
 }
 
 export function CampaignTable({ campaigns, isLoading }: CampaignTableProps) {
@@ -42,52 +34,54 @@ export function CampaignTable({ campaigns, isLoading }: CampaignTableProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Rendimiento de Campañas</CardTitle>
+        <CardTitle className="text-sm font-semibold">Rendimiento de Campañas</CardTitle>
       </CardHeader>
       <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Campaña</TableHead>
-              <TableHead className="text-right">Gasto</TableHead>
-              <TableHead className="text-right">Impresiones</TableHead>
-              <TableHead className="text-right">Clics</TableHead>
-              <TableHead className="text-right">CPC</TableHead>
-              <TableHead className="text-right">CTR</TableHead>
-              <TableHead className="text-right">ROAS</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {campaigns.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
-                  No se encontraron datos de campañas en este período
-                </TableCell>
-              </TableRow>
-            ) : (
-              campaigns.map((campaign) => {
-                const roasBadge = getRoasBadge(campaign.roas);
-                return (
-                  <TableRow key={campaign.campaignId}>
-                    <TableCell className="font-medium max-w-[200px] truncate">
-                      {campaign.campaignName}
-                    </TableCell>
-                    <TableCell className="text-right">{formatCurrency(campaign.spend)}</TableCell>
-                    <TableCell className="text-right">{formatNumber(campaign.impressions)}</TableCell>
-                    <TableCell className="text-right">{formatNumber(campaign.clicks)}</TableCell>
-                    <TableCell className="text-right">{formatCurrency(campaign.cpc)}</TableCell>
-                    <TableCell className="text-right">{campaign.ctr.toFixed(2)}%</TableCell>
-                    <TableCell className="text-right">
-                      <Badge variant={roasBadge.variant} className={cn("text-xs", roasBadge.className)}>
-                        {roasBadge.label}
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                );
-              })
-            )}
-          </TableBody>
-        </Table>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border/30">
+                <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-left pb-3">Campaña</th>
+                <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right pb-3">Gasto</th>
+                <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right pb-3">Impresiones</th>
+                <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right pb-3">Clics</th>
+                <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right pb-3">CPC</th>
+                <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right pb-3">CTR</th>
+                <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right pb-3">ROAS</th>
+              </tr>
+            </thead>
+            <tbody>
+              {campaigns.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="text-center text-muted-foreground py-8 text-sm">
+                    No se encontraron datos de campañas en este periodo
+                  </td>
+                </tr>
+              ) : (
+                campaigns.map((campaign) => {
+                  const roasBadge = getRoasBadge(campaign.roas);
+                  return (
+                    <tr key={campaign.campaignId} className="border-b border-border/20 last:border-0">
+                      <td className="py-3 pr-4 font-medium text-[13px] max-w-[200px] truncate">
+                        {campaign.campaignName}
+                      </td>
+                      <td className="py-3 text-right text-muted-foreground text-[13px]">{formatCurrency(campaign.spend)}</td>
+                      <td className="py-3 text-right text-muted-foreground text-[13px]">{formatNumber(campaign.impressions)}</td>
+                      <td className="py-3 text-right text-muted-foreground text-[13px]">{formatNumber(campaign.clicks)}</td>
+                      <td className="py-3 text-right text-muted-foreground text-[13px]">{formatCurrency(campaign.cpc)}</td>
+                      <td className="py-3 text-right text-muted-foreground text-[13px]">{campaign.ctr.toFixed(2)}%</td>
+                      <td className="py-3 text-right">
+                        <Badge variant="outline" className={cn("text-[10px] font-semibold border", roasBadge.className)}>
+                          {roasBadge.label}
+                        </Badge>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
       </CardContent>
     </Card>
   );

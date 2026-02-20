@@ -26,6 +26,9 @@ import {
 import { KPICard } from "@/components/dashboard/kpi-card";
 import { PageHeader } from "@/components/shared/page-header";
 import { ErrorDisplay } from "@/components/shared/error-display";
+import { ScrollEngagementMap } from "@/components/clarity/scroll-engagement-map";
+import { ClarityHeatmapLink } from "@/components/clarity/clarity-heatmap-link";
+import { ClarityFetchControl } from "@/components/clarity/clarity-fetch-control";
 import { useClarity } from "@/hooks/use-clarity";
 import { formatNumber } from "@/lib/utils";
 
@@ -109,7 +112,7 @@ function BreakdownCard({
 }
 
 export default function UXInsightsPage() {
-  const { data, isLoading, error } = useClarity();
+  const { data, isLoading, isFetching, error, fetchClarity, quota } = useClarity();
 
   const totalFrustration =
     (data?.frustration.deadClicks ?? 0) +
@@ -260,6 +263,32 @@ export default function UXInsightsPage() {
             )}
           </CardContent>
         </Card>
+      </div>
+
+      {/* Engagement Map + Clarity Heatmap Link */}
+      <div className="grid gap-4 lg:grid-cols-[1fr_220px] mb-6">
+        <ScrollEngagementMap
+          scrollDepth={data?.scrollDepth ?? 0}
+          frustration={{
+            deadClicks: data?.frustration.deadClicks ?? 0,
+            rageClicks: data?.frustration.rageClicks ?? 0,
+            quickbacks: data?.frustration.quickbacks ?? 0,
+            errorClicks: data?.frustration.errorClicks ?? 0,
+          }}
+          totalSessions={data?.traffic.totalSessions ?? 0}
+          isLoading={isLoading}
+        />
+        <div className="space-y-4">
+          <ClarityFetchControl
+            remaining={quota.remaining}
+            max={quota.max}
+            exhausted={quota.exhausted}
+            isFetching={isFetching}
+            hasData={!!data}
+            onFetch={fetchClarity}
+          />
+          <ClarityHeatmapLink isLoading={isLoading} />
+        </div>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3 mb-6">

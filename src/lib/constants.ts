@@ -1,8 +1,7 @@
 import {
-  LayoutDashboard,
   LayoutGrid,
+  ShoppingBag,
   Megaphone,
-  TrendingUp,
   MousePointerClick,
   Settings,
 } from "lucide-react";
@@ -10,14 +9,13 @@ import {
 export const NAV_ITEMS: ReadonlyArray<{
   label: string;
   href: string;
-  icon: typeof LayoutDashboard;
+  icon: typeof LayoutGrid;
   badge?: string;
 }> = [
   { label: "Panel General", href: "/panel", icon: LayoutGrid },
-  { label: "Resumen de Ventas", href: "/", icon: LayoutDashboard },
-  { label: "Rendimiento Ads", href: "/ads", icon: Megaphone },
-  { label: "Análisis ROI", href: "/roi", icon: TrendingUp },
-  { label: "Insights UX", href: "/ux-insights", icon: MousePointerClick },
+  { label: "Shopify", href: "/", icon: ShoppingBag },
+  { label: "Meta Ads", href: "/ads", icon: Megaphone },
+  { label: "Clarity", href: "/ux-insights", icon: MousePointerClick },
   { label: "Configuracion", href: "/configuracion", icon: Settings },
 ];
 

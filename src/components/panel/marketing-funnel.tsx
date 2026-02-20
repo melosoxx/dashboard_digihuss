@@ -30,6 +30,14 @@ function getConversionRate(from: number, to: number): string {
   return `${((to / from) * 100).toFixed(1)}%`;
 }
 
+const TOOLTIP_STYLE = {
+  backgroundColor: "rgba(15, 20, 35, 0.95)",
+  border: "1px solid rgba(100, 120, 180, 0.2)",
+  borderRadius: "10px",
+  backdropFilter: "blur(8px)",
+  boxShadow: "0 4px 20px rgba(0, 0, 0, 0.3)",
+};
+
 export function MarketingFunnel({
   impressions,
   clicks,
@@ -77,24 +85,28 @@ export function MarketingFunnel({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Embudo de Conversión</CardTitle>
+        <CardTitle className="text-sm font-semibold">Embudo de Conversion</CardTitle>
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={350}>
           <BarChart data={data} layout="vertical" margin={{ left: 20, right: 80 }}>
-            <CartesianGrid strokeDasharray="3 3" className="stroke-muted" horizontal={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(100, 120, 180, 0.08)" horizontal={false} />
             <XAxis
               type="number"
               scale="log"
               domain={[1, "auto"]}
-              tick={{ fontSize: 12 }}
+              tick={{ fontSize: 11, fill: "rgba(150, 165, 200, 0.6)" }}
+              tickLine={false}
+              axisLine={{ stroke: "rgba(100, 120, 180, 0.1)" }}
               tickFormatter={(v) => formatCompactNumber(v)}
               allowDataOverflow
             />
             <YAxis
               type="category"
               dataKey="stage"
-              tick={{ fontSize: 12 }}
+              tick={{ fontSize: 11, fill: "rgba(150, 165, 200, 0.7)" }}
+              tickLine={false}
+              axisLine={false}
               width={110}
             />
             <Tooltip
@@ -104,15 +116,13 @@ export function MarketingFunnel({
                 const real = stage ? rawValues[stage] : Number(_value);
                 return [formatCompactNumber(real), "Cantidad"];
               }}
-              contentStyle={{
-                backgroundColor: "hsl(var(--card))",
-                border: "1px solid hsl(var(--border))",
-                borderRadius: "8px",
-              }}
+              contentStyle={TOOLTIP_STYLE}
+              itemStyle={{ color: "rgba(220, 230, 255, 0.9)" }}
+              labelStyle={{ color: "rgba(150, 165, 200, 0.7)", marginBottom: 4 }}
             />
             <Bar
               dataKey="value"
-              radius={[0, 4, 4, 0]}
+              radius={[0, 6, 6, 0]}
               maxBarSize={36}
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               label={(props: any) => {
@@ -123,8 +133,8 @@ export function MarketingFunnel({
                   <text
                     x={x + width + 6}
                     y={y + height / 2}
-                    fill="hsl(var(--muted-foreground))"
-                    fontSize={12}
+                    fill="rgba(150, 165, 200, 0.7)"
+                    fontSize={11}
                     dominantBaseline="central"
                   >
                     {formatCompactNumber(real)}
@@ -133,7 +143,7 @@ export function MarketingFunnel({
               }}
             >
               {data.map((_, index) => (
-                <Cell key={index} fill={STAGE_COLORS[index]} />
+                <Cell key={index} fill={STAGE_COLORS[index]} fillOpacity={0.85} />
               ))}
             </Bar>
           </BarChart>
@@ -142,13 +152,13 @@ export function MarketingFunnel({
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-4 text-xs text-muted-foreground">
           {rates.map((rate) => (
             <div key={rate.label} className="text-center">
-              <p className="font-medium text-foreground">{rate.value}</p>
+              <p className="font-semibold text-foreground">{rate.value}</p>
               <p>{rate.label}</p>
             </div>
           ))}
         </div>
 
-        <p className="text-xs text-muted-foreground mt-3">
+        <p className="text-[11px] text-muted-foreground/60 mt-3">
           Ses. Landing = sesiones del online store (Shopify)
         </p>
       </CardContent>

@@ -1,8 +1,9 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardAction } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ArrowUpRight, ArrowRight, TrendingDown } from "lucide-react";
 import { formatCurrency, cn } from "@/lib/utils";
 import type { MetaCampaignInsight } from "@/types/meta";
 
@@ -12,9 +13,15 @@ interface TopCampaignsCardProps {
 }
 
 function getRoasBadge(roas: number) {
-  if (roas >= 3) return { label: `${roas.toFixed(1)}x`, variant: "default" as const, className: "bg-emerald-600" };
-  if (roas >= 1) return { label: `${roas.toFixed(1)}x`, variant: "secondary" as const, className: "bg-yellow-600 text-white" };
-  return { label: `${roas.toFixed(1)}x`, variant: "destructive" as const, className: "" };
+  if (roas >= 3) return { label: `${roas.toFixed(1)}x`, className: "bg-emerald-500/15 text-emerald-400 border-emerald-500/25" };
+  if (roas >= 1) return { label: `${roas.toFixed(1)}x`, className: "bg-amber-500/15 text-amber-400 border-amber-500/25" };
+  return { label: `${roas.toFixed(1)}x`, className: "bg-red-500/15 text-red-400 border-red-500/25" };
+}
+
+function getRoasTrend(roas: number) {
+  if (roas >= 2) return { icon: ArrowUpRight, className: "text-emerald-400" };
+  if (roas >= 1) return { icon: ArrowRight, className: "text-muted-foreground" };
+  return { icon: TrendingDown, className: "text-red-400" };
 }
 
 export function TopCampaignsCard({ campaigns, isLoading }: TopCampaignsCardProps) {
@@ -33,46 +40,68 @@ export function TopCampaignsCard({ campaigns, isLoading }: TopCampaignsCardProps
     );
   }
 
-  const top3 = [...campaigns].sort((a, b) => b.roas - a.roas).slice(0, 3);
+  const sorted = [...campaigns].sort((a, b) => b.roas - a.roas);
+  const topCampaigns = sorted.slice(0, 5);
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Top Campañas por ROAS</CardTitle>
+        <CardTitle className="text-sm font-semibold">Campañas Activas</CardTitle>
+        {campaigns.length > 5 && (
+          <CardAction>
+            <span className="text-xs text-primary cursor-pointer hover:underline">Ver Todas</span>
+          </CardAction>
+        )}
       </CardHeader>
       <CardContent>
-        {top3.length === 0 ? (
+        {topCampaigns.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-4">
-            No se encontraron campañas en este período
+            No se encontraron campañas en este periodo
           </p>
         ) : (
-          <div className="space-y-3">
-            {top3.map((campaign, i) => {
-              const badge = getRoasBadge(campaign.roas);
-              return (
-                <div
-                  key={campaign.campaignId}
-                  className="flex items-center justify-between gap-3 rounded-lg border p-3"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <span className="text-sm font-bold text-muted-foreground w-5 shrink-0">
-                      #{i + 1}
-                    </span>
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium truncate">
-                        {campaign.campaignName}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Gasto: {formatCurrency(campaign.spend)}
-                      </p>
-                    </div>
-                  </div>
-                  <Badge variant={badge.variant} className={cn("text-xs shrink-0", badge.className)}>
-                    {badge.label}
-                  </Badge>
-                </div>
-              );
-            })}
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border/30">
+                  <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-left pb-3">Campaña</th>
+                  <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right pb-3">Gasto</th>
+                  <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right pb-3">Revenue</th>
+                  <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right pb-3">ROAS</th>
+                  <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right pb-3">Trend</th>
+                </tr>
+              </thead>
+              <tbody>
+                {topCampaigns.map((campaign) => {
+                  const roasBadge = getRoasBadge(campaign.roas);
+                  const trend = getRoasTrend(campaign.roas);
+                  const TrendIcon = trend.icon;
+                  const estimatedRevenue = campaign.spend * campaign.roas;
+                  return (
+                    <tr key={campaign.campaignId} className="border-b border-border/20 last:border-0">
+                      <td className="py-3 pr-4">
+                        <span className="text-[13px] font-medium truncate block max-w-[200px]">
+                          {campaign.campaignName}
+                        </span>
+                      </td>
+                      <td className="py-3 text-right text-muted-foreground text-[13px]">
+                        {formatCurrency(campaign.spend)}
+                      </td>
+                      <td className="py-3 text-right text-[13px]">
+                        {formatCurrency(estimatedRevenue)}
+                      </td>
+                      <td className="py-3 text-right">
+                        <Badge variant="outline" className={cn("text-[10px] font-semibold border", roasBadge.className)}>
+                          {roasBadge.label}
+                        </Badge>
+                      </td>
+                      <td className="py-3 text-right">
+                        <TrendIcon className={cn("h-4 w-4 ml-auto", trend.className)} />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         )}
       </CardContent>

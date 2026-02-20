@@ -1,13 +1,5 @@
 "use client";
 
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency, formatNumber } from "@/lib/utils";
@@ -37,47 +29,49 @@ export function TopProductsTable({ products, isLoading }: TopProductsTableProps)
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Productos Más Vendidos</CardTitle>
+        <CardTitle className="text-sm font-semibold">Productos Mas Vendidos</CardTitle>
       </CardHeader>
       <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-8">#</TableHead>
-              <TableHead>Producto</TableHead>
-              <TableHead className="text-right">Ingresos</TableHead>
-              <TableHead className="text-right">Unidades</TableHead>
-              <TableHead className="text-right">Pedidos</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {products.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                  No se encontraron productos en este período
-                </TableCell>
-              </TableRow>
-            ) : (
-              products.map((product, index) => (
-                <TableRow key={product.title}>
-                  <TableCell className="font-medium text-muted-foreground">
-                    {index + 1}
-                  </TableCell>
-                  <TableCell className="font-medium">{product.title}</TableCell>
-                  <TableCell className="text-right">
-                    {formatCurrency(product.totalRevenue)}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {formatNumber(product.totalQuantitySold)}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {formatNumber(product.orderCount)}
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border/30">
+                <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-left pb-3 w-8">#</th>
+                <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-left pb-3">Producto</th>
+                <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right pb-3">Ingresos</th>
+                <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right pb-3">Unidades</th>
+                <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right pb-3">Pedidos</th>
+              </tr>
+            </thead>
+            <tbody>
+              {products.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="text-center text-muted-foreground py-8 text-sm">
+                    No se encontraron productos en este periodo
+                  </td>
+                </tr>
+              ) : (
+                products.map((product, index) => (
+                  <tr key={product.title} className="border-b border-border/20 last:border-0">
+                    <td className="py-3 text-muted-foreground font-medium text-[13px]">
+                      {index + 1}
+                    </td>
+                    <td className="py-3 font-medium text-[13px]">{product.title}</td>
+                    <td className="py-3 text-right text-[13px]">
+                      {formatCurrency(product.totalRevenue)}
+                    </td>
+                    <td className="py-3 text-right text-muted-foreground text-[13px]">
+                      {formatNumber(product.totalQuantitySold)}
+                    </td>
+                    <td className="py-3 text-right text-muted-foreground text-[13px]">
+                      {formatNumber(product.orderCount)}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </CardContent>
     </Card>
   );

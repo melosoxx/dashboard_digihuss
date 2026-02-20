@@ -12,9 +12,11 @@ import {
   Users,
   AlertTriangle,
   Monitor,
+  RefreshCw,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { KPICard } from "@/components/dashboard/kpi-card";
 import { PageHeader } from "@/components/shared/page-header";
@@ -24,6 +26,7 @@ import { MarketingFunnel } from "@/components/panel/marketing-funnel";
 import { TopCampaignsCard } from "@/components/panel/top-campaigns-card";
 import { SalesAttribution } from "@/components/panel/sales-attribution";
 import { SectionLabel } from "@/components/panel/section-label";
+import { IntegrationLogos } from "@/components/panel/integration-logos";
 import { useShopifyOrders } from "@/hooks/use-shopify-orders";
 import { useShopifyAnalytics } from "@/hooks/use-shopify-analytics";
 import { useMetaAccount } from "@/hooks/use-meta-account";
@@ -36,10 +39,17 @@ export default function PanelGeneralPage() {
   const analytics = useShopifyAnalytics();
   const meta = useMetaAccount();
   const campaigns = useMetaCampaigns();
-  const clarity = useClarity();
+  const clarityQuery = useClarity();
+  const clarity = {
+    data: clarityQuery.data,
+    isLoading: clarityQuery.isLoading,
+    isFetching: clarityQuery.isFetching,
+    error: clarityQuery.error,
+    fetchClarity: clarityQuery.fetchClarity,
+    quota: clarityQuery.quota,
+  };
 
   const isLoadingMain = shopify.isLoading || meta.isLoading;
-  const isLoadingAll = isLoadingMain || clarity.isLoading;
 
   const revenue = shopify.data?.totalRevenue ?? 0;
   const orderCount = shopify.data?.orderCount ?? 0;
@@ -73,18 +83,15 @@ export default function PanelGeneralPage() {
       }));
   }, [shopify.data, meta.data]);
 
-  // Clarity frustration score
   const totalFrustration =
     (clarity.data?.frustration.deadClicks ?? 0) +
     (clarity.data?.frustration.rageClicks ?? 0) +
     (clarity.data?.frustration.quickbacks ?? 0) +
     (clarity.data?.frustration.errorClicks ?? 0);
 
-  // Device breakdown for mini visualization
   const devices = clarity.data?.devices ?? [];
   const totalDeviceSessions = devices.reduce((sum, d) => sum + d.sessions, 0);
 
-  // Error messages
   const errorSources = [
     shopify.error && "Shopify",
     meta.error && "Meta Ads",
@@ -94,19 +101,30 @@ export default function PanelGeneralPage() {
   return (
     <div>
       <PageHeader
-        title="Panel General"
-        description="Vista ejecutiva con datos de Shopify, Meta Ads y Clarity"
+        title="Analytics & Attribution"
+        description="Vista ejecutiva en tiempo real del rendimiento de marketing"
+        actions={
+          <IntegrationLogos
+            shopifyStatus={shopify.isLoading ? "loading" : shopify.error ? "error" : "connected"}
+            metaStatus={meta.isLoading ? "loading" : meta.error ? "error" : "connected"}
+            clarityStatus={
+              clarity.isFetching ? "loading"
+              : clarity.error ? "error"
+              : clarity.data ? "connected"
+              : "idle"
+            }
+          />
+        }
       />
 
       {errorSources.length > 0 && (
         <ErrorDisplay
-          message={`Error al cargar datos de: ${errorSources.join(", ")}. Las demás fuentes funcionan correctamente.`}
+          message={`Error al cargar datos de: ${errorSources.join(", ")}. Las demas fuentes funcionan correctamente.`}
         />
       )}
 
-      {/* Section 1: Core Business KPIs */}
-      <SectionLabel title="Métricas principales" />
-      <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-6 mb-6">
+      {/* KPIs */}
+      <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-6 mb-8">
         <KPICard
           title="Ingresos Totales"
           value={revenue}
@@ -176,23 +194,9 @@ export default function PanelGeneralPage() {
         />
       </div>
 
-      {/* Section 2: Cross-Source Visualizations */}
-      <SectionLabel title="Visualizaciones cruzadas" />
-      <div className="grid gap-4 lg:grid-cols-2 mb-6">
-        <MarketingFunnel
-          impressions={meta.data?.impressions ?? 0}
-          clicks={meta.data?.clicks ?? 0}
-          landingSessions={analytics.data?.checkoutSessions ?? 0}
-          checkouts={analytics.data?.checkoutCount ?? 0}
-          orders={orderCount}
-          isLoading={isLoadingMain || analytics.isLoading}
-        />
+      {/* Charts + Attribution */}
+      <div className="grid gap-4 lg:grid-cols-[1fr_380px] mb-6">
         <SpendVsRevenueChart data={combinedData} isLoading={isLoadingMain} />
-      </div>
-
-      {/* Section 2.5: Sales Attribution */}
-      <SectionLabel title="Atribucion de ventas" />
-      <div className="grid gap-4 lg:grid-cols-2 mb-6">
         <SalesAttribution
           totalRevenue={revenue}
           totalOrders={orderCount}
@@ -202,57 +206,93 @@ export default function PanelGeneralPage() {
         />
       </div>
 
-      {/* Section 3: UX Health + Top Campaigns */}
-      <SectionLabel title="UX y Campañas" />
+      {/* Campaigns table */}
+      <div className="mb-6">
+        <TopCampaignsCard
+          campaigns={campaigns.data?.campaigns ?? []}
+          isLoading={campaigns.isLoading}
+        />
+      </div>
+
+      {/* Funnel + UX Health */}
+      <SectionLabel title="Funnel y UX" />
       <div className="grid gap-4 lg:grid-cols-2 mb-6">
+        <MarketingFunnel
+          impressions={meta.data?.impressions ?? 0}
+          clicks={meta.data?.clicks ?? 0}
+          landingSessions={analytics.data?.checkoutSessions ?? 0}
+          checkouts={analytics.data?.checkoutCount ?? 0}
+          orders={orderCount}
+          isLoading={isLoadingMain || analytics.isLoading}
+        />
+
         {/* UX Health Card */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-3">
-            <CardTitle className="text-base">Salud UX</CardTitle>
-            <Badge variant="outline" className="text-xs">
-              Últimos 3 días
-            </Badge>
+            <CardTitle className="text-sm font-semibold">Salud UX</CardTitle>
+            <div className="flex items-center gap-2">
+              {!clarity.data && !clarity.isFetching && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-6 text-[10px] px-2"
+                  disabled={clarity.quota.exhausted}
+                  onClick={clarity.fetchClarity}
+                >
+                  <RefreshCw className="mr-1 h-3 w-3" />
+                  Cargar ({clarity.quota.remaining}/{clarity.quota.max})
+                </Button>
+              )}
+              {clarity.data && (
+                <Badge variant="outline" className="text-[10px] border-border/50">
+                  Ultimos 3 dias
+                </Badge>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
-            {clarity.isLoading ? (
+            {clarity.isFetching ? (
               <div className="space-y-3">
                 <Skeleton className="h-16 w-full" />
                 <Skeleton className="h-8 w-full" />
               </div>
+            ) : !clarity.data ? (
+              <p className="text-sm text-muted-foreground text-center py-8">
+                Presiona &quot;Cargar&quot; para obtener datos de Clarity
+              </p>
             ) : (
               <>
-                <div className="grid grid-cols-3 gap-4 mb-4">
-                  <div className="text-center">
-                    <Eye className="h-4 w-4 mx-auto mb-1 text-blue-500" />
+                <div className="grid grid-cols-3 gap-4 mb-5">
+                  <div className="text-center rounded-xl border border-blue-500/20 bg-blue-500/5 p-3">
+                    <Eye className="h-4 w-4 mx-auto mb-1.5 text-blue-400" />
                     <p className="text-lg font-bold">
                       {formatNumber(clarity.data?.traffic.totalSessions ?? 0)}
                     </p>
-                    <p className="text-xs text-muted-foreground">Sesiones</p>
+                    <p className="text-[11px] text-muted-foreground">Sesiones</p>
                   </div>
-                  <div className="text-center">
-                    <Users className="h-4 w-4 mx-auto mb-1 text-violet-500" />
+                  <div className="text-center rounded-xl border border-violet-500/20 bg-violet-500/5 p-3">
+                    <Users className="h-4 w-4 mx-auto mb-1.5 text-violet-400" />
                     <p className="text-lg font-bold">
                       {formatNumber(clarity.data?.traffic.distinctUsers ?? 0)}
                     </p>
-                    <p className="text-xs text-muted-foreground">Usuarios</p>
+                    <p className="text-[11px] text-muted-foreground">Usuarios</p>
                   </div>
-                  <div className="text-center">
-                    <AlertTriangle className="h-4 w-4 mx-auto mb-1 text-red-500" />
-                    <p className="text-lg font-bold text-red-500">
+                  <div className="text-center rounded-xl border border-red-500/20 bg-red-500/5 p-3">
+                    <AlertTriangle className="h-4 w-4 mx-auto mb-1.5 text-red-400" />
+                    <p className="text-lg font-bold text-red-400">
                       {formatNumber(totalFrustration)}
                     </p>
-                    <p className="text-xs text-muted-foreground">Frustración</p>
+                    <p className="text-[11px] text-muted-foreground">Frustracion</p>
                   </div>
                 </div>
 
-                {/* Device breakdown mini bar */}
                 {devices.length > 0 && (
                   <div>
-                    <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
+                    <p className="text-[11px] text-muted-foreground mb-2 flex items-center gap-1">
                       <Monitor className="h-3 w-3" />
                       Dispositivos
                     </p>
-                    <div className="flex h-2 rounded-full overflow-hidden bg-muted">
+                    <div className="flex h-2 rounded-full overflow-hidden bg-muted/50">
                       {devices.map((device, i) => {
                         const pct =
                           totalDeviceSessions > 0
@@ -269,7 +309,7 @@ export default function PanelGeneralPage() {
                         );
                       })}
                     </div>
-                    <div className="flex justify-between mt-1">
+                    <div className="flex justify-between mt-1.5">
                       {devices.slice(0, 3).map((device, i) => {
                         const pct =
                           totalDeviceSessions > 0
@@ -277,7 +317,7 @@ export default function PanelGeneralPage() {
                             : 0;
                         const dotColors = ["bg-blue-500", "bg-teal-500", "bg-violet-500"];
                         return (
-                          <span key={device.name} className="text-xs text-muted-foreground flex items-center gap-1">
+                          <span key={device.name} className="text-[11px] text-muted-foreground flex items-center gap-1">
                             <span className={`inline-block h-2 w-2 rounded-full ${dotColors[i % dotColors.length]}`} />
                             {device.name} {pct.toFixed(0)}%
                           </span>
@@ -290,11 +330,6 @@ export default function PanelGeneralPage() {
             )}
           </CardContent>
         </Card>
-
-        <TopCampaignsCard
-          campaigns={campaigns.data?.campaigns ?? []}
-          isLoading={campaigns.isLoading}
-        />
       </div>
     </div>
   );

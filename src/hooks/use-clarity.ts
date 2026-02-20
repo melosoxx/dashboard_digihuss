@@ -1,9 +1,10 @@
 "use client";
 
+import { useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useDateRange } from "@/providers/date-range-provider";
 import { useBusinessProfile } from "@/providers/business-profile-provider";
-import { QUERY_STALE_TIME, QUERY_REFETCH_INTERVAL } from "@/lib/constants";
+import { useClarityQuota } from "@/hooks/use-clarity-quota";
 import type { ClarityInsights } from "@/types/clarity";
 
 function getNumOfDays(startDate: string, endDate: string): 1 | 2 | 3 {
@@ -18,8 +19,9 @@ export function useClarity() {
   const { dateRange } = useDateRange();
   const { activeProfileId, getCredentialHeaders } = useBusinessProfile();
   const numOfDays = getNumOfDays(dateRange.startDate, dateRange.endDate);
+  const quota = useClarityQuota();
 
-  return useQuery<ClarityInsights>({
+  const query = useQuery<ClarityInsights>({
     queryKey: ["clarity", "insights", numOfDays, activeProfileId],
     queryFn: async () => {
       const params = new URLSearchParams({ numOfDays: String(numOfDays) });
@@ -27,17 +29,32 @@ export function useClarity() {
         headers: getCredentialHeaders(),
       });
       if (!res.ok) {
+        if (res.status === 429) {
+          quota.recordRateLimit();
+        }
         const err = new Error(`Failed to fetch Clarity insights: ${res.status}`);
         (err as Error & { status: number }).status = res.status;
         throw err;
       }
+      quota.recordSuccess();
       return res.json();
     },
-    staleTime: QUERY_STALE_TIME,
-    refetchInterval: QUERY_REFETCH_INTERVAL,
+    enabled: false,
+    staleTime: Infinity,
     retry: (failureCount, error) => {
       if ((error as Error & { status?: number }).status === 429) return false;
       return failureCount < 1;
     },
   });
+
+  const fetchClarity = useCallback(async () => {
+    if (quota.exhausted) return;
+    await query.refetch();
+  }, [quota.exhausted, query]);
+
+  return {
+    ...query,
+    fetchClarity,
+    quota,
+  };
 }
