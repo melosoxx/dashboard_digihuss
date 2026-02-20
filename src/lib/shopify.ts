@@ -55,17 +55,23 @@ const ORDERS_QUERY = `
   }
 `;
 
+export interface ShopifyClientCreds {
+  domain: string;
+  version: string;
+  token: string;
+}
+
 class ShopifyClient {
   private endpoint: string;
   private accessToken: string;
 
-  constructor() {
-    const domain = process.env.SHOPIFY_STORE_DOMAIN;
-    const version = process.env.SHOPIFY_ADMIN_API_VERSION || "2024-10";
-    const token = process.env.SHOPIFY_ADMIN_ACCESS_TOKEN;
+  constructor(creds?: ShopifyClientCreds) {
+    const domain = creds?.domain || process.env.SHOPIFY_STORE_DOMAIN;
+    const version = creds?.version || process.env.SHOPIFY_ADMIN_API_VERSION || "2024-10";
+    const token = creds?.token || process.env.SHOPIFY_ADMIN_ACCESS_TOKEN;
 
     if (!domain || !token) {
-      throw new Error("Missing Shopify environment variables");
+      throw new Error("Missing Shopify credentials");
     }
 
     this.endpoint = `https://${domain}/admin/api/${version}/graphql.json`;
@@ -184,6 +190,100 @@ class ShopifyClient {
       .slice(0, limit);
   }
 
+  async getSessions(startDate: string, endDate: string): Promise<number> {
+    try {
+      const shopifyql = `FROM sessions SHOW sessions SINCE ${startDate} UNTIL ${endDate}`;
+
+      const response = await fetch(this.endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Shopify-Access-Token": this.accessToken,
+        },
+        body: JSON.stringify({
+          query: `query GetSessions($query: String!) {
+            shopifyqlQuery(query: $query) {
+              ... on ShopifyqlQueryResponse {
+                tableData { columns { name dataType } rows }
+                parseErrors
+              }
+            }
+          }`,
+          variables: { query: shopifyql },
+        }),
+      });
+
+      const json = await response.json();
+
+      if (json.errors) {
+        console.error("ShopifyQL errors:", json.errors);
+        return 0;
+      }
+
+      const result = json.data?.shopifyqlQuery;
+      if (result?.parseErrors?.length > 0) {
+        console.error("ShopifyQL parse errors:", result.parseErrors);
+        return 0;
+      }
+
+      const table = result?.tableData;
+      if (table?.rows?.length > 0) {
+        const row = table.rows[0];
+        // Rows are objects like { "sessions": "272" }
+        const val = typeof row === "object" && row !== null
+          ? Object.values(row)[0]
+          : row;
+        return parseInt(String(val), 10) || 0;
+      }
+      return 0;
+    } catch (error) {
+      console.error("Shopify sessions query error:", error);
+      return 0;
+    }
+  }
+
+  async getCheckouts(startDate: string, endDate: string, orderCount: number): Promise<number> {
+    try {
+      const ABANDONED_QUERY = `
+        query GetAbandoned($query: String!, $cursor: String) {
+          abandonedCheckouts(first: 250, after: $cursor, query: $query) {
+            edges { node { id } cursor }
+            pageInfo { hasNextPage }
+          }
+        }
+      `;
+      const queryFilter = `created_at:>='${startDate}' AND created_at:<='${endDate}'`;
+      let total = 0;
+      let cursor: string | null = null;
+
+      do {
+        const variables: Record<string, unknown> = { query: queryFilter };
+        if (cursor) variables.cursor = cursor;
+
+        const data = await this.query<{
+          abandonedCheckouts: {
+            edges: Array<{ node: { id: string }; cursor: string }>;
+            pageInfo: { hasNextPage: boolean };
+          };
+        }>(ABANDONED_QUERY, variables);
+
+        total += data.abandonedCheckouts.edges.length;
+
+        if (data.abandonedCheckouts.pageInfo.hasNextPage && data.abandonedCheckouts.edges.length > 0) {
+          cursor = data.abandonedCheckouts.edges[data.abandonedCheckouts.edges.length - 1].cursor;
+        } else {
+          cursor = null;
+        }
+      } while (cursor);
+
+      // Total checkouts initiated = abandoned + completed (orders)
+      return total + orderCount;
+    } catch (error) {
+      console.error("Shopify checkouts query error:", error);
+      return 0;
+    }
+  }
+
   async checkConnection(): Promise<boolean> {
     try {
       await this.query<{ shop: { name: string } }>(`{ shop { name } }`);
@@ -192,6 +292,10 @@ class ShopifyClient {
       return false;
     }
   }
+}
+
+export function createShopifyClient(creds: ShopifyClientCreds): ShopifyClient {
+  return new ShopifyClient(creds);
 }
 
 export const shopifyClient = new ShopifyClient();

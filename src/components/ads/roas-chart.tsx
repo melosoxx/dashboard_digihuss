@@ -32,7 +32,7 @@ export function ROASChart({ data, isLoading }: ROASChartProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">ROAS Trend</CardTitle>
+        <CardTitle className="text-base">Tendencia ROAS</CardTitle>
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={300}>
@@ -41,12 +41,12 @@ export function ROASChart({ data, isLoading }: ROASChartProps) {
             <XAxis
               dataKey="date"
               tick={{ fontSize: 12 }}
-              tickFormatter={(v) => new Date(v + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+              tickFormatter={(v) => new Date(v + "T00:00:00").toLocaleDateString("es-AR", { month: "short", day: "numeric" })}
             />
             <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => `${v.toFixed(1)}x`} />
             <Tooltip
               formatter={(value) => [`${Number(value).toFixed(2)}x`, "ROAS"]}
-              labelFormatter={(label) => new Date(label + "T00:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
+              labelFormatter={(label) => new Date(label + "T00:00:00").toLocaleDateString("es-AR", { weekday: "short", month: "short", day: "numeric" })}
               contentStyle={{
                 backgroundColor: "hsl(var(--card))",
                 border: "1px solid hsl(var(--border))",
@@ -57,12 +57,12 @@ export function ROASChart({ data, isLoading }: ROASChartProps) {
               y={1}
               stroke="hsl(var(--destructive))"
               strokeDasharray="3 3"
-              label={{ value: "Break-even", position: "right", fontSize: 11 }}
+              label={{ value: "Punto de equilibrio", position: "right", fontSize: 11 }}
             />
             <Line
               type="monotone"
               dataKey="roas"
-              stroke="hsl(var(--chart-2))"
+              stroke="#14b8a6"
               strokeWidth={2}
               dot={false}
             />

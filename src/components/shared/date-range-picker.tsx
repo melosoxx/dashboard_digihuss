@@ -40,7 +40,7 @@ export function DateRangePicker() {
           )}
         >
           <CalendarIcon className="mr-2 h-4 w-4" />
-          {format(selected.from!, "MMM d")} - {format(selected.to!, "MMM d, yyyy")}
+          {format(selected.from!, "d MMM")} - {format(selected.to!, "d MMM yyyy")}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="end">

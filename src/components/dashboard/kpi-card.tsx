@@ -10,7 +10,7 @@ interface KPICardProps extends KPIData {
   isLoading?: boolean;
 }
 
-export function KPICard({ title, formattedValue, trend, icon: Icon, isLoading }: KPICardProps) {
+export function KPICard({ title, formattedValue, trend, icon: Icon, iconClassName, isLoading }: KPICardProps) {
   if (isLoading) {
     return (
       <Card>
@@ -40,7 +40,7 @@ export function KPICard({ title, formattedValue, trend, icon: Icon, isLoading }:
         <CardTitle className="text-sm font-medium text-muted-foreground">
           {title}
         </CardTitle>
-        {Icon && <Icon className="h-4 w-4 text-muted-foreground" />}
+        {Icon && <Icon className={cn("h-4 w-4", iconClassName || "text-muted-foreground")} />}
       </CardHeader>
       <CardContent>
         <div className="text-2xl font-bold">{formattedValue}</div>
@@ -52,7 +52,7 @@ export function KPICard({ title, formattedValue, trend, icon: Icon, isLoading }:
             )}
           >
             <TrendIcon className="h-3 w-3" />
-            {Math.abs(trend.value).toFixed(1)}% vs previous period
+            {Math.abs(trend.value).toFixed(1)}% vs período anterior
           </p>
         )}
       </CardContent>

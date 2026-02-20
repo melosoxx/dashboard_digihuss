@@ -15,6 +15,7 @@ export interface KPIData {
     isPositive: boolean;
   };
   icon?: LucideIcon;
+  iconClassName?: string;
 }
 
 export interface ChartDataPoint {

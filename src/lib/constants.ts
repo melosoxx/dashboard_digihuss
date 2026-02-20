@@ -1,8 +1,10 @@
 import {
   LayoutDashboard,
+  LayoutGrid,
   Megaphone,
   TrendingUp,
   MousePointerClick,
+  Settings,
 } from "lucide-react";
 
 export const NAV_ITEMS: ReadonlyArray<{
@@ -11,10 +13,12 @@ export const NAV_ITEMS: ReadonlyArray<{
   icon: typeof LayoutDashboard;
   badge?: string;
 }> = [
-  { label: "Sales Overview", href: "/", icon: LayoutDashboard },
-  { label: "Ad Performance", href: "/ads", icon: Megaphone },
-  { label: "ROI Analysis", href: "/roi", icon: TrendingUp },
-  { label: "UX Insights", href: "/ux-insights", icon: MousePointerClick },
+  { label: "Panel General", href: "/panel", icon: LayoutGrid },
+  { label: "Resumen de Ventas", href: "/", icon: LayoutDashboard },
+  { label: "Rendimiento Ads", href: "/ads", icon: Megaphone },
+  { label: "Análisis ROI", href: "/roi", icon: TrendingUp },
+  { label: "Insights UX", href: "/ux-insights", icon: MousePointerClick },
+  { label: "Configuracion", href: "/configuracion", icon: Settings },
 ];
 
 export const QUERY_STALE_TIME = 5 * 60 * 1000; // 5 minutes

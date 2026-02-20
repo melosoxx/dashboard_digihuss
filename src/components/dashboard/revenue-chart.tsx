@@ -36,22 +36,22 @@ export function RevenueChart({ data, isLoading }: RevenueChartProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Revenue Over Time</CardTitle>
+        <CardTitle className="text-base">Ingresos en el Tiempo</CardTitle>
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={300}>
           <AreaChart data={data}>
             <defs>
               <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="hsl(var(--chart-1))" stopOpacity={0.3} />
-                <stop offset="95%" stopColor="hsl(var(--chart-1))" stopOpacity={0} />
+                <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
             <XAxis
               dataKey="date"
               tick={{ fontSize: 12 }}
-              tickFormatter={(v) => new Date(v + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+              tickFormatter={(v) => new Date(v + "T00:00:00").toLocaleDateString("es-AR", { month: "short", day: "numeric" })}
               className="text-muted-foreground"
             />
             <YAxis
@@ -60,8 +60,8 @@ export function RevenueChart({ data, isLoading }: RevenueChartProps) {
               className="text-muted-foreground"
             />
             <Tooltip
-              formatter={(value) => [formatCurrency(Number(value)), "Revenue"]}
-              labelFormatter={(label) => new Date(label + "T00:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
+              formatter={(value) => [formatCurrency(Number(value)), "Ingresos"]}
+              labelFormatter={(label) => new Date(label + "T00:00:00").toLocaleDateString("es-AR", { weekday: "short", month: "short", day: "numeric" })}
               contentStyle={{
                 backgroundColor: "hsl(var(--card))",
                 border: "1px solid hsl(var(--border))",
@@ -71,7 +71,7 @@ export function RevenueChart({ data, isLoading }: RevenueChartProps) {
             <Area
               type="monotone"
               dataKey="revenue"
-              stroke="hsl(var(--chart-1))"
+              stroke="#10b981"
               fill="url(#revenueGradient)"
               strokeWidth={2}
             />

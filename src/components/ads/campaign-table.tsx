@@ -42,16 +42,16 @@ export function CampaignTable({ campaigns, isLoading }: CampaignTableProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Campaign Performance</CardTitle>
+        <CardTitle className="text-base">Rendimiento de Campañas</CardTitle>
       </CardHeader>
       <CardContent>
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Campaign</TableHead>
-              <TableHead className="text-right">Spend</TableHead>
-              <TableHead className="text-right">Impressions</TableHead>
-              <TableHead className="text-right">Clicks</TableHead>
+              <TableHead>Campaña</TableHead>
+              <TableHead className="text-right">Gasto</TableHead>
+              <TableHead className="text-right">Impresiones</TableHead>
+              <TableHead className="text-right">Clics</TableHead>
               <TableHead className="text-right">CPC</TableHead>
               <TableHead className="text-right">CTR</TableHead>
               <TableHead className="text-right">ROAS</TableHead>
@@ -61,7 +61,7 @@ export function CampaignTable({ campaigns, isLoading }: CampaignTableProps) {
             {campaigns.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
-                  No campaign data found for this period
+                  No se encontraron datos de campañas en este período
                 </TableCell>
               </TableRow>
             ) : (

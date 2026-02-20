@@ -93,7 +93,7 @@ function BreakdownCard({
               </div>
               <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-primary rounded-full"
+                  className="h-full bg-blue-500 rounded-full"
                   style={{ width: `${pct}%` }}
                 />
               </div>
@@ -101,7 +101,7 @@ function BreakdownCard({
           );
         })}
         {items.length === 0 && (
-          <p className="text-sm text-muted-foreground text-center py-2">No data</p>
+          <p className="text-sm text-muted-foreground text-center py-2">Sin datos</p>
         )}
       </CardContent>
     </Card>
@@ -120,48 +120,53 @@ export default function UXInsightsPage() {
   return (
     <div>
       <PageHeader
-        title="UX Insights"
-        description="User behavior analytics powered by Microsoft Clarity (last 3 days)"
+        title="Insights de UX"
+        description="Analíticas de comportamiento de usuario con Microsoft Clarity (máximo 3 días)"
       />
 
       {error && (
-        <ErrorDisplay message="Failed to load Clarity data. Check your Clarity credentials." />
+        <ErrorDisplay message="Error al cargar datos de Clarity. Verificá tus credenciales de Clarity." />
       )}
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5 mb-6">
         <KPICard
-          title="Sessions"
+          title="Sesiones"
           value={data?.traffic.totalSessions ?? 0}
           formattedValue={formatNumber(data?.traffic.totalSessions ?? 0)}
           icon={Eye}
+          iconClassName="text-blue-500"
           isLoading={isLoading}
         />
         <KPICard
-          title="Unique Users"
+          title="Usuarios Únicos"
           value={data?.traffic.distinctUsers ?? 0}
           formattedValue={formatNumber(data?.traffic.distinctUsers ?? 0)}
           icon={Users}
+          iconClassName="text-violet-500"
           isLoading={isLoading}
         />
         <KPICard
-          title="Pages / Session"
+          title="Páginas / Sesión"
           value={data?.traffic.pagesPerSession ?? 0}
           formattedValue={(data?.traffic.pagesPerSession ?? 0).toFixed(2)}
           icon={BarChart3}
+          iconClassName="text-teal-500"
           isLoading={isLoading}
         />
         <KPICard
-          title="Avg Scroll Depth"
+          title="Profundidad de Scroll"
           value={data?.scrollDepth ?? 0}
           formattedValue={`${(data?.scrollDepth ?? 0).toFixed(1)}%`}
           icon={ArrowDownUp}
+          iconClassName="text-amber-500"
           isLoading={isLoading}
         />
         <KPICard
-          title="Active Time"
+          title="Tiempo Activo"
           value={data?.engagement.activeTime ?? 0}
           formattedValue={formatSeconds(data?.engagement.activeTime ?? 0)}
           icon={Clock}
+          iconClassName="text-emerald-500"
           isLoading={isLoading}
         />
       </div>
@@ -170,7 +175,7 @@ export default function UXInsightsPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Dead Clicks
+              Clics Muertos
             </CardTitle>
             <CircleDot className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
@@ -179,11 +184,11 @@ export default function UXInsightsPage() {
               <Skeleton className="h-7 w-20" />
             ) : (
               <>
-                <div className="text-2xl font-bold">
+                <div className="text-2xl font-bold text-red-500">
                   {formatNumber(data?.frustration.deadClicks ?? 0)}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Clicks on non-interactive elements
+                  Clics en elementos no interactivos
                 </p>
               </>
             )}
@@ -192,20 +197,20 @@ export default function UXInsightsPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Rage Clicks
+              Clics de Rabia
             </CardTitle>
-            <Flame className="h-4 w-4 text-muted-foreground" />
+            <Flame className="h-4 w-4 text-red-500" />
           </CardHeader>
           <CardContent>
             {isLoading ? (
               <Skeleton className="h-7 w-20" />
             ) : (
               <>
-                <div className="text-2xl font-bold">
+                <div className="text-2xl font-bold text-red-500">
                   {formatNumber(data?.frustration.rageClicks ?? 0)}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Rapid repeated clicks from frustration
+                  Clics rápidos repetidos por frustración
                 </p>
               </>
             )}
@@ -214,7 +219,7 @@ export default function UXInsightsPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Quick Backs
+              Retornos Rápidos
             </CardTitle>
             <MousePointerClick className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
@@ -223,11 +228,11 @@ export default function UXInsightsPage() {
               <Skeleton className="h-7 w-20" />
             ) : (
               <>
-                <div className="text-2xl font-bold">
+                <div className="text-2xl font-bold text-orange-500">
                   {formatNumber(data?.frustration.quickbacks ?? 0)}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Users who navigated back quickly
+                  Usuarios que volvieron atrás rápidamente
                 </p>
               </>
             )}
@@ -236,20 +241,20 @@ export default function UXInsightsPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Total Frustration Signals
+              Señales de Frustración
             </CardTitle>
-            <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+            <AlertTriangle className="h-4 w-4 text-red-500" />
           </CardHeader>
           <CardContent>
             {isLoading ? (
               <Skeleton className="h-7 w-20" />
             ) : (
               <>
-                <div className="text-2xl font-bold">
+                <div className="text-2xl font-bold text-red-500">
                   {formatNumber(totalFrustration)}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Combined frustration events
+                  Eventos de frustración combinados
                 </p>
               </>
             )}
@@ -259,19 +264,19 @@ export default function UXInsightsPage() {
 
       <div className="grid gap-4 lg:grid-cols-3 mb-6">
         <BreakdownCard
-          title="Devices"
+          title="Dispositivos"
           icon={Monitor}
           items={data?.devices ?? []}
           isLoading={isLoading}
         />
         <BreakdownCard
-          title="Browsers"
+          title="Navegadores"
           icon={Globe}
           items={data?.browsers ?? []}
           isLoading={isLoading}
         />
         <BreakdownCard
-          title="Countries"
+          title="Países"
           icon={Globe}
           items={data?.countries ?? []}
           isLoading={isLoading}
@@ -280,7 +285,7 @@ export default function UXInsightsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm font-medium">Top Pages</CardTitle>
+          <CardTitle className="text-sm font-medium">Páginas Más Visitadas</CardTitle>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -293,8 +298,8 @@ export default function UXInsightsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Page</TableHead>
-                  <TableHead className="text-right">Visits</TableHead>
+                  <TableHead>Página</TableHead>
+                  <TableHead className="text-right">Visitas</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -311,7 +316,7 @@ export default function UXInsightsPage() {
                 {(data?.topPages ?? []).length === 0 && (
                   <TableRow>
                     <TableCell colSpan={2} className="text-center text-muted-foreground">
-                      No page data available
+                      No hay datos de páginas disponibles
                     </TableCell>
                   </TableRow>
                 )}

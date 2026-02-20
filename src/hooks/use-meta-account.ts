@@ -2,20 +2,24 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useDateRange } from "@/providers/date-range-provider";
+import { useBusinessProfile } from "@/providers/business-profile-provider";
 import { QUERY_STALE_TIME, QUERY_REFETCH_INTERVAL } from "@/lib/constants";
 import type { MetaAccountInsights } from "@/types/meta";
 
 export function useMetaAccount() {
   const { dateRange } = useDateRange();
+  const { activeProfileId, getCredentialHeaders } = useBusinessProfile();
 
   return useQuery<MetaAccountInsights>({
-    queryKey: ["meta", "account", dateRange.startDate, dateRange.endDate],
+    queryKey: ["meta", "account", dateRange.startDate, dateRange.endDate, activeProfileId],
     queryFn: async () => {
       const params = new URLSearchParams({
         startDate: dateRange.startDate,
         endDate: dateRange.endDate,
       });
-      const res = await fetch(`/api/meta/account?${params}`);
+      const res = await fetch(`/api/meta/account?${params}`, {
+        headers: getCredentialHeaders(),
+      });
       if (!res.ok) throw new Error(`Failed to fetch Meta insights: ${res.status}`);
       return res.json();
     },

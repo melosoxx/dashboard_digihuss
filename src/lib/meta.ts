@@ -7,18 +7,24 @@ import type {
   MetaCampaignInsight,
 } from "@/types/meta";
 
+export interface MetaClientCreds {
+  accountId: string;
+  token: string;
+  version: string;
+}
+
 class MetaAdsClient {
   private baseUrl: string;
   private accessToken: string;
   private adAccountId: string;
 
-  constructor() {
-    const version = process.env.META_API_VERSION || "v21.0";
-    const token = process.env.META_ACCESS_TOKEN;
-    const accountId = process.env.META_AD_ACCOUNT_ID;
+  constructor(creds?: MetaClientCreds) {
+    const version = creds?.version || process.env.META_API_VERSION || "v21.0";
+    const token = creds?.token || process.env.META_ACCESS_TOKEN;
+    const accountId = creds?.accountId || process.env.META_AD_ACCOUNT_ID;
 
     if (!token || !accountId) {
-      throw new Error("Missing Meta environment variables");
+      throw new Error("Missing Meta credentials");
     }
 
     this.baseUrl = `https://graph.facebook.com/${version}`;
@@ -26,18 +32,23 @@ class MetaAdsClient {
     this.adAccountId = accountId;
   }
 
-  private extractROAS(insight: MetaRawInsight): number {
-    const purchaseValue = insight.action_values?.find(
-      (a) => a.action_type === "omni_purchase"
+  private extractPurchaseValue(insight: MetaRawInsight): number {
+    const pv = insight.action_values?.find(
+      (a) => a.action_type === "omni_purchase" || a.action_type === "purchase"
     );
+    return pv ? parseFloat(pv.value) : 0;
+  }
+
+  private extractROAS(insight: MetaRawInsight): number {
+    const purchaseValue = this.extractPurchaseValue(insight);
     const spend = parseFloat(insight.spend);
-    if (!purchaseValue || spend === 0) return 0;
-    return parseFloat(purchaseValue.value) / spend;
+    if (purchaseValue === 0 || spend === 0) return 0;
+    return purchaseValue / spend;
   }
 
   private extractConversions(insight: MetaRawInsight): number {
     const purchase = insight.actions?.find(
-      (a) => a.action_type === "omni_purchase"
+      (a) => a.action_type === "omni_purchase" || a.action_type === "purchase"
     );
     return purchase ? parseInt(purchase.value) : 0;
   }
@@ -72,16 +83,13 @@ class MetaAdsClient {
       const clicks = parseInt(day.clicks || "0");
       const roas = this.extractROAS(day);
       const conversions = this.extractConversions(day);
+      const purchaseRevenue = this.extractPurchaseValue(day);
 
       totalSpend += spend;
       totalImpressions += impressions;
       totalClicks += clicks;
       totalConversions += conversions;
-
-      const purchaseValue = day.action_values?.find(
-        (a) => a.action_type === "omni_purchase"
-      );
-      if (purchaseValue) totalPurchaseValue += parseFloat(purchaseValue.value);
+      totalPurchaseValue += purchaseRevenue;
 
       return {
         date: day.date_start,
@@ -89,6 +97,8 @@ class MetaAdsClient {
         impressions,
         clicks,
         roas,
+        conversions,
+        purchaseRevenue,
       };
     });
 
@@ -100,6 +110,7 @@ class MetaAdsClient {
       ctr: totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0,
       roas: totalSpend > 0 ? totalPurchaseValue / totalSpend : 0,
       conversions: totalConversions,
+      purchaseRevenue: totalPurchaseValue,
       costPerAcquisition: totalConversions > 0 ? totalSpend / totalConversions : 0,
       dailyMetrics,
     };
@@ -144,6 +155,10 @@ class MetaAdsClient {
       return false;
     }
   }
+}
+
+export function createMetaClient(creds: MetaClientCreds): MetaAdsClient {
+  return new MetaAdsClient(creds);
 }
 
 export const metaClient = new MetaAdsClient();

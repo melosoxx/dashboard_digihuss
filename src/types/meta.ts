@@ -34,6 +34,7 @@ export interface MetaAccountInsights {
   ctr: number;
   roas: number;
   conversions: number;
+  purchaseRevenue: number;
   costPerAcquisition: number;
   dailyMetrics: MetaDailyMetric[];
 }
@@ -44,6 +45,8 @@ export interface MetaDailyMetric {
   impressions: number;
   clicks: number;
   roas: number;
+  conversions: number;
+  purchaseRevenue: number;
 }
 
 export interface MetaCampaignInsight {

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { metaClient } from "@/lib/meta";
+import { resolveMetaClient } from "@/lib/credentials";
 
 const querySchema = z.object({
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -22,7 +22,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const data = await metaClient.getAccountInsights(
+    const client = resolveMetaClient(request);
+    const data = await client.getAccountInsights(
       parsed.data.startDate,
       parsed.data.endDate
     );

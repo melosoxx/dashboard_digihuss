@@ -2,20 +2,24 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useDateRange } from "@/providers/date-range-provider";
+import { useBusinessProfile } from "@/providers/business-profile-provider";
 import { QUERY_STALE_TIME, QUERY_REFETCH_INTERVAL } from "@/lib/constants";
 import type { AnalyticsData } from "@/types/shopify";
 
 export function useShopifyAnalytics() {
   const { dateRange } = useDateRange();
+  const { activeProfileId, getCredentialHeaders } = useBusinessProfile();
 
   return useQuery<AnalyticsData>({
-    queryKey: ["shopify", "analytics", dateRange.startDate, dateRange.endDate],
+    queryKey: ["shopify", "analytics", dateRange.startDate, dateRange.endDate, activeProfileId],
     queryFn: async () => {
       const params = new URLSearchParams({
         startDate: dateRange.startDate,
         endDate: dateRange.endDate,
       });
-      const res = await fetch(`/api/shopify/analytics?${params}`);
+      const res = await fetch(`/api/shopify/analytics?${params}`, {
+        headers: getCredentialHeaders(),
+      });
       if (!res.ok) throw new Error(`Failed to fetch analytics: ${res.status}`);
       return res.json();
     },

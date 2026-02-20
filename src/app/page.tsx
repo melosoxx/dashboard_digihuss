@@ -23,18 +23,19 @@ export default function SalesOverviewPage() {
   return (
     <div>
       <PageHeader
-        title="Sales Overview"
-        description="Revenue, orders, and product performance from Shopify"
+        title="Resumen de Ventas"
+        description="Ingresos, pedidos y rendimiento de productos desde Shopify"
       />
 
-      {hasError && <ErrorDisplay message="Failed to load sales data. Check your Shopify connection." />}
+      {hasError && <ErrorDisplay message="Error al cargar datos de ventas. Verificá tu conexión con Shopify." />}
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
         <KPICard
-          title="Total Revenue"
+          title="Ingresos Totales"
           value={orders.data?.totalRevenue ?? 0}
           formattedValue={formatCurrency(orders.data?.totalRevenue ?? 0)}
           icon={DollarSign}
+          iconClassName="text-emerald-500"
           isLoading={orders.isLoading}
           trend={
             comparison
@@ -47,24 +48,27 @@ export default function SalesOverviewPage() {
           }
         />
         <KPICard
-          title="Orders"
+          title="Pedidos"
           value={orders.data?.orderCount ?? 0}
           formattedValue={formatNumber(orders.data?.orderCount ?? 0)}
           icon={ShoppingCart}
+          iconClassName="text-blue-500"
           isLoading={orders.isLoading}
         />
         <KPICard
-          title="Avg Order Value"
+          title="Ticket Promedio"
           value={orders.data?.averageOrderValue ?? 0}
           formattedValue={formatCurrency(orders.data?.averageOrderValue ?? 0)}
           icon={Receipt}
+          iconClassName="text-emerald-500"
           isLoading={orders.isLoading}
         />
         <KPICard
-          title="Conversion Rate"
+          title="Tasa de Conversión"
           value={0}
           formattedValue={analytics.data?.conversionRate != null ? formatPercentage(analytics.data.conversionRate) : "N/A"}
           icon={Percent}
+          iconClassName="text-violet-500"
           isLoading={analytics.isLoading}
         />
       </div>

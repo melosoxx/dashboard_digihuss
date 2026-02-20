@@ -39,7 +39,7 @@ export function SpendVsRevenueChart({ data, isLoading }: SpendVsRevenueProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Ad Spend vs Revenue</CardTitle>
+        <CardTitle className="text-base">Gasto en Ads vs Ingresos</CardTitle>
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={350}>
@@ -48,46 +48,41 @@ export function SpendVsRevenueChart({ data, isLoading }: SpendVsRevenueProps) {
             <XAxis
               dataKey="date"
               tick={{ fontSize: 12 }}
-              tickFormatter={(v) => new Date(v + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+              tickFormatter={(v) => new Date(v + "T00:00:00").toLocaleDateString("es-AR", { month: "short", day: "numeric" })}
             />
             <YAxis
               yAxisId="left"
               tick={{ fontSize: 12 }}
               tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`}
             />
-            <YAxis
-              yAxisId="right"
-              orientation="right"
-              tick={{ fontSize: 12 }}
-              tickFormatter={(v) => `$${v}`}
-            />
             <Tooltip
               formatter={(value, name) => [
                 formatCurrency(Number(value)),
-                name === "revenue" ? "Revenue" : "Ad Spend",
+                name === "Ingresos" ? "Ingresos" : "Gasto Ads",
               ]}
               contentStyle={{
                 backgroundColor: "hsl(var(--card))",
                 border: "1px solid hsl(var(--border))",
                 borderRadius: "8px",
               }}
+              itemStyle={{ color: "hsl(var(--foreground))" }}
             />
             <Legend />
             <Bar
               yAxisId="left"
               dataKey="revenue"
-              fill="hsl(var(--chart-2))"
+              fill="#10b981"
               radius={[4, 4, 0, 0]}
-              name="Revenue"
+              name="Ingresos"
             />
             <Line
-              yAxisId="right"
+              yAxisId="left"
               type="monotone"
               dataKey="adSpend"
-              stroke="hsl(var(--chart-5))"
+              stroke="#ef4444"
               strokeWidth={2}
               dot={false}
-              name="Ad Spend"
+              name="Gasto Ads"
             />
           </ComposedChart>
         </ResponsiveContainer>

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { shopifyClient } from "@/lib/shopify";
+import { resolveShopifyClient } from "@/lib/credentials";
 
 const querySchema = z.object({
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -24,7 +24,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const topProducts = await shopifyClient.getTopProducts(
+    const client = resolveShopifyClient(request);
+    const topProducts = await client.getTopProducts(
       parsed.data.startDate,
       parsed.data.endDate,
       parsed.data.limit

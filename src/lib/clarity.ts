@@ -6,14 +6,18 @@ interface ClarityMetric {
   information: Record<string, unknown>[];
 }
 
+export interface ClarityClientCreds {
+  token: string;
+}
+
 class ClarityClient {
   private endpoint = "https://www.clarity.ms/export-data/api/v1/project-live-insights";
   private token: string;
 
-  constructor() {
-    const token = process.env.CLARITY_API_TOKEN;
+  constructor(creds?: ClarityClientCreds) {
+    const token = creds?.token || process.env.CLARITY_API_TOKEN;
     if (!token) {
-      throw new Error("Missing CLARITY_API_TOKEN environment variable");
+      throw new Error("Missing Clarity credentials");
     }
     this.token = token;
   }
@@ -32,7 +36,9 @@ class ClarityClient {
     if (!response.ok) {
       const body = await response.text();
       console.error("Clarity error details:", { status: response.status, body });
-      throw new Error(`Clarity API error: ${response.status} ${response.statusText}`);
+      const err = new Error(`Clarity API error: ${response.status} ${response.statusText}`);
+      (err as Error & { status: number }).status = response.status;
+      throw err;
     }
 
     return response.json();
@@ -42,8 +48,8 @@ class ClarityClient {
     return metrics.find((m) => m.metricName === name)?.information || [];
   }
 
-  async getInsights(): Promise<ClarityInsights> {
-    const metrics = await this.fetchMetrics(3);
+  async getInsights(numOfDays: 1 | 2 | 3 = 3): Promise<ClarityInsights> {
+    const metrics = await this.fetchMetrics(numOfDays);
 
     const traffic = this.findMetric(metrics, "Traffic")[0] || {};
     const engagement = this.findMetric(metrics, "EngagementTime")[0] || {};
@@ -115,6 +121,10 @@ function toNum(val: unknown): number {
 
 function toFloat(val: unknown): number {
   return parseFloat(String(val || "0")) || 0;
+}
+
+export function createClarityClient(creds: ClarityClientCreds): ClarityClient {
+  return new ClarityClient(creds);
 }
 
 export const clarityClient = new ClarityClient();

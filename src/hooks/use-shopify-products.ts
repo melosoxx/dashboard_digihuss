@@ -2,20 +2,24 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useDateRange } from "@/providers/date-range-provider";
+import { useBusinessProfile } from "@/providers/business-profile-provider";
 import { QUERY_STALE_TIME, QUERY_REFETCH_INTERVAL } from "@/lib/constants";
 import type { TopProduct } from "@/types/shopify";
 
 export function useShopifyProducts() {
   const { dateRange } = useDateRange();
+  const { activeProfileId, getCredentialHeaders } = useBusinessProfile();
 
   return useQuery<{ topProducts: TopProduct[] }>({
-    queryKey: ["shopify", "products", dateRange.startDate, dateRange.endDate],
+    queryKey: ["shopify", "products", dateRange.startDate, dateRange.endDate, activeProfileId],
     queryFn: async () => {
       const params = new URLSearchParams({
         startDate: dateRange.startDate,
         endDate: dateRange.endDate,
       });
-      const res = await fetch(`/api/shopify/products?${params}`);
+      const res = await fetch(`/api/shopify/products?${params}`, {
+        headers: getCredentialHeaders(),
+      });
       if (!res.ok) throw new Error(`Failed to fetch products: ${res.status}`);
       return res.json();
     },

@@ -33,35 +33,35 @@ export type DatePreset = {
 
 export const datePresets: DatePreset[] = [
   {
-    label: "Last 7 days",
+    label: "Últimos 7 días",
     getValue: () => ({
       startDate: formatDateForApi(subDays(new Date(), 7)),
       endDate: formatDateForApi(new Date()),
     }),
   },
   {
-    label: "Last 30 days",
+    label: "Últimos 30 días",
     getValue: () => ({
       startDate: formatDateForApi(subDays(new Date(), 30)),
       endDate: formatDateForApi(new Date()),
     }),
   },
   {
-    label: "Last 90 days",
+    label: "Últimos 90 días",
     getValue: () => ({
       startDate: formatDateForApi(subDays(new Date(), 90)),
       endDate: formatDateForApi(new Date()),
     }),
   },
   {
-    label: "This month",
+    label: "Este mes",
     getValue: () => ({
       startDate: formatDateForApi(startOfMonth(new Date())),
       endDate: formatDateForApi(new Date()),
     }),
   },
   {
-    label: "Last month",
+    label: "Mes anterior",
     getValue: () => {
       const lastMonth = subMonths(new Date(), 1);
       return {

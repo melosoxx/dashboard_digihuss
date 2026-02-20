@@ -56,18 +56,19 @@ export default function ROIAnalysisPage() {
   return (
     <div>
       <PageHeader
-        title="ROI Analysis"
-        description="Combined revenue vs ad spend analysis across Shopify and Meta Ads"
+        title="Análisis de ROI"
+        description="Análisis combinado de ingresos vs gasto en publicidad entre Shopify y Meta Ads"
       />
 
-      {hasError && <ErrorDisplay message="Failed to load ROI data. Check your API connections." />}
+      {hasError && <ErrorDisplay message="Error al cargar datos de ROI. Verificá tus conexiones de API." />}
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
         <KPICard
-          title="Net Profit"
+          title="Ganancia Neta"
           value={netProfit}
           formattedValue={formatCurrency(netProfit)}
           icon={DollarSign}
+          iconClassName="text-emerald-500"
           isLoading={isLoading}
           trend={{
             value: profitMargin,
@@ -76,24 +77,27 @@ export default function ROIAnalysisPage() {
           }}
         />
         <KPICard
-          title="Profit Margin"
+          title="Margen de Ganancia"
           value={profitMargin}
           formattedValue={`${profitMargin.toFixed(1)}%`}
           icon={Percent}
+          iconClassName="text-emerald-500"
           isLoading={isLoading}
         />
         <KPICard
-          title="Cost Per Acquisition"
+          title="Costo por Adquisición"
           value={cpa}
           formattedValue={formatCurrency(cpa)}
           icon={Target}
+          iconClassName="text-orange-500"
           isLoading={isLoading}
         />
         <KPICard
-          title="Ad Spend / Revenue"
+          title="Gasto / Ingresos"
           value={spendToRevenueRatio}
           formattedValue={`${spendToRevenueRatio.toFixed(1)}%`}
           icon={ArrowDownUp}
+          iconClassName="text-red-500"
           isLoading={isLoading}
         />
       </div>

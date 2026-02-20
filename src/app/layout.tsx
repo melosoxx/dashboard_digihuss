@@ -4,6 +4,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/providers/theme-provider";
 import { QueryProvider } from "@/providers/query-provider";
 import { DateRangeProvider } from "@/providers/date-range-provider";
+import { BusinessProfileProvider } from "@/providers/business-profile-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
@@ -20,7 +21,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "WWH Dashboard | World Wide Hustle",
-  description: "Business analytics dashboard for World Wide Hustle digital products",
+  description: "Panel de analíticas de negocio para productos digitales World Wide Hustle",
 };
 
 export default function RootLayout({
@@ -29,13 +30,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="es" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <ThemeProvider>
           <QueryProvider>
-            <DateRangeProvider>
+            <BusinessProfileProvider>
+              <DateRangeProvider>
               <TooltipProvider>
                 <div className="flex h-screen overflow-hidden">
                   <Sidebar />
@@ -47,7 +49,8 @@ export default function RootLayout({
                   </div>
                 </div>
               </TooltipProvider>
-            </DateRangeProvider>
+              </DateRangeProvider>
+            </BusinessProfileProvider>
           </QueryProvider>
         </ThemeProvider>
       </body>

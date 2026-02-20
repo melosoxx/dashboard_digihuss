@@ -5,7 +5,7 @@ interface ErrorDisplayProps {
   message?: string;
 }
 
-export function ErrorDisplay({ message = "Failed to load data. Please try again." }: ErrorDisplayProps) {
+export function ErrorDisplay({ message = "Error al cargar los datos. Por favor, intentá de nuevo." }: ErrorDisplayProps) {
   return (
     <Card className="border-destructive/50">
       <CardContent className="flex items-center gap-3 py-4">

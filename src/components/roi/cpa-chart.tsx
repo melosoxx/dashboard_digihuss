@@ -36,7 +36,7 @@ export function CPAChart({ data, isLoading }: CPAChartProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Cost Per Acquisition Trend</CardTitle>
+        <CardTitle className="text-base">Tendencia de Costo por Adquisición</CardTitle>
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={350}>
@@ -45,7 +45,7 @@ export function CPAChart({ data, isLoading }: CPAChartProps) {
             <XAxis
               dataKey="date"
               tick={{ fontSize: 12 }}
-              tickFormatter={(v) => new Date(v + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+              tickFormatter={(v) => new Date(v + "T00:00:00").toLocaleDateString("es-AR", { month: "short", day: "numeric" })}
             />
             <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => `$${v}`} />
             <Tooltip
@@ -59,7 +59,7 @@ export function CPAChart({ data, isLoading }: CPAChartProps) {
             <Line
               type="monotone"
               dataKey="cpa"
-              stroke="hsl(var(--chart-3))"
+              stroke="#f59e0b"
               strokeWidth={2}
               dot={false}
             />

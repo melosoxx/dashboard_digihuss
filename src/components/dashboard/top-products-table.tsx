@@ -37,24 +37,24 @@ export function TopProductsTable({ products, isLoading }: TopProductsTableProps)
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Top Products</CardTitle>
+        <CardTitle className="text-base">Productos Más Vendidos</CardTitle>
       </CardHeader>
       <CardContent>
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead className="w-8">#</TableHead>
-              <TableHead>Product</TableHead>
-              <TableHead className="text-right">Revenue</TableHead>
-              <TableHead className="text-right">Units</TableHead>
-              <TableHead className="text-right">Orders</TableHead>
+              <TableHead>Producto</TableHead>
+              <TableHead className="text-right">Ingresos</TableHead>
+              <TableHead className="text-right">Unidades</TableHead>
+              <TableHead className="text-right">Pedidos</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {products.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                  No products found for this period
+                  No se encontraron productos en este período
                 </TableCell>
               </TableRow>
             ) : (

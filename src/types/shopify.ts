@@ -61,6 +61,8 @@ export interface TopProduct {
 
 export interface AnalyticsData {
   conversionRate: number | null;
+  checkoutSessions: number;
+  checkoutCount: number;
   revenueTrend: Array<{ date: string; revenue: number }>;
   orderTrend: Array<{ date: string; count: number }>;
   periodComparison: {
