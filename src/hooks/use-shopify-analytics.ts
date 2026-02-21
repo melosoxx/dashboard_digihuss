@@ -8,7 +8,7 @@ import type { AnalyticsData } from "@/types/shopify";
 
 export function useShopifyAnalytics() {
   const { dateRange } = useDateRange();
-  const { activeProfileId, getCredentialHeaders } = useBusinessProfile();
+  const { activeProfileId } = useBusinessProfile();
 
   return useQuery<AnalyticsData>({
     queryKey: ["shopify", "analytics", dateRange.startDate, dateRange.endDate, activeProfileId],
@@ -17,9 +17,8 @@ export function useShopifyAnalytics() {
         startDate: dateRange.startDate,
         endDate: dateRange.endDate,
       });
-      const res = await fetch(`/api/shopify/analytics?${params}`, {
-        headers: getCredentialHeaders(),
-      });
+      if (activeProfileId) params.set("profileId", activeProfileId);
+      const res = await fetch(`/api/shopify/analytics?${params}`);
       if (!res.ok) throw new Error(`Failed to fetch analytics: ${res.status}`);
       return res.json();
     },

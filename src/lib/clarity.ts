@@ -66,10 +66,13 @@ class ClarityClient {
     const browsers = this.findMetric(metrics, "Browser");
     const countries = this.findMetric(metrics, "Country");
 
+    const totalSessions = toNum(traffic.totalSessionCount);
+    const botSessions = toNum(traffic.totalBotSessionCount);
+
     return {
       traffic: {
-        totalSessions: toNum(traffic.totalSessionCount),
-        botSessions: toNum(traffic.totalBotSessionCount),
+        totalSessions: Math.max(0, totalSessions - botSessions),
+        botSessions,
         distinctUsers: toNum(traffic.distinctUserCount),
         pagesPerSession: toFloat(traffic.pagesPerSessionPercentage),
       },

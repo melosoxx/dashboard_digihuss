@@ -1,6 +1,7 @@
 "use client";
 
 import { MobileNav } from "./mobile-nav";
+import { UserMenu } from "./user-menu";
 import { DateRangePicker } from "@/components/shared/date-range-picker";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { RefreshButton } from "@/components/shared/refresh-button";
@@ -15,6 +16,7 @@ export function Header() {
       <DateRangePicker />
       <RefreshButton />
       <ThemeToggle />
+      <UserMenu />
     </header>
   );
 }

@@ -3,11 +3,11 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/providers/theme-provider";
 import { QueryProvider } from "@/providers/query-provider";
+import { AuthProvider } from "@/providers/auth-provider";
 import { DateRangeProvider } from "@/providers/date-range-provider";
 import { BusinessProfileProvider } from "@/providers/business-profile-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { Sidebar } from "@/components/layout/sidebar";
-import { Header } from "@/components/layout/header";
+import { AppShell } from "@/components/layout/app-shell";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -36,21 +36,15 @@ export default function RootLayout({
       >
         <ThemeProvider>
           <QueryProvider>
-            <BusinessProfileProvider>
-              <DateRangeProvider>
-              <TooltipProvider>
-                <div className="flex h-screen overflow-hidden">
-                  <Sidebar />
-                  <div className="flex flex-1 flex-col overflow-hidden">
-                    <Header />
-                    <main className="flex-1 overflow-y-auto p-4 lg:p-6">
-                      {children}
-                    </main>
-                  </div>
-                </div>
-              </TooltipProvider>
-              </DateRangeProvider>
-            </BusinessProfileProvider>
+            <AuthProvider>
+              <BusinessProfileProvider>
+                <DateRangeProvider>
+                  <TooltipProvider>
+                    <AppShell>{children}</AppShell>
+                  </TooltipProvider>
+                </DateRangeProvider>
+              </BusinessProfileProvider>
+            </AuthProvider>
           </QueryProvider>
         </ThemeProvider>
       </body>

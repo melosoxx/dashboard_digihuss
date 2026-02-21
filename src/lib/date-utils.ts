@@ -6,11 +6,10 @@ export function formatDateForApi(date: Date): string {
 }
 
 export function getDefaultDateRange(): DateRange {
-  const end = new Date();
-  const start = subDays(end, 30);
+  const today = new Date();
   return {
-    startDate: formatDateForApi(start),
-    endDate: formatDateForApi(end),
+    startDate: formatDateForApi(today),
+    endDate: formatDateForApi(today),
   };
 }
 
@@ -33,6 +32,30 @@ export type DatePreset = {
 
 export const datePresets: DatePreset[] = [
   {
+    label: "Hoy",
+    getValue: () => {
+      const today = new Date();
+      return {
+        startDate: formatDateForApi(today),
+        endDate: formatDateForApi(today),
+      };
+    },
+  },
+  {
+    label: "Hoy y ayer",
+    getValue: () => ({
+      startDate: formatDateForApi(subDays(new Date(), 1)),
+      endDate: formatDateForApi(new Date()),
+    }),
+  },
+  {
+    label: "Últimos 3 días",
+    getValue: () => ({
+      startDate: formatDateForApi(subDays(new Date(), 2)),
+      endDate: formatDateForApi(new Date()),
+    }),
+  },
+  {
     label: "Últimos 7 días",
     getValue: () => ({
       startDate: formatDateForApi(subDays(new Date(), 7)),
@@ -43,13 +66,6 @@ export const datePresets: DatePreset[] = [
     label: "Últimos 30 días",
     getValue: () => ({
       startDate: formatDateForApi(subDays(new Date(), 30)),
-      endDate: formatDateForApi(new Date()),
-    }),
-  },
-  {
-    label: "Últimos 90 días",
-    getValue: () => ({
-      startDate: formatDateForApi(subDays(new Date(), 90)),
       endDate: formatDateForApi(new Date()),
     }),
   },

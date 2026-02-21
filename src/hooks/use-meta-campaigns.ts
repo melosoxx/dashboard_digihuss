@@ -8,7 +8,7 @@ import type { MetaCampaignInsight } from "@/types/meta";
 
 export function useMetaCampaigns() {
   const { dateRange } = useDateRange();
-  const { activeProfileId, getCredentialHeaders } = useBusinessProfile();
+  const { activeProfileId } = useBusinessProfile();
 
   return useQuery<{ campaigns: MetaCampaignInsight[] }>({
     queryKey: ["meta", "campaigns", dateRange.startDate, dateRange.endDate, activeProfileId],
@@ -17,9 +17,8 @@ export function useMetaCampaigns() {
         startDate: dateRange.startDate,
         endDate: dateRange.endDate,
       });
-      const res = await fetch(`/api/meta/campaigns?${params}`, {
-        headers: getCredentialHeaders(),
-      });
+      if (activeProfileId) params.set("profileId", activeProfileId);
+      const res = await fetch(`/api/meta/campaigns?${params}`);
       if (!res.ok) throw new Error(`Failed to fetch Meta campaigns: ${res.status}`);
       return res.json();
     },

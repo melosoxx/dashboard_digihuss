@@ -1,3 +1,5 @@
+export type ServiceName = "shopify" | "meta" | "clarity";
+
 export interface ShopifyCredentials {
   storeDomain: string;
   adminApiVersion: string;
@@ -25,16 +27,9 @@ export interface BusinessProfile {
   id: string;
   name: string;
   color: string;
-  credentials: ServiceCredentials;
+  configuredServices: ServiceName[];
   createdAt: string;
   updatedAt: string;
-}
-
-export interface BusinessProfilesState {
-  profiles: BusinessProfile[];
-  activeProfileId: string | null;
-  aggregateMode: boolean;
-  selectedProfileIds: string[];
 }
 
 export interface ConnectionTestResult {

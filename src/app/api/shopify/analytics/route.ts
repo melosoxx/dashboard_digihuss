@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { resolveShopifyClient } from "@/lib/credentials";
+import { resolveShopifyClient, resolveShopifyClientByProfile } from "@/lib/credentials";
 import { getPreviousPeriod } from "@/lib/date-utils";
 import { calculatePercentChange } from "@/lib/utils";
 
@@ -24,7 +24,11 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const client = resolveShopifyClient(request);
+    const profileId = searchParams.get("profileId");
+    const client = profileId
+      ? await resolveShopifyClientByProfile(profileId)
+      : resolveShopifyClient(request);
+
     const previousPeriod = getPreviousPeriod(parsed.data);
 
     const [current, previous, checkoutSessions] = await Promise.all([
@@ -33,7 +37,6 @@ export async function GET(request: NextRequest) {
       client.getSessions(parsed.data.startDate, parsed.data.endDate),
     ]);
 
-    // Fetch checkouts after we know orderCount (abandoned + completed)
     const checkoutCount = await client.getCheckouts(
       parsed.data.startDate,
       parsed.data.endDate,

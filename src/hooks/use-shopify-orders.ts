@@ -8,7 +8,7 @@ import type { OrdersAggregate } from "@/types/shopify";
 
 export function useShopifyOrders() {
   const { dateRange } = useDateRange();
-  const { activeProfileId, getCredentialHeaders } = useBusinessProfile();
+  const { activeProfileId } = useBusinessProfile();
 
   return useQuery<OrdersAggregate>({
     queryKey: ["shopify", "orders", dateRange.startDate, dateRange.endDate, activeProfileId],
@@ -17,9 +17,8 @@ export function useShopifyOrders() {
         startDate: dateRange.startDate,
         endDate: dateRange.endDate,
       });
-      const res = await fetch(`/api/shopify/orders?${params}`, {
-        headers: getCredentialHeaders(),
-      });
+      if (activeProfileId) params.set("profileId", activeProfileId);
+      const res = await fetch(`/api/shopify/orders?${params}`);
       if (!res.ok) throw new Error(`Failed to fetch orders: ${res.status}`);
       return res.json();
     },

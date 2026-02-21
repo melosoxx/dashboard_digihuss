@@ -8,7 +8,7 @@ import type { TopProduct } from "@/types/shopify";
 
 export function useShopifyProducts() {
   const { dateRange } = useDateRange();
-  const { activeProfileId, getCredentialHeaders } = useBusinessProfile();
+  const { activeProfileId } = useBusinessProfile();
 
   return useQuery<{ topProducts: TopProduct[] }>({
     queryKey: ["shopify", "products", dateRange.startDate, dateRange.endDate, activeProfileId],
@@ -17,9 +17,8 @@ export function useShopifyProducts() {
         startDate: dateRange.startDate,
         endDate: dateRange.endDate,
       });
-      const res = await fetch(`/api/shopify/products?${params}`, {
-        headers: getCredentialHeaders(),
-      });
+      if (activeProfileId) params.set("profileId", activeProfileId);
+      const res = await fetch(`/api/shopify/products?${params}`);
       if (!res.ok) throw new Error(`Failed to fetch products: ${res.status}`);
       return res.json();
     },

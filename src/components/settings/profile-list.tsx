@@ -49,12 +49,8 @@ export function ProfileList() {
 
       {/* User profiles */}
       {profiles.map((profile) => {
-        const configuredServices = Object.entries(profile.credentials)
-          .filter(([, val]) => {
-            if (!val) return false;
-            return Object.values(val).some((v) => v && String(v).length > 0);
-          })
-          .map(([key]) => SERVICE_LABELS[key] ?? key);
+        const serviceLabels = profile.configuredServices
+          .map((s) => SERVICE_LABELS[s] ?? s);
 
         return (
           <Card
@@ -75,8 +71,8 @@ export function ProfileList() {
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium truncate">{profile.name}</p>
                 <p className="text-xs text-muted-foreground truncate">
-                  {configuredServices.length > 0
-                    ? configuredServices.join(", ")
+                  {serviceLabels.length > 0
+                    ? serviceLabels.join(", ")
                     : "Sin configurar"}
                 </p>
               </div>

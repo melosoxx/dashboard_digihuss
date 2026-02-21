@@ -3,23 +3,33 @@
 import {
   createContext,
   useContext,
-  useState,
-  useEffect,
   useCallback,
   type ReactNode,
 } from "react";
-import type {
-  BusinessProfile,
-  BusinessProfilesState,
-  ServiceCredentials,
-} from "@/types/business";
-
-const STORAGE_KEY = "wwh-business-profiles";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/providers/auth-provider";
+import type { BusinessProfile, ServiceName } from "@/types/business";
 
 const PROFILE_COLORS = [
   "#3b82f6", "#ef4444", "#10b981", "#f59e0b",
   "#8b5cf6", "#ec4899", "#06b6d4", "#f97316",
 ];
+
+interface ProfilesApiResponse {
+  profiles: Array<{
+    id: string;
+    name: string;
+    color: string;
+    created_at: string;
+    updated_at: string;
+    configuredServices: string[];
+  }>;
+  preferences: {
+    active_profile_id: string | null;
+    aggregate_mode: boolean;
+    selected_profile_ids: string[];
+  };
+}
 
 interface BusinessProfileContextValue {
   profiles: BusinessProfile[];
@@ -28,179 +38,256 @@ interface BusinessProfileContextValue {
   aggregateMode: boolean;
   selectedProfileIds: string[];
   isHydrated: boolean;
+  isLoading: boolean;
   setActiveProfileId: (id: string | null) => void;
   setAggregateMode: (enabled: boolean) => void;
   setSelectedProfileIds: (ids: string[]) => void;
-  addProfile: (
-    data: Pick<BusinessProfile, "name"> & Partial<Pick<BusinessProfile, "color" | "credentials">>
-  ) => BusinessProfile;
-  updateProfile: (id: string, updates: Partial<Omit<BusinessProfile, "id" | "createdAt">>) => void;
-  deleteProfile: (id: string) => void;
-  getCredentialHeaders: (profileId?: string) => Record<string, string>;
+  addProfile: (data: { name: string; color?: string }) => Promise<BusinessProfile>;
+  updateProfile: (id: string, updates: { name?: string; color?: string }) => Promise<void>;
+  deleteProfile: (id: string) => Promise<void>;
+  saveCredentials: (profileId: string, service: ServiceName, credentials: Record<string, string>) => Promise<void>;
+  deleteCredentials: (profileId: string, service: ServiceName) => Promise<void>;
+  refetchProfiles: () => void;
 }
 
 const BusinessProfileContext =
   createContext<BusinessProfileContextValue | null>(null);
 
-const defaultState: BusinessProfilesState = {
-  profiles: [],
-  activeProfileId: null,
-  aggregateMode: false,
-  selectedProfileIds: [],
-};
-
-function loadState(): BusinessProfilesState {
-  if (typeof window === "undefined") return defaultState;
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return defaultState;
-    return JSON.parse(raw) as BusinessProfilesState;
-  } catch {
-    return defaultState;
-  }
-}
-
-function saveState(state: BusinessProfilesState) {
-  if (typeof window === "undefined") return;
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  } catch {
-    // localStorage full or unavailable
-  }
-}
-
-function buildHeaders(creds: ServiceCredentials): Record<string, string> {
-  const headers: Record<string, string> = {};
-
-  if (creds.shopify) {
-    headers["X-Shopify-Domain"] = creds.shopify.storeDomain;
-    headers["X-Shopify-Api-Version"] = creds.shopify.adminApiVersion;
-    headers["X-Shopify-Token"] = creds.shopify.adminAccessToken;
-  }
-
-  if (creds.meta) {
-    headers["X-Meta-Account-Id"] = creds.meta.adAccountId;
-    headers["X-Meta-Token"] = creds.meta.accessToken;
-    headers["X-Meta-Api-Version"] = creds.meta.apiVersion;
-  }
-
-  if (creds.clarity) {
-    headers["X-Clarity-Project-Id"] = creds.clarity.projectId;
-    headers["X-Clarity-Token"] = creds.clarity.apiToken;
-  }
-
-  return headers;
+function mapProfile(raw: ProfilesApiResponse["profiles"][0]): BusinessProfile {
+  return {
+    id: raw.id,
+    name: raw.name,
+    color: raw.color,
+    configuredServices: raw.configuredServices as ServiceName[],
+    createdAt: raw.created_at,
+    updatedAt: raw.updated_at,
+  };
 }
 
 export function BusinessProfileProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<BusinessProfilesState>(defaultState);
-  const [isHydrated, setIsHydrated] = useState(false);
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
 
-  // Hydrate from localStorage on mount
-  useEffect(() => {
-    setState(loadState());
-    setIsHydrated(true);
-  }, []);
+  const { data, isLoading } = useQuery<ProfilesApiResponse>({
+    queryKey: ["profiles"],
+    queryFn: async () => {
+      const res = await fetch("/api/profiles");
+      if (!res.ok) throw new Error("Failed to fetch profiles");
+      return res.json();
+    },
+    enabled: !!user,
+    staleTime: 30_000,
+  });
 
-  // Persist to localStorage on state changes (after hydration)
-  useEffect(() => {
-    if (isHydrated) {
-      saveState(state);
-    }
-  }, [state, isHydrated]);
+  const profiles = (data?.profiles ?? []).map(mapProfile);
+  const activeProfileId = data?.preferences.active_profile_id ?? null;
+  const aggregateMode = data?.preferences.aggregate_mode ?? false;
+  const selectedProfileIds = data?.preferences.selected_profile_ids ?? [];
+  const activeProfile = profiles.find((p) => p.id === activeProfileId) ?? null;
 
-  const activeProfile =
-    state.profiles.find((p) => p.id === state.activeProfileId) ?? null;
+  // --- Preference mutations ---
 
-  const setActiveProfileId = useCallback((id: string | null) => {
-    setState((prev) => ({ ...prev, activeProfileId: id }));
-  }, []);
+  const updatePreferences = useCallback(
+    async (updates: Record<string, unknown>) => {
+      await fetch("/api/preferences", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updates),
+      });
+      queryClient.invalidateQueries({ queryKey: ["profiles"] });
+    },
+    [queryClient]
+  );
 
-  const setAggregateMode = useCallback((enabled: boolean) => {
-    setState((prev) => ({ ...prev, aggregateMode: enabled }));
-  }, []);
+  const setActiveProfileId = useCallback(
+    (id: string | null) => {
+      // Optimistic update
+      queryClient.setQueryData<ProfilesApiResponse>(["profiles"], (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          preferences: { ...old.preferences, active_profile_id: id },
+        };
+      });
+      updatePreferences({ active_profile_id: id });
+    },
+    [queryClient, updatePreferences]
+  );
 
-  const setSelectedProfileIds = useCallback((ids: string[]) => {
-    setState((prev) => ({ ...prev, selectedProfileIds: ids }));
-  }, []);
+  const setAggregateMode = useCallback(
+    (enabled: boolean) => {
+      queryClient.setQueryData<ProfilesApiResponse>(["profiles"], (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          preferences: { ...old.preferences, aggregate_mode: enabled },
+        };
+      });
+      updatePreferences({ aggregate_mode: enabled });
+    },
+    [queryClient, updatePreferences]
+  );
+
+  const setSelectedProfileIds = useCallback(
+    (ids: string[]) => {
+      queryClient.setQueryData<ProfilesApiResponse>(["profiles"], (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          preferences: { ...old.preferences, selected_profile_ids: ids },
+        };
+      });
+      updatePreferences({ selected_profile_ids: ids });
+    },
+    [queryClient, updatePreferences]
+  );
+
+  // --- Profile CRUD mutations ---
+
+  const addProfileMutation = useMutation({
+    mutationFn: async (input: { name: string; color?: string }) => {
+      const res = await fetch("/api/profiles", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: input.name,
+          color: input.color ?? PROFILE_COLORS[profiles.length % PROFILE_COLORS.length],
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to create profile");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["profiles"] });
+    },
+  });
 
   const addProfile = useCallback(
-    (
-      data: Pick<BusinessProfile, "name"> &
-        Partial<Pick<BusinessProfile, "color" | "credentials">>
-    ): BusinessProfile => {
-      const now = new Date().toISOString();
-      const profile: BusinessProfile = {
-        id: crypto.randomUUID(),
-        name: data.name,
-        color:
-          data.color ??
-          PROFILE_COLORS[state.profiles.length % PROFILE_COLORS.length],
-        credentials: data.credentials ?? {},
-        createdAt: now,
-        updatedAt: now,
+    async (input: { name: string; color?: string }): Promise<BusinessProfile> => {
+      const raw = await addProfileMutation.mutateAsync(input);
+      return {
+        id: raw.id,
+        name: raw.name,
+        color: raw.color,
+        configuredServices: [],
+        createdAt: raw.created_at,
+        updatedAt: raw.updated_at,
       };
-      setState((prev) => ({
-        ...prev,
-        profiles: [...prev.profiles, profile],
-        activeProfileId: profile.id,
-      }));
-      return profile;
     },
-    [state.profiles.length]
+    [addProfileMutation]
   );
+
+  const updateProfileMutation = useMutation({
+    mutationFn: async ({ id, updates }: { id: string; updates: { name?: string; color?: string } }) => {
+      const res = await fetch(`/api/profiles/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updates),
+      });
+      if (!res.ok) throw new Error("Failed to update profile");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["profiles"] });
+    },
+  });
 
   const updateProfile = useCallback(
-    (id: string, updates: Partial<Omit<BusinessProfile, "id" | "createdAt">>) => {
-      setState((prev) => ({
-        ...prev,
-        profiles: prev.profiles.map((p) =>
-          p.id === id
-            ? { ...p, ...updates, updatedAt: new Date().toISOString() }
-            : p
-        ),
-      }));
+    async (id: string, updates: { name?: string; color?: string }) => {
+      await updateProfileMutation.mutateAsync({ id, updates });
     },
-    []
+    [updateProfileMutation]
   );
 
-  const deleteProfile = useCallback((id: string) => {
-    setState((prev) => ({
-      ...prev,
-      profiles: prev.profiles.filter((p) => p.id !== id),
-      activeProfileId:
-        prev.activeProfileId === id ? null : prev.activeProfileId,
-      selectedProfileIds: prev.selectedProfileIds.filter((pid) => pid !== id),
-    }));
-  }, []);
-
-  const getCredentialHeaders = useCallback(
-    (profileId?: string): Record<string, string> => {
-      const targetId = profileId ?? state.activeProfileId;
-      if (!targetId) return {};
-      const profile = state.profiles.find((p) => p.id === targetId);
-      if (!profile) return {};
-      return buildHeaders(profile.credentials);
+  const deleteProfileMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/profiles/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete profile");
     },
-    [state.activeProfileId, state.profiles]
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["profiles"] });
+    },
+  });
+
+  const deleteProfile = useCallback(
+    async (id: string) => {
+      await deleteProfileMutation.mutateAsync(id);
+    },
+    [deleteProfileMutation]
   );
+
+  // --- Credential mutations ---
+
+  const saveCredentialsMutation = useMutation({
+    mutationFn: async ({
+      profileId,
+      service,
+      credentials,
+    }: {
+      profileId: string;
+      service: ServiceName;
+      credentials: Record<string, string>;
+    }) => {
+      const res = await fetch(`/api/profiles/${profileId}/credentials`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ service, credentials }),
+      });
+      if (!res.ok) throw new Error("Failed to save credentials");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["profiles"] });
+    },
+  });
+
+  const saveCredentials = useCallback(
+    async (profileId: string, service: ServiceName, credentials: Record<string, string>) => {
+      await saveCredentialsMutation.mutateAsync({ profileId, service, credentials });
+    },
+    [saveCredentialsMutation]
+  );
+
+  const deleteCredentialsMutation = useMutation({
+    mutationFn: async ({ profileId, service }: { profileId: string; service: ServiceName }) => {
+      const res = await fetch(`/api/profiles/${profileId}/credentials?service=${service}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error("Failed to delete credentials");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["profiles"] });
+    },
+  });
+
+  const deleteCredentials = useCallback(
+    async (profileId: string, service: ServiceName) => {
+      await deleteCredentialsMutation.mutateAsync({ profileId, service });
+    },
+    [deleteCredentialsMutation]
+  );
+
+  const refetchProfiles = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ["profiles"] });
+  }, [queryClient]);
 
   return (
     <BusinessProfileContext.Provider
       value={{
-        profiles: state.profiles,
+        profiles,
         activeProfile,
-        activeProfileId: state.activeProfileId,
-        aggregateMode: state.aggregateMode,
-        selectedProfileIds: state.selectedProfileIds,
-        isHydrated,
+        activeProfileId,
+        aggregateMode,
+        selectedProfileIds,
+        isHydrated: !isLoading,
+        isLoading,
         setActiveProfileId,
         setAggregateMode,
         setSelectedProfileIds,
         addProfile,
         updateProfile,
         deleteProfile,
-        getCredentialHeaders,
+        saveCredentials,
+        deleteCredentials,
+        refetchProfiles,
       }}
     >
       {children}

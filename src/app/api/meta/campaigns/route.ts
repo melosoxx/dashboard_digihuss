@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { resolveMetaClient } from "@/lib/credentials";
+import { resolveMetaClient, resolveMetaClientByProfile } from "@/lib/credentials";
 
 const querySchema = z.object({
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -22,7 +22,11 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const client = resolveMetaClient(request);
+    const profileId = searchParams.get("profileId");
+    const client = profileId
+      ? await resolveMetaClientByProfile(profileId)
+      : resolveMetaClient(request);
+
     const campaigns = await client.getCampaignInsights(
       parsed.data.startDate,
       parsed.data.endDate

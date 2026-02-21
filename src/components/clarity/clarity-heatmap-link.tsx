@@ -8,20 +8,16 @@ import { ExternalLink, Map } from "lucide-react";
 import { useBusinessProfile } from "@/providers/business-profile-provider";
 
 export function ClarityHeatmapLink({ isLoading }: { isLoading?: boolean }) {
-  const { activeProfile, getCredentialHeaders } = useBusinessProfile();
+  const { activeProfileId } = useBusinessProfile();
   const [projectId, setProjectId] = useState<string | null>(null);
   const [resolved, setResolved] = useState(false);
 
   useEffect(() => {
-    const profileProjectId = activeProfile?.credentials.clarity?.projectId;
-    if (profileProjectId) {
-      setProjectId(profileProjectId);
-      setResolved(true);
-      return;
-    }
+    setResolved(false);
+    const params = new URLSearchParams();
+    if (activeProfileId) params.set("profileId", activeProfileId);
 
-    const headers = getCredentialHeaders();
-    fetch("/api/clarity/project-id", { headers })
+    fetch(`/api/clarity/project-id?${params}`)
       .then((res) => res.json())
       .then((data: { projectId: string | null }) => {
         setProjectId(data.projectId);
@@ -30,7 +26,7 @@ export function ClarityHeatmapLink({ isLoading }: { isLoading?: boolean }) {
         setProjectId(null);
       })
       .finally(() => setResolved(true));
-  }, [activeProfile, getCredentialHeaders]);
+  }, [activeProfileId]);
 
   if (isLoading || !resolved) {
     return (

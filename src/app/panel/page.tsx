@@ -13,6 +13,9 @@ import {
   AlertTriangle,
   Monitor,
   RefreshCw,
+  Clock,
+  Info,
+  Database,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -27,6 +30,12 @@ import { TopCampaignsCard } from "@/components/panel/top-campaigns-card";
 import { SalesAttribution } from "@/components/panel/sales-attribution";
 import { SectionLabel } from "@/components/panel/section-label";
 import { IntegrationLogos } from "@/components/panel/integration-logos";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useShopifyOrders } from "@/hooks/use-shopify-orders";
 import { useShopifyAnalytics } from "@/hooks/use-shopify-analytics";
 import { useMetaAccount } from "@/hooks/use-meta-account";
@@ -39,15 +48,7 @@ export default function PanelGeneralPage() {
   const analytics = useShopifyAnalytics();
   const meta = useMetaAccount();
   const campaigns = useMetaCampaigns();
-  const clarityQuery = useClarity();
-  const clarity = {
-    data: clarityQuery.data,
-    isLoading: clarityQuery.isLoading,
-    isFetching: clarityQuery.isFetching,
-    error: clarityQuery.error,
-    fetchClarity: clarityQuery.fetchClarity,
-    quota: clarityQuery.quota,
-  };
+  const clarity = useClarity();
 
   const isLoadingMain = shopify.isLoading || meta.isLoading;
 
@@ -229,23 +230,53 @@ export default function PanelGeneralPage() {
         {/* UX Health Card */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-3">
-            <CardTitle className="text-sm font-semibold">Salud UX</CardTitle>
+            <div className="flex items-center gap-1.5">
+              <CardTitle className="text-sm font-semibold">Salud UX</CardTitle>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button className="text-muted-foreground/60 hover:text-muted-foreground transition-colors">
+                      <Info className="h-3.5 w-3.5" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="max-w-[240px] p-3">
+                    <p className="font-medium mb-1">Microsoft Clarity</p>
+                    <p className="text-[11px] leading-relaxed opacity-90">
+                      Los datos de Clarity son estaticos y corresponden a la ultima consulta realizada.
+                      La API permite maximo 10 consultas por dia (se reinicia a medianoche UTC).
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
             <div className="flex items-center gap-2">
               {!clarity.data && !clarity.isFetching && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-6 text-[10px] px-2"
-                  disabled={clarity.quota.exhausted}
-                  onClick={clarity.fetchClarity}
-                >
-                  <RefreshCw className="mr-1 h-3 w-3" />
-                  Cargar ({clarity.quota.remaining}/{clarity.quota.max})
-                </Button>
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-6 text-[10px] px-2"
+                    disabled={clarity.isLoadingCache}
+                    onClick={clarity.loadCache}
+                  >
+                    <Database className="mr-1 h-3 w-3" />
+                    Guardados
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-6 text-[10px] px-2"
+                    disabled={clarity.quota.exhausted}
+                    onClick={clarity.fetchClarity}
+                  >
+                    <RefreshCw className="mr-1 h-3 w-3" />
+                    Actualizar ({clarity.quota.remaining}/{clarity.quota.max})
+                  </Button>
+                </>
               )}
               {clarity.data && (
                 <Badge variant="outline" className="text-[10px] border-border/50">
-                  Ultimos 3 dias
+                  {clarity.periodLabel}
                 </Badge>
               )}
             </div>
@@ -262,6 +293,20 @@ export default function PanelGeneralPage() {
               </p>
             ) : (
               <>
+                {clarity.fetchedAt && (
+                  <div className="flex items-center gap-1.5 mb-3 text-muted-foreground/70">
+                    <Clock className="h-3 w-3 shrink-0" />
+                    <span className="text-[10px]">
+                      Datos del {new Date(clarity.fetchedAt).toLocaleString("es-AR", {
+                        day: "2-digit",
+                        month: "2-digit",
+                        year: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
+                  </div>
+                )}
                 <div className="grid grid-cols-3 gap-4 mb-5">
                   <div className="text-center rounded-xl border border-blue-500/20 bg-blue-500/5 p-3">
                     <Eye className="h-4 w-4 mx-auto mb-1.5 text-blue-400" />

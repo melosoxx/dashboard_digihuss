@@ -11,7 +11,7 @@ import type { MetaAccountInsights, MetaDailyMetric } from "@/types/meta";
 
 export function useAggregatedShopifyOrders() {
   const { dateRange } = useDateRange();
-  const { aggregateMode, selectedProfileIds, profiles, getCredentialHeaders } =
+  const { aggregateMode, selectedProfileIds, profiles } =
     useBusinessProfile();
 
   const selectedProfiles = profiles.filter((p) =>
@@ -31,10 +31,9 @@ export function useAggregatedShopifyOrders() {
         const params = new URLSearchParams({
           startDate: dateRange.startDate,
           endDate: dateRange.endDate,
+          profileId: profile.id,
         });
-        const res = await fetch(`/api/shopify/orders?${params}`, {
-          headers: getCredentialHeaders(profile.id),
-        });
+        const res = await fetch(`/api/shopify/orders?${params}`);
         if (!res.ok) throw new Error(`Failed to fetch orders: ${res.status}`);
         return res.json() as Promise<OrdersAggregate>;
       },
@@ -75,7 +74,7 @@ export function useAggregatedShopifyOrders() {
 
 export function useAggregatedShopifyProducts() {
   const { dateRange } = useDateRange();
-  const { aggregateMode, selectedProfileIds, profiles, getCredentialHeaders } =
+  const { aggregateMode, selectedProfileIds, profiles } =
     useBusinessProfile();
 
   const selectedProfiles = profiles.filter((p) =>
@@ -95,10 +94,9 @@ export function useAggregatedShopifyProducts() {
         const params = new URLSearchParams({
           startDate: dateRange.startDate,
           endDate: dateRange.endDate,
+          profileId: profile.id,
         });
-        const res = await fetch(`/api/shopify/products?${params}`, {
-          headers: getCredentialHeaders(profile.id),
-        });
+        const res = await fetch(`/api/shopify/products?${params}`);
         if (!res.ok)
           throw new Error(`Failed to fetch products: ${res.status}`);
         return res.json() as Promise<{ topProducts: TopProduct[] }>;
@@ -127,7 +125,7 @@ export function useAggregatedShopifyProducts() {
 
 export function useAggregatedMetaAccount() {
   const { dateRange } = useDateRange();
-  const { aggregateMode, selectedProfileIds, profiles, getCredentialHeaders } =
+  const { aggregateMode, selectedProfileIds, profiles } =
     useBusinessProfile();
 
   const selectedProfiles = profiles.filter((p) =>
@@ -147,10 +145,9 @@ export function useAggregatedMetaAccount() {
         const params = new URLSearchParams({
           startDate: dateRange.startDate,
           endDate: dateRange.endDate,
+          profileId: profile.id,
         });
-        const res = await fetch(`/api/meta/account?${params}`, {
-          headers: getCredentialHeaders(profile.id),
-        });
+        const res = await fetch(`/api/meta/account?${params}`);
         if (!res.ok)
           throw new Error(`Failed to fetch Meta insights: ${res.status}`);
         return res.json() as Promise<MetaAccountInsights>;

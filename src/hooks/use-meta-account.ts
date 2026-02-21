@@ -8,7 +8,7 @@ import type { MetaAccountInsights } from "@/types/meta";
 
 export function useMetaAccount() {
   const { dateRange } = useDateRange();
-  const { activeProfileId, getCredentialHeaders } = useBusinessProfile();
+  const { activeProfileId } = useBusinessProfile();
 
   return useQuery<MetaAccountInsights>({
     queryKey: ["meta", "account", dateRange.startDate, dateRange.endDate, activeProfileId],
@@ -17,9 +17,8 @@ export function useMetaAccount() {
         startDate: dateRange.startDate,
         endDate: dateRange.endDate,
       });
-      const res = await fetch(`/api/meta/account?${params}`, {
-        headers: getCredentialHeaders(),
-      });
+      if (activeProfileId) params.set("profileId", activeProfileId);
+      const res = await fetch(`/api/meta/account?${params}`);
       if (!res.ok) throw new Error(`Failed to fetch Meta insights: ${res.status}`);
       return res.json();
     },

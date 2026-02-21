@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { resolveShopifyClient } from "@/lib/credentials";
+import { resolveShopifyClient, resolveShopifyClientByProfile } from "@/lib/credentials";
 
 const querySchema = z.object({
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -24,7 +24,11 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const client = resolveShopifyClient(request);
+    const profileId = searchParams.get("profileId");
+    const client = profileId
+      ? await resolveShopifyClientByProfile(profileId)
+      : resolveShopifyClient(request);
+
     const topProducts = await client.getTopProducts(
       parsed.data.startDate,
       parsed.data.endDate,

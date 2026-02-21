@@ -112,7 +112,18 @@ function BreakdownCard({
 }
 
 export default function UXInsightsPage() {
-  const { data, isLoading, isFetching, error, fetchClarity, quota } = useClarity();
+  const {
+    data,
+    isLoading,
+    isFetching,
+    error,
+    fetchClarity,
+    loadCache,
+    isLoadingCache,
+    fetchedAt,
+    periodLabel,
+    quota,
+  } = useClarity();
 
   const totalFrustration =
     (data?.frustration.deadClicks ?? 0) +
@@ -284,7 +295,11 @@ export default function UXInsightsPage() {
             max={quota.max}
             exhausted={quota.exhausted}
             isFetching={isFetching}
+            isLoadingCache={isLoadingCache}
             hasData={!!data}
+            fetchedAt={fetchedAt}
+            periodLabel={periodLabel}
+            onLoadCache={loadCache}
             onFetch={fetchClarity}
           />
           <ClarityHeatmapLink isLoading={isLoading} />
