@@ -16,6 +16,10 @@ export interface MetaRawInsight {
   cost_per_action_type?: MetaAction[];
   campaign_name?: string;
   campaign_id?: string;
+  adset_name?: string;
+  adset_id?: string;
+  ad_name?: string;
+  ad_id?: string;
 }
 
 export interface MetaInsightsResponse {
@@ -59,4 +63,16 @@ export interface MetaCampaignInsight {
   ctr: number;
   roas: number;
   conversions: number;
+}
+
+export interface MetaActiveAd {
+  adId: string;
+  adName: string;
+  adsetName: string;
+  campaignName: string;
+  spend: number;
+  impressions: number;
+  clicks: number;
+  ctr: number;
+  createdAt: string;
 }

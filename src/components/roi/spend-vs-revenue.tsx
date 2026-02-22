@@ -1,9 +1,8 @@
 "use client";
 
 import {
-  ComposedChart,
+  BarChart,
   Bar,
-  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -51,8 +50,8 @@ export function SpendVsRevenueChart({ data, isLoading }: SpendVsRevenueProps) {
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={350}>
-          <ComposedChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(100, 120, 180, 0.08)" />
+          <BarChart data={data} barGap={4}>
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(100, 120, 180, 0.08)" vertical={false} />
             <XAxis
               dataKey="date"
               tick={{ fontSize: 11, fill: "rgba(150, 165, 200, 0.6)" }}
@@ -61,7 +60,6 @@ export function SpendVsRevenueChart({ data, isLoading }: SpendVsRevenueProps) {
               tickFormatter={(v) => new Date(v + "T00:00:00").toLocaleDateString("es-AR", { month: "short", day: "numeric" })}
             />
             <YAxis
-              yAxisId="left"
               tick={{ fontSize: 11, fill: "rgba(150, 165, 200, 0.6)" }}
               tickLine={false}
               axisLine={false}
@@ -75,28 +73,26 @@ export function SpendVsRevenueChart({ data, isLoading }: SpendVsRevenueProps) {
               contentStyle={TOOLTIP_STYLE}
               itemStyle={{ color: "rgba(220, 230, 255, 0.9)" }}
               labelStyle={{ color: "rgba(150, 165, 200, 0.7)", marginBottom: 4 }}
+              cursor={{ fill: "rgba(100, 120, 180, 0.06)" }}
             />
             <Legend
               wrapperStyle={{ fontSize: 12, color: "rgba(150, 165, 200, 0.7)" }}
             />
             <Bar
-              yAxisId="left"
+              dataKey="adSpend"
+              fill="#f43f5e"
+              fillOpacity={0.85}
+              radius={[4, 4, 0, 0]}
+              name="Gasto Ads"
+            />
+            <Bar
               dataKey="revenue"
               fill="#10b981"
-              fillOpacity={0.8}
+              fillOpacity={0.85}
               radius={[4, 4, 0, 0]}
               name="Ingresos"
             />
-            <Line
-              yAxisId="left"
-              type="monotone"
-              dataKey="adSpend"
-              stroke="#ef4444"
-              strokeWidth={2}
-              dot={false}
-              name="Gasto Ads"
-            />
-          </ComposedChart>
+          </BarChart>
         </ResponsiveContainer>
       </CardContent>
     </Card>

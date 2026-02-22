@@ -4,12 +4,19 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Loader2, CheckCircle2, XCircle, Wifi } from "lucide-react";
 
+export interface MetaAccountInfo {
+  accountName?: string;
+  businessName?: string;
+  accountId?: string;
+}
+
 interface ConnectionTesterProps {
   profileId: string | null;
   service: "shopify" | "meta" | "clarity";
+  onMetaAccountInfo?: (info: MetaAccountInfo) => void;
 }
 
-export function ConnectionTester({ profileId, service }: ConnectionTesterProps) {
+export function ConnectionTester({ profileId, service, onMetaAccountInfo }: ConnectionTesterProps) {
   const [status, setStatus] = useState<"idle" | "testing" | "success" | "error">("idle");
 
   const handleTest = async () => {
@@ -22,6 +29,9 @@ export function ConnectionTester({ profileId, service }: ConnectionTesterProps) 
       });
       const data = await res.json();
       setStatus(data[service] ? "success" : "error");
+      if (service === "meta" && data[service] && data.metaAccountInfo && onMetaAccountInfo) {
+        onMetaAccountInfo(data.metaAccountInfo);
+      }
     } catch {
       setStatus("error");
     }

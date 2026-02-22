@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { CredentialField } from "./credential-field";
-import { ConnectionTester } from "./connection-tester";
+import { ConnectionTester, type MetaAccountInfo } from "./connection-tester";
 import {
   Dialog,
   DialogContent,
@@ -18,13 +18,24 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Save, Trash2, Loader2, CheckCircle2, Shield } from "lucide-react";
+import { Save, Trash2, Loader2, CheckCircle2, Shield, Server, Plus } from "lucide-react";
 import type { ServiceCredentials, ServiceName } from "@/types/business";
 
 const PROFILE_COLORS = [
   "#3b82f6", "#ef4444", "#10b981", "#f59e0b",
   "#8b5cf6", "#ec4899", "#06b6d4", "#f97316",
 ];
+
+/** Names considered "default" that should be auto-replaced by the Meta business_name */
+function isDefaultName(n: string): boolean {
+  if (!n) return true;
+  const lower = n.trim().toLowerCase();
+  if (lower === "predeterminado") return true;
+  if (lower === "nuevo negocio") return true;
+  if (lower === "new business") return true;
+  if (/^negocio\s+\d+$/i.test(n.trim())) return true;
+  return false;
+}
 
 function ServiceStatusBadge({ configured }: { configured: boolean }) {
   return (
@@ -48,6 +59,65 @@ function ServiceStatusBadge({ configured }: { configured: boolean }) {
   );
 }
 
+/** Editor shown when the env-var default profile is selected (no DB profile) */
+function DefaultProfileCard() {
+  const { addProfile, setActiveProfileId, profiles } = useBusinessProfile();
+  const [creating, setCreating] = useState(false);
+
+  const handleCreate = async () => {
+    setCreating(true);
+    try {
+      // Try to fetch Meta business name from env vars
+      let profileName = `Negocio ${profiles.length + 1}`;
+      try {
+        const params = new URLSearchParams({ service: "meta" });
+        const res = await fetch(`/api/test-connection?${params}`, { method: "POST" });
+        const data = await res.json();
+        if (data.meta && data.metaAccountInfo?.businessName) {
+          profileName = data.metaAccountInfo.businessName;
+        } else if (data.meta && data.metaAccountInfo?.accountName) {
+          profileName = data.metaAccountInfo.accountName;
+        }
+      } catch {
+        // Keep default name
+      }
+
+      const profile = await addProfile({
+        name: profileName,
+        color: PROFILE_COLORS[profiles.length % PROFILE_COLORS.length],
+      });
+      setActiveProfileId(profile.id);
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Server className="h-5 w-5" />
+          Perfil predeterminado
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <p className="text-sm text-muted-foreground">
+          Este perfil usa variables de entorno del servidor. Para poder editar o borrar credenciales
+          desde aca, crea un perfil personalizado.
+        </p>
+        <Button onClick={handleCreate} disabled={creating}>
+          {creating ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <Plus className="mr-2 h-4 w-4" />
+          )}
+          Crear perfil editable
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
 export function ProfileEditor() {
   const {
     activeProfile,
@@ -55,14 +125,17 @@ export function ProfileEditor() {
     updateProfile,
     deleteProfile,
     saveCredentials,
+    deleteCredentials,
   } = useBusinessProfile();
 
   const [name, setName] = useState("");
   const [color, setColor] = useState(PROFILE_COLORS[0]);
   const [credentials, setCredentials] = useState<ServiceCredentials>({});
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteServiceOpen, setDeleteServiceOpen] = useState<ServiceName | null>(null);
   const [saving, setSaving] = useState(false);
   const [savingService, setSavingService] = useState<ServiceName | null>(null);
+  const [deletingService, setDeletingService] = useState<ServiceName | null>(null);
 
   // Sync form state when active profile changes
   useEffect(() => {
@@ -124,13 +197,41 @@ export function ProfileEditor() {
     }
   };
 
+  const handleDeleteServiceCredentials = async (service: ServiceName) => {
+    if (!activeProfileId) return;
+    setDeletingService(service);
+    try {
+      await deleteCredentials(activeProfileId, service);
+      setDeleteServiceOpen(null);
+    } finally {
+      setDeletingService(null);
+    }
+  };
+
+  const handleMetaAccountInfo = useCallback(
+    async (info: MetaAccountInfo) => {
+      const businessName = info.businessName || info.accountName;
+      if (!businessName || !activeProfileId) return;
+      if (isDefaultName(name)) {
+        setName(businessName);
+        await updateProfile(activeProfileId, { name: businessName });
+      }
+    },
+    [name, activeProfileId, updateProfile]
+  );
+
   const handleDelete = async () => {
     if (!activeProfileId) return;
     await deleteProfile(activeProfileId);
     setDeleteOpen(false);
   };
 
-  // No profile selected
+  // Default env-var profile selected
+  if (!activeProfile && activeProfileId === null) {
+    return <DefaultProfileCard />;
+  }
+
+  // No profile selected at all
   if (!activeProfile) {
     return (
       <Card>
@@ -148,6 +249,12 @@ export function ProfileEditor() {
 
   const isConfigured = (service: ServiceName) =>
     activeProfile.configuredServices.includes(service);
+
+  const SERVICE_LABELS: Record<ServiceName, string> = {
+    shopify: "Shopify",
+    meta: "Meta Ads",
+    clarity: "Clarity",
+  };
 
   return (
     <Card>
@@ -278,6 +385,40 @@ export function ProfileEditor() {
                 Guardar credenciales
               </Button>
               <ConnectionTester profileId={activeProfileId} service="shopify" />
+              {isConfigured("shopify") && (
+                <Dialog
+                  open={deleteServiceOpen === "shopify"}
+                  onOpenChange={(open) => setDeleteServiceOpen(open ? "shopify" : null)}
+                >
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm" className="text-destructive hover:text-destructive">
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Borrar
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Borrar credenciales de {SERVICE_LABELS.shopify}</DialogTitle>
+                      <DialogDescription>
+                        Se eliminaran las credenciales de {SERVICE_LABELS.shopify} de este perfil. Esta accion no se puede deshacer.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setDeleteServiceOpen(null)}>
+                        Cancelar
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        onClick={() => handleDeleteServiceCredentials("shopify")}
+                        disabled={deletingService === "shopify"}
+                      >
+                        {deletingService === "shopify" && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Borrar
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              )}
             </div>
           </TabsContent>
 
@@ -323,7 +464,41 @@ export function ProfileEditor() {
                 )}
                 Guardar credenciales
               </Button>
-              <ConnectionTester profileId={activeProfileId} service="meta" />
+              <ConnectionTester profileId={activeProfileId} service="meta" onMetaAccountInfo={handleMetaAccountInfo} />
+              {isConfigured("meta") && (
+                <Dialog
+                  open={deleteServiceOpen === "meta"}
+                  onOpenChange={(open) => setDeleteServiceOpen(open ? "meta" : null)}
+                >
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm" className="text-destructive hover:text-destructive">
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Borrar
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Borrar credenciales de {SERVICE_LABELS.meta}</DialogTitle>
+                      <DialogDescription>
+                        Se eliminaran las credenciales de {SERVICE_LABELS.meta} de este perfil. Esta accion no se puede deshacer.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setDeleteServiceOpen(null)}>
+                        Cancelar
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        onClick={() => handleDeleteServiceCredentials("meta")}
+                        disabled={deletingService === "meta"}
+                      >
+                        {deletingService === "meta" && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Borrar
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              )}
             </div>
           </TabsContent>
 
@@ -363,6 +538,40 @@ export function ProfileEditor() {
                 Guardar credenciales
               </Button>
               <ConnectionTester profileId={activeProfileId} service="clarity" />
+              {isConfigured("clarity") && (
+                <Dialog
+                  open={deleteServiceOpen === "clarity"}
+                  onOpenChange={(open) => setDeleteServiceOpen(open ? "clarity" : null)}
+                >
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm" className="text-destructive hover:text-destructive">
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Borrar
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Borrar credenciales de {SERVICE_LABELS.clarity}</DialogTitle>
+                      <DialogDescription>
+                        Se eliminaran las credenciales de {SERVICE_LABELS.clarity} de este perfil. Esta accion no se puede deshacer.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setDeleteServiceOpen(null)}>
+                        Cancelar
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        onClick={() => handleDeleteServiceCredentials("clarity")}
+                        disabled={deletingService === "clarity"}
+                      >
+                        {deletingService === "clarity" && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Borrar
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              )}
             </div>
           </TabsContent>
         </Tabs>

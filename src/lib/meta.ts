@@ -5,6 +5,7 @@ import type {
   MetaAccountInsights,
   MetaDailyMetric,
   MetaCampaignInsight,
+  MetaActiveAd,
 } from "@/types/meta";
 
 export interface MetaClientCreds {
@@ -146,13 +147,117 @@ class MetaAdsClient {
     }));
   }
 
-  async checkConnection(): Promise<boolean> {
+  async getActiveAds(startDate: string, endDate: string): Promise<MetaActiveAd[]> {
+    // 1. Get active ads with creation date
+    const adsParams = new URLSearchParams({
+      fields: "id,name,created_time,campaign{name},adset{name}",
+      filtering: JSON.stringify([
+        { field: "effective_status", operator: "IN", value: ["ACTIVE"] },
+      ]),
+      limit: "100",
+      access_token: this.accessToken,
+    });
+
+    const adsUrl = `${this.baseUrl}/act_${this.adAccountId}/ads?${adsParams}`;
+    const adsResponse = await fetch(adsUrl);
+
+    if (!adsResponse.ok) {
+      throw new Error(`Meta API error (ads): ${adsResponse.status} ${adsResponse.statusText}`);
+    }
+
+    const adsJson: { data: Array<{ id: string; name: string; created_time: string; campaign?: { name: string }; adset?: { name: string } }> } =
+      await adsResponse.json();
+    const adsMap = new Map(
+      (adsJson.data || []).map((ad) => [ad.id, ad])
+    );
+
+    if (adsMap.size === 0) return [];
+
+    // 2. Get insights for active ads
+    const insightsParams = new URLSearchParams({
+      fields: "ad_id,ad_name,campaign_name,adset_name,spend,impressions,clicks,ctr,actions",
+      time_range: JSON.stringify({ since: startDate, until: endDate }),
+      level: "ad",
+      filtering: JSON.stringify([
+        { field: "ad.effective_status", operator: "IN", value: ["ACTIVE"] },
+      ]),
+      limit: "100",
+      access_token: this.accessToken,
+    });
+
+    const insightsUrl = `${this.baseUrl}/act_${this.adAccountId}/insights?${insightsParams}`;
+    const insightsResponse = await fetch(insightsUrl);
+
+    if (!insightsResponse.ok) {
+      throw new Error(`Meta API error (ad insights): ${insightsResponse.status} ${insightsResponse.statusText}`);
+    }
+
+    const insightsJson: MetaInsightsResponse = await insightsResponse.json();
+
+    // 3. Join ads with their insights
+    const result: MetaActiveAd[] = [];
+
+    for (const row of insightsJson.data || []) {
+      const adId = row.ad_id ?? "";
+      const adMeta = adsMap.get(adId);
+      const impressions = parseInt(row.impressions || "0");
+      const linkClicks = parseInt(
+        row.actions?.find((a) => a.action_type === "link_click")?.value || "0"
+      );
+      const linkCtr = impressions > 0 ? (linkClicks / impressions) * 100 : 0;
+
+      result.push({
+        adId,
+        adName: row.ad_name ?? adMeta?.name ?? "Unknown",
+        adsetName: row.adset_name ?? adMeta?.adset?.name ?? "",
+        campaignName: row.campaign_name ?? adMeta?.campaign?.name ?? "",
+        spend: parseFloat(row.spend || "0"),
+        impressions,
+        clicks: linkClicks,
+        ctr: linkCtr,
+        createdAt: adMeta?.created_time ?? "",
+      });
+    }
+
+    // Include active ads with no insights in the period (0 spend/ctr)
+    for (const [adId, ad] of adsMap) {
+      if (!result.some((r) => r.adId === adId)) {
+        result.push({
+          adId,
+          adName: ad.name,
+          adsetName: ad.adset?.name ?? "",
+          campaignName: ad.campaign?.name ?? "",
+          spend: 0,
+          impressions: 0,
+          clicks: 0,
+          ctr: 0,
+          createdAt: ad.created_time,
+        });
+      }
+    }
+
+    return result;
+  }
+
+  async checkConnection(): Promise<{
+    connected: boolean;
+    accountName?: string;
+    businessName?: string;
+    accountId?: string;
+  }> {
     try {
-      const url = `${this.baseUrl}/act_${this.adAccountId}?fields=name&access_token=${this.accessToken}`;
+      const url = `${this.baseUrl}/act_${this.adAccountId}?fields=name,account_id,business_name&access_token=${this.accessToken}`;
       const response = await fetch(url);
-      return response.ok;
+      if (!response.ok) return { connected: false };
+      const data = await response.json();
+      return {
+        connected: true,
+        accountName: data.name,
+        businessName: data.business_name,
+        accountId: data.account_id,
+      };
     } catch {
-      return false;
+      return { connected: false };
     }
   }
 }

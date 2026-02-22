@@ -18,16 +18,26 @@ export async function POST(request: NextRequest) {
     meta: false,
     clarity: false,
   };
+  let metaAccountInfo: { accountName?: string; businessName?: string; accountId?: string } | null = null;
 
-  // If profileId + service specified, test just that service via Supabase credentials
-  if (profileId && service) {
+  // Test a specific service — uses Supabase credentials when profileId is provided,
+  // falls back to env-var client when profileId is absent.
+  if (service) {
     try {
       if (service === "shopify") {
         const client = await resolveShopifyClientByProfile(profileId);
         results.shopify = await client.checkConnection();
       } else if (service === "meta") {
         const client = await resolveMetaClientByProfile(profileId);
-        results.meta = await client.checkConnection();
+        const metaResult = await client.checkConnection();
+        results.meta = metaResult.connected;
+        if (metaResult.connected) {
+          metaAccountInfo = {
+            accountName: metaResult.accountName,
+            businessName: metaResult.businessName,
+            accountId: metaResult.accountId,
+          };
+        }
       } else if (service === "clarity") {
         const client = await resolveClarityClientByProfile(profileId);
         results.clarity = await client.checkConnection();
@@ -35,7 +45,7 @@ export async function POST(request: NextRequest) {
     } catch {
       // Already false
     }
-    return NextResponse.json(results);
+    return NextResponse.json({ ...results, metaAccountInfo });
   }
 
   // Legacy: test via headers
@@ -59,7 +69,15 @@ export async function POST(request: NextRequest) {
       (async () => {
         try {
           const client = resolveMetaClient(request);
-          results.meta = await client.checkConnection();
+          const metaResult = await client.checkConnection();
+          results.meta = metaResult.connected;
+          if (metaResult.connected) {
+            metaAccountInfo = {
+              accountName: metaResult.accountName,
+              businessName: metaResult.businessName,
+              accountId: metaResult.accountId,
+            };
+          }
         } catch {
           results.meta = false;
         }
@@ -82,5 +100,5 @@ export async function POST(request: NextRequest) {
 
   await Promise.all(tests);
 
-  return NextResponse.json(results);
+  return NextResponse.json({ ...results, metaAccountInfo });
 }
