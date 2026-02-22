@@ -1,10 +1,11 @@
 "use client";
 
 import { useBusinessProfile } from "@/providers/business-profile-provider";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { Plus, Server } from "lucide-react";
+import { Plus, Server, CheckCircle2 } from "lucide-react";
 
 const SERVICE_LABELS: Record<string, string> = {
   shopify: "Shopify",
@@ -19,6 +20,22 @@ export function ProfileList() {
     setActiveProfileId,
     addProfile,
   } = useBusinessProfile();
+
+  const { data: envCheck } = useQuery<Record<string, boolean>>({
+    queryKey: ["env-check"],
+    queryFn: async () => {
+      const res = await fetch("/api/env-check");
+      if (!res.ok) return {};
+      return res.json();
+    },
+    staleTime: 60_000,
+  });
+
+  const defaultServices = envCheck
+    ? (Object.entries(envCheck)
+        .filter(([, active]) => active)
+        .map(([key]) => SERVICE_LABELS[key] ?? key))
+    : [];
 
   const handleAddProfile = () => {
     addProfile({ name: `Negocio ${profiles.length + 1}` });
@@ -42,7 +59,16 @@ export function ProfileList() {
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-sm font-medium truncate">Predeterminado</p>
-            <p className="text-xs text-muted-foreground">Variables de entorno</p>
+            {defaultServices.length > 0 ? (
+              <div className="flex items-center gap-1">
+                <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />
+                <p className="text-xs text-emerald-500 truncate">
+                  {defaultServices.join(", ")}
+                </p>
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">Sin servicios configurados</p>
+            )}
           </div>
         </div>
       </Card>

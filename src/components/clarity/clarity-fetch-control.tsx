@@ -8,19 +8,29 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { RefreshCw, Zap, Info, Clock, Database, CalendarDays } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { RefreshCw, Info, Database, CalendarDays, History, AlertTriangle } from "lucide-react";
+import type { ClarityVersion } from "@/types/clarity";
 
 interface ClarityFetchControlProps {
-  remaining: number;
-  max: number;
-  exhausted: boolean;
   isFetching: boolean;
   isLoadingCache: boolean;
   hasData: boolean;
   fetchedAt: string | null;
-  periodLabel: string;
+  startDate: string;
+  endDate: string;
+  rateLimited: boolean;
   onLoadCache: () => void;
   onFetch: () => void;
+  versions: ClarityVersion[];
+  selectedVersionId: string | null;
+  onSelectVersion: (versionId: string) => void;
 }
 
 function formatLastFetch(iso: string): string {
@@ -34,42 +44,35 @@ function formatLastFetch(iso: string): string {
   });
 }
 
+const PERIOD_LABELS: Record<number, string> = {
+  1: "Hoy",
+  2: "2 dias",
+  3: "3 dias",
+};
+
 export function ClarityFetchControl({
-  remaining,
-  max,
-  exhausted,
   isFetching,
   isLoadingCache,
   hasData,
   fetchedAt,
-  periodLabel,
+  startDate,
+  endDate,
+  rateLimited,
   onLoadCache,
   onFetch,
+  versions,
+  selectedVersionId,
+  onSelectVersion,
 }: ClarityFetchControlProps) {
-  const used = max - remaining;
-  const fillPct = (used / max) * 100;
-
-  const barColor = exhausted
-    ? "bg-red-500"
-    : remaining <= 3
-    ? "bg-amber-500"
-    : "bg-emerald-500";
-
-  const textColor = exhausted
-    ? "text-red-400"
-    : remaining <= 3
-    ? "text-amber-400"
-    : "text-emerald-400";
-
   const isWorking = isFetching || isLoadingCache;
 
   return (
     <TooltipProvider>
       <Card>
-        <CardContent className="p-4 space-y-3">
-          {/* Header with info tooltip */}
+        <CardContent className="p-5 space-y-4">
+          {/* Header */}
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-medium text-muted-foreground">
+            <span className="text-xs font-semibold text-foreground/90">
               Microsoft Clarity
             </span>
             <Tooltip>
@@ -82,131 +85,139 @@ export function ClarityFetchControl({
                 <p className="font-medium mb-1">Como funciona Clarity</p>
                 <p className="text-[11px] leading-relaxed opacity-90">
                   Microsoft Clarity tiene un limite de 10 consultas diarias a su API.
-                  Los datos se guardan en cache y se cargan automaticamente al recargar.
+                  Cada consulta se guarda como una version que podes revisar despues.
                   El contador se reinicia a medianoche UTC.
                 </p>
               </TooltipContent>
             </Tooltip>
           </div>
 
-          {/* Data info panel */}
-          <div className="rounded-md bg-muted/50 px-2.5 py-2 space-y-1.5">
-            {fetchedAt ? (
-              <>
-                <div className="flex items-center gap-1.5">
-                  <CalendarDays className="h-3 w-3 text-blue-400 shrink-0" />
-                  <span className="text-[11px] font-medium text-foreground/80">
-                    Periodo: {periodLabel}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <Clock className="h-3 w-3 text-muted-foreground shrink-0" />
-                  <span className="text-[10px] text-muted-foreground">
-                    Obtenidos: {formatLastFetch(fetchedAt)}
-                  </span>
-                </div>
-              </>
-            ) : (
-              <div className="flex items-center gap-1.5">
-                <Database className="h-3 w-3 text-muted-foreground/50 shrink-0" />
-                <span className="text-[11px] text-muted-foreground/70">
-                  No hay datos guardados
-                </span>
-              </div>
-            )}
-          </div>
-
-          {/* Quota display */}
-          <div className="flex items-center gap-2">
-            <Zap className="h-4 w-4 text-amber-400 shrink-0" />
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-[11px] text-muted-foreground">
-                  Calls disponibles
-                </span>
-                <span className={`text-xs font-bold ${textColor}`}>
-                  {remaining}/{max}
-                </span>
-              </div>
-              <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all duration-300 ${barColor}`}
-                  style={{ width: `${fillPct}%` }}
-                />
-              </div>
+          {/* Rate limit warning */}
+          {rateLimited && (
+            <div className="flex items-center gap-2 rounded-md bg-red-500/10 border border-red-500/20 px-3 py-2">
+              <AlertTriangle className="h-3.5 w-3.5 text-red-400 shrink-0" />
+              <p className="text-[11px] text-red-400">
+                Limite diario alcanzado. Se reinicia a medianoche UTC.
+              </p>
             </div>
-          </div>
+          )}
 
-          {/* Action buttons */}
-          <div className="flex gap-2">
-            {/* Load cache button */}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="flex-1"
-                  disabled={isWorking}
-                  onClick={onLoadCache}
-                >
-                  {isLoadingCache ? (
-                    <>
-                      <Database className="mr-1.5 h-3 w-3 animate-spin" />
-                      <span className="text-[11px]">Cargando...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Database className="mr-1.5 h-3 w-3" />
-                      <span className="text-[11px]">Guardados</span>
-                    </>
-                  )}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="text-[11px]">
-                Cargar datos guardados (no consume calls)
-              </TooltipContent>
-            </Tooltip>
+          {/* ── SECTION 1: Fetch new data ── */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-1.5">
+              <CalendarDays className="h-3 w-3 text-blue-400 shrink-0" />
+              <span className="text-[11px] font-medium text-foreground/80">
+                {startDate === endDate
+                  ? new Date(startDate + "T00:00:00").toLocaleDateString("es-AR", { day: "2-digit", month: "short", year: "numeric" })
+                  : `${new Date(startDate + "T00:00:00").toLocaleDateString("es-AR", { day: "2-digit", month: "short" })} - ${new Date(endDate + "T00:00:00").toLocaleDateString("es-AR", { day: "2-digit", month: "short", year: "numeric" })}`}
+              </span>
+            </div>
 
-            {/* Fetch fresh button */}
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
                   variant={hasData ? "outline" : "default"}
                   size="sm"
-                  className="flex-1"
-                  disabled={exhausted || isWorking}
+                  className="w-full"
+                  disabled={isWorking || rateLimited}
                   onClick={onFetch}
                 >
                   {isFetching ? (
                     <>
-                      <RefreshCw className="mr-1.5 h-3 w-3 animate-spin" />
-                      <span className="text-[11px]">Consultando...</span>
+                      <RefreshCw className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                      Consultando...
                     </>
                   ) : (
                     <>
-                      <RefreshCw className="mr-1.5 h-3 w-3" />
-                      <span className="text-[11px]">Actualizar</span>
+                      <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
+                      Actualizar datos
                     </>
                   )}
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="bottom" className="text-[11px]">
-                Consultar API de Clarity (consume 1 call)
+                Consultar API de Clarity con el periodo seleccionado (consume 1 call)
               </TooltipContent>
             </Tooltip>
+
+            {fetchedAt && (
+              <p className="text-[10px] text-muted-foreground text-center">
+                Ultima consulta: {formatLastFetch(fetchedAt)}
+              </p>
+            )}
           </div>
 
-          {exhausted && (
-            <p className="text-[10px] text-red-400/80 text-center">
-              Limite diario alcanzado. Se reinicia a medianoche UTC.
-            </p>
-          )}
+          {/* Divider */}
+          <div className="border-t border-border/50" />
 
-          {!exhausted && !fetchedAt && (
-            <p className="text-[10px] text-muted-foreground/50 text-center">
-              Se reinicia diariamente a medianoche UTC
-            </p>
-          )}
+          {/* ── SECTION 2: Saved versions ── */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <History className="h-3 w-3 text-muted-foreground shrink-0" />
+                <span className="text-[11px] font-medium text-foreground/80">
+                  Versiones guardadas
+                </span>
+              </div>
+              {versions.length > 0 && (
+                <span className="text-[10px] text-muted-foreground">
+                  {versions.length}
+                </span>
+              )}
+            </div>
+
+            {versions.length > 0 ? (
+              <>
+                <Select
+                  value={selectedVersionId ?? undefined}
+                  onValueChange={onSelectVersion}
+                >
+                  <SelectTrigger className="h-8 text-[11px] w-full">
+                    <SelectValue placeholder="Seleccionar version..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {versions.map((v, index) => (
+                      <SelectItem key={v.id} value={v.id} className="text-[11px]">
+                        {formatLastFetch(v.fetchedAt)} — {PERIOD_LABELS[v.numOfDays] ?? `${v.numOfDays}d`}
+                        {index === 0 && " (mas reciente)"}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                      disabled={isWorking || !selectedVersionId}
+                      onClick={onLoadCache}
+                    >
+                      {isLoadingCache ? (
+                        <>
+                          <Database className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                          Cargando...
+                        </>
+                      ) : (
+                        <>
+                          <Database className="mr-1.5 h-3.5 w-3.5" />
+                          Cargar version
+                        </>
+                      )}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="text-[11px]">
+                    Cargar la version seleccionada (no consume calls)
+                  </TooltipContent>
+                </Tooltip>
+              </>
+            ) : (
+              <p className="text-[11px] text-muted-foreground/60 text-center py-1">
+                Aun no hay versiones. Usa &quot;Actualizar datos&quot; para crear la primera.
+              </p>
+            )}
+          </div>
         </CardContent>
       </Card>
     </TooltipProvider>

@@ -41,17 +41,21 @@ CREATE TABLE user_preferences (
   updated_at          TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- Cached Clarity API responses (persists across page reloads)
+-- Cached Clarity API responses (versioned history - each fetch creates a new row)
 CREATE TABLE clarity_cache (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   profile_id  UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   num_of_days SMALLINT NOT NULL CHECK (num_of_days IN (1, 2, 3)),
   data        JSONB NOT NULL,
-  fetched_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-  UNIQUE(profile_id, num_of_days)
+  fetched_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE INDEX idx_clarity_cache_profile_id ON clarity_cache(profile_id);
+CREATE INDEX idx_clarity_cache_versions ON clarity_cache(profile_id, num_of_days, fetched_at DESC);
+
+-- Migration for existing databases:
+-- ALTER TABLE clarity_cache DROP CONSTRAINT clarity_cache_profile_id_num_of_days_key;
+-- CREATE INDEX idx_clarity_cache_versions ON clarity_cache(profile_id, num_of_days, fetched_at DESC);
 
 -- Server-side Clarity quota tracking
 CREATE TABLE clarity_quota (

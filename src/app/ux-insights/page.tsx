@@ -15,21 +15,13 @@ import {
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { KPICard } from "@/components/dashboard/kpi-card";
 import { PageHeader } from "@/components/shared/page-header";
 import { ErrorDisplay } from "@/components/shared/error-display";
-import { ScrollEngagementMap } from "@/components/clarity/scroll-engagement-map";
 import { ClarityHeatmapLink } from "@/components/clarity/clarity-heatmap-link";
 import { ClarityFetchControl } from "@/components/clarity/clarity-fetch-control";
 import { useClarity } from "@/hooks/use-clarity";
+import { useDateRange } from "@/providers/date-range-provider";
 import { formatNumber } from "@/lib/utils";
 
 function formatSeconds(seconds: number): string {
@@ -38,17 +30,6 @@ function formatSeconds(seconds: number): string {
   const secs = seconds % 60;
   return `${mins}m ${secs}s`;
 }
-
-function shortenUrl(url: string): string {
-  try {
-    const parsed = new URL(url);
-    const path = parsed.pathname === "/" ? "/" : parsed.pathname;
-    return path.length > 40 ? path.slice(0, 40) + "…" : path;
-  } catch {
-    return url.length > 40 ? url.slice(0, 40) + "…" : url;
-  }
-}
-
 function BreakdownCard({
   title,
   icon: Icon,
@@ -112,6 +93,7 @@ function BreakdownCard({
 }
 
 export default function UXInsightsPage() {
+  const { dateRange } = useDateRange();
   const {
     data,
     isLoading,
@@ -121,8 +103,10 @@ export default function UXInsightsPage() {
     loadCache,
     isLoadingCache,
     fetchedAt,
-    periodLabel,
-    quota,
+    rateLimited,
+    versions,
+    selectedVersionId,
+    selectVersion,
   } = useClarity();
 
   const totalFrustration =
@@ -142,6 +126,26 @@ export default function UXInsightsPage() {
         <ErrorDisplay message="Error al cargar datos de Clarity. Verificá tus credenciales de Clarity." />
       )}
 
+      {/* Clarity Controls + Heatmap Link — horizontal */}
+      <div className="grid gap-4 grid-cols-1 md:grid-cols-2 mb-6">
+        <ClarityFetchControl
+          isFetching={isFetching}
+          isLoadingCache={isLoadingCache}
+          hasData={!!data}
+          fetchedAt={fetchedAt}
+          startDate={dateRange.startDate}
+          endDate={dateRange.endDate}
+          rateLimited={rateLimited}
+          onLoadCache={loadCache}
+          onFetch={fetchClarity}
+          versions={versions}
+          selectedVersionId={selectedVersionId}
+          onSelectVersion={selectVersion}
+        />
+        <ClarityHeatmapLink isLoading={isLoading} />
+      </div>
+
+      {/* KPI cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5 mb-6">
         <KPICard
           title="Sesiones"
@@ -185,6 +189,29 @@ export default function UXInsightsPage() {
         />
       </div>
 
+      {/* Breakdowns */}
+      <div className="grid gap-4 lg:grid-cols-3 mb-6">
+        <BreakdownCard
+          title="Dispositivos"
+          icon={Monitor}
+          items={data?.devices ?? []}
+          isLoading={isLoading}
+        />
+        <BreakdownCard
+          title="Navegadores"
+          icon={Globe}
+          items={data?.browsers ?? []}
+          isLoading={isLoading}
+        />
+        <BreakdownCard
+          title="Países"
+          icon={Globe}
+          items={data?.countries ?? []}
+          isLoading={isLoading}
+        />
+      </div>
+
+      {/* Frustration signals */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -275,100 +302,6 @@ export default function UXInsightsPage() {
           </CardContent>
         </Card>
       </div>
-
-      {/* Engagement Map + Clarity Heatmap Link */}
-      <div className="grid gap-4 lg:grid-cols-[1fr_220px] mb-6">
-        <ScrollEngagementMap
-          scrollDepth={data?.scrollDepth ?? 0}
-          frustration={{
-            deadClicks: data?.frustration.deadClicks ?? 0,
-            rageClicks: data?.frustration.rageClicks ?? 0,
-            quickbacks: data?.frustration.quickbacks ?? 0,
-            errorClicks: data?.frustration.errorClicks ?? 0,
-          }}
-          totalSessions={data?.traffic.totalSessions ?? 0}
-          isLoading={isLoading}
-        />
-        <div className="space-y-4">
-          <ClarityFetchControl
-            remaining={quota.remaining}
-            max={quota.max}
-            exhausted={quota.exhausted}
-            isFetching={isFetching}
-            isLoadingCache={isLoadingCache}
-            hasData={!!data}
-            fetchedAt={fetchedAt}
-            periodLabel={periodLabel}
-            onLoadCache={loadCache}
-            onFetch={fetchClarity}
-          />
-          <ClarityHeatmapLink isLoading={isLoading} />
-        </div>
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-3 mb-6">
-        <BreakdownCard
-          title="Dispositivos"
-          icon={Monitor}
-          items={data?.devices ?? []}
-          isLoading={isLoading}
-        />
-        <BreakdownCard
-          title="Navegadores"
-          icon={Globe}
-          items={data?.browsers ?? []}
-          isLoading={isLoading}
-        />
-        <BreakdownCard
-          title="Países"
-          icon={Globe}
-          items={data?.countries ?? []}
-          isLoading={isLoading}
-        />
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm font-medium">Páginas Más Visitadas</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="space-y-2">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <Skeleton key={i} className="h-8 w-full" />
-              ))}
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Página</TableHead>
-                  <TableHead className="text-right">Visitas</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {(data?.topPages ?? []).map((page) => (
-                  <TableRow key={page.url}>
-                    <TableCell className="font-mono text-xs" title={page.url}>
-                      {shortenUrl(page.url)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {formatNumber(page.visits)}
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {(data?.topPages ?? []).length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={2} className="text-center text-muted-foreground">
-                      No hay datos de páginas disponibles
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
     </div>
   );
 }

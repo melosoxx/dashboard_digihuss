@@ -35,3 +35,9 @@ export interface ClarityInsights {
     sessions: number;
   }>;
 }
+
+export interface ClarityVersion {
+  id: string;
+  fetchedAt: string;
+  numOfDays: 1 | 2 | 3;
+}

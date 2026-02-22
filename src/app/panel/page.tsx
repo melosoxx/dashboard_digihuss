@@ -266,11 +266,11 @@ export default function PanelGeneralPage() {
                     variant="outline"
                     size="sm"
                     className="h-6 text-[10px] px-2"
-                    disabled={clarity.quota.exhausted}
+                    disabled={clarity.rateLimited}
                     onClick={clarity.fetchClarity}
                   >
                     <RefreshCw className="mr-1 h-3 w-3" />
-                    Actualizar ({clarity.quota.remaining}/{clarity.quota.max})
+                    Actualizar
                   </Button>
                 </>
               )}
