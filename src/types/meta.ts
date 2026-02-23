@@ -74,5 +74,19 @@ export interface MetaActiveAd {
   impressions: number;
   clicks: number;
   ctr: number;
+  conversions: number;
   createdAt: string;
+}
+
+export interface MetaAdsetInsight {
+  adsetId: string;
+  adsetName: string;
+  campaignName: string;
+  spend: number;
+  impressions: number;
+  clicks: number;
+  cpc: number;
+  ctr: number;
+  roas: number;
+  conversions: number;
 }

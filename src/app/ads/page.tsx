@@ -2,11 +2,12 @@
 
 import { DollarSign, Eye, MousePointerClick, TrendingUp, BarChart3 } from "lucide-react";
 import { useMetaAccount } from "@/hooks/use-meta-account";
-import { useMetaCampaigns } from "@/hooks/use-meta-campaigns";
+import { useMetaCampaigns, useMetaAds, useMetaAdsets } from "@/hooks/use-meta-campaigns";
 import { KPICard } from "@/components/dashboard/kpi-card";
 import { SpendChart } from "@/components/ads/spend-chart";
-import { ROASChart } from "@/components/ads/roas-chart";
 import { CampaignTable } from "@/components/ads/campaign-table";
+import { AdsetTable } from "@/components/ads/adset-table";
+import { ActiveAdsCard } from "@/components/panel/top-campaigns-card";
 import { PageHeader } from "@/components/shared/page-header";
 import { ErrorDisplay } from "@/components/shared/error-display";
 import { formatCurrency, formatNumber, formatCompactNumber } from "@/lib/utils";
@@ -14,6 +15,8 @@ import { formatCurrency, formatNumber, formatCompactNumber } from "@/lib/utils";
 export default function AdPerformancePage() {
   const account = useMetaAccount();
   const campaigns = useMetaCampaigns();
+  const ads = useMetaAds();
+  const adsets = useMetaAdsets();
 
   const hasError = account.error || campaigns.error;
 
@@ -69,21 +72,29 @@ export default function AdPerformancePage() {
         />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2 mb-6">
+      <div className="mb-6">
         <SpendChart
-          data={account.data?.dailyMetrics ?? []}
-          isLoading={account.isLoading}
-        />
-        <ROASChart
           data={account.data?.dailyMetrics ?? []}
           isLoading={account.isLoading}
         />
       </div>
 
-      <CampaignTable
-        campaigns={campaigns.data?.campaigns ?? []}
-        isLoading={campaigns.isLoading}
-      />
+      <div className="space-y-6">
+        <CampaignTable
+          campaigns={campaigns.data?.campaigns ?? []}
+          isLoading={campaigns.isLoading}
+        />
+
+        <AdsetTable
+          adsets={adsets.data?.adsets ?? []}
+          isLoading={adsets.isLoading}
+        />
+
+        <ActiveAdsCard
+          ads={ads.data?.ads ?? []}
+          isLoading={ads.isLoading}
+        />
+      </div>
     </div>
   );
 }

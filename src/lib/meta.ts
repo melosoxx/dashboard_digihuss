@@ -6,6 +6,7 @@ import type {
   MetaDailyMetric,
   MetaCampaignInsight,
   MetaActiveAd,
+  MetaAdsetInsight,
 } from "@/types/meta";
 
 export interface MetaClientCreds {
@@ -147,6 +148,37 @@ class MetaAdsClient {
     }));
   }
 
+  async getAdsetInsights(startDate: string, endDate: string): Promise<MetaAdsetInsight[]> {
+    const params = new URLSearchParams({
+      fields: "adset_name,adset_id,campaign_name,spend,impressions,clicks,cpc,ctr,actions,action_values",
+      time_range: JSON.stringify({ since: startDate, until: endDate }),
+      level: "adset",
+      access_token: this.accessToken,
+    });
+
+    const url = `${this.baseUrl}/act_${this.adAccountId}/insights?${params}`;
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      throw new Error(`Meta API error: ${response.status} ${response.statusText}`);
+    }
+
+    const json: MetaInsightsResponse = await response.json();
+
+    return (json.data || []).map((row) => ({
+      adsetId: row.adset_id || "",
+      adsetName: row.adset_name || "Unknown",
+      campaignName: row.campaign_name || "",
+      spend: parseFloat(row.spend || "0"),
+      impressions: parseInt(row.impressions || "0"),
+      clicks: parseInt(row.clicks || "0"),
+      cpc: parseFloat(row.cpc || "0"),
+      ctr: parseFloat(row.ctr || "0"),
+      roas: this.extractROAS(row),
+      conversions: this.extractConversions(row),
+    }));
+  }
+
   async getActiveAds(startDate: string, endDate: string): Promise<MetaActiveAd[]> {
     // 1. Get active ads with creation date
     const adsParams = new URLSearchParams({
@@ -215,6 +247,7 @@ class MetaAdsClient {
         impressions,
         clicks: linkClicks,
         ctr: linkCtr,
+        conversions: this.extractConversions(row),
         createdAt: adMeta?.created_time ?? "",
       });
     }
@@ -231,6 +264,7 @@ class MetaAdsClient {
           impressions: 0,
           clicks: 0,
           ctr: 0,
+          conversions: 0,
           createdAt: ad.created_time,
         });
       }

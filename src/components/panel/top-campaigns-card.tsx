@@ -57,7 +57,7 @@ export function ActiveAdsCard({ ads, isLoading }: ActiveAdsCardProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-sm font-semibold">Anuncios Activos</CardTitle>
+        <CardTitle className="text-sm font-semibold">Anuncios Activos - Ranking por CTR</CardTitle>
       </CardHeader>
       <CardContent>
         {sorted.length === 0 ? (
@@ -73,6 +73,7 @@ export function ActiveAdsCard({ ads, isLoading }: ActiveAdsCardProps) {
                   <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-left pb-3">Conjunto</th>
                   <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-left pb-3">Campaña</th>
                   <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right pb-3">CTR</th>
+                  <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right pb-3">Resultados</th>
                   <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right pb-3">Impr.</th>
                   <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right pb-3">Gasto</th>
                   <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right pb-3">Creado</th>
@@ -103,6 +104,15 @@ export function ActiveAdsCard({ ads, isLoading }: ActiveAdsCardProps) {
                         <Badge variant="outline" className={cn("text-[10px] font-semibold border", ctrBadge.className)}>
                           {ad.ctr.toFixed(2)}%
                         </Badge>
+                      </td>
+                      <td className="py-3 text-right">
+                        {ad.conversions > 0 ? (
+                          <Badge variant="outline" className="text-[10px] font-semibold border bg-emerald-500/15 text-emerald-400 border-emerald-500/25">
+                            {ad.conversions}
+                          </Badge>
+                        ) : (
+                          <span className="text-[13px] text-muted-foreground/50">—</span>
+                        )}
                       </td>
                       <td className="py-3 text-right text-muted-foreground text-[13px]">
                         {ad.impressions.toLocaleString("es-AR")}
