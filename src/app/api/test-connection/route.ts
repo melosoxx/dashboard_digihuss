@@ -19,10 +19,17 @@ export async function POST(request: NextRequest) {
     clarity: false,
   };
   let metaAccountInfo: { accountName?: string; businessName?: string; accountId?: string } | null = null;
+  let errorMessage: string | null = null;
 
-  // Test a specific service — uses Supabase credentials when profileId is provided,
-  // falls back to env-var client when profileId is absent.
+  // Test a specific service using profile credentials
   if (service) {
+    if (!profileId) {
+      return NextResponse.json(
+        { error: "profileId is required" },
+        { status: 400 }
+      );
+    }
+
     try {
       if (service === "shopify") {
         const client = await resolveShopifyClientByProfile(profileId);
@@ -42,10 +49,10 @@ export async function POST(request: NextRequest) {
         const client = await resolveClarityClientByProfile(profileId);
         results.clarity = await client.checkConnection();
       }
-    } catch {
-      // Already false
+    } catch (err) {
+      errorMessage = err instanceof Error ? err.message : String(err);
     }
-    return NextResponse.json({ ...results, metaAccountInfo });
+    return NextResponse.json({ ...results, metaAccountInfo, error: errorMessage });
   }
 
   // Legacy: test via headers

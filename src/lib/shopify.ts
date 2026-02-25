@@ -5,6 +5,7 @@ import type {
   OrdersAggregate,
   DailyRevenue,
   TopProduct,
+  OrderListItem,
 } from "@/types/shopify";
 
 const ORDERS_QUERY = `
@@ -16,6 +17,9 @@ const ORDERS_QUERY = `
           name
           createdAt
           displayFinancialStatus
+          customer {
+            displayName
+          }
           currentTotalPriceSet {
             shopMoney {
               amount
@@ -158,6 +162,19 @@ class ShopifyClient {
       currency,
       dailyRevenue,
     };
+  }
+
+  async getOrdersList(startDate: string, endDate: string): Promise<OrderListItem[]> {
+    const orders = await this.getOrders(startDate, endDate);
+    return orders
+      .map((o) => ({
+        name: o.name,
+        createdAt: o.createdAt,
+        customerName: o.customer?.displayName ?? "Sin nombre",
+        total: parseFloat(o.currentTotalPriceSet.shopMoney.amount),
+        currency: o.currentTotalPriceSet.shopMoney.currencyCode,
+      }))
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }
 
   async getTopProducts(startDate: string, endDate: string, limit = 10): Promise<TopProduct[]> {

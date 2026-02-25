@@ -18,7 +18,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Save, Trash2, Loader2, CheckCircle2, Shield, Server, Plus } from "lucide-react";
+import { Save, Trash2, Loader2, CheckCircle2, Shield } from "lucide-react";
 import type { ServiceCredentials, ServiceName } from "@/types/business";
 
 const PROFILE_COLORS = [
@@ -59,65 +59,6 @@ function ServiceStatusBadge({ configured }: { configured: boolean }) {
   );
 }
 
-/** Editor shown when the env-var default profile is selected (no DB profile) */
-function DefaultProfileCard() {
-  const { addProfile, setActiveProfileId, profiles } = useBusinessProfile();
-  const [creating, setCreating] = useState(false);
-
-  const handleCreate = async () => {
-    setCreating(true);
-    try {
-      // Try to fetch Meta business name from env vars
-      let profileName = `Negocio ${profiles.length + 1}`;
-      try {
-        const params = new URLSearchParams({ service: "meta" });
-        const res = await fetch(`/api/test-connection?${params}`, { method: "POST" });
-        const data = await res.json();
-        if (data.meta && data.metaAccountInfo?.businessName) {
-          profileName = data.metaAccountInfo.businessName;
-        } else if (data.meta && data.metaAccountInfo?.accountName) {
-          profileName = data.metaAccountInfo.accountName;
-        }
-      } catch {
-        // Keep default name
-      }
-
-      const profile = await addProfile({
-        name: profileName,
-        color: PROFILE_COLORS[profiles.length % PROFILE_COLORS.length],
-      });
-      setActiveProfileId(profile.id);
-    } finally {
-      setCreating(false);
-    }
-  };
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Server className="h-5 w-5" />
-          Perfil predeterminado
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <p className="text-sm text-muted-foreground">
-          Este perfil usa variables de entorno del servidor. Para poder editar o borrar credenciales
-          desde aca, crea un perfil personalizado.
-        </p>
-        <Button onClick={handleCreate} disabled={creating}>
-          {creating ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          ) : (
-            <Plus className="mr-2 h-4 w-4" />
-          )}
-          Crear perfil editable
-        </Button>
-      </CardContent>
-    </Card>
-  );
-}
-
 export function ProfileEditor() {
   const {
     activeProfile,
@@ -137,15 +78,38 @@ export function ProfileEditor() {
   const [savingService, setSavingService] = useState<ServiceName | null>(null);
   const [deletingService, setDeletingService] = useState<ServiceName | null>(null);
 
-  // Sync form state when active profile changes
+  // Sync form state & load non-secret fields when the active profile changes
   useEffect(() => {
-    if (activeProfile) {
-      setName(activeProfile.name);
-      setColor(activeProfile.color);
-      // Reset credential forms (credentials are write-only, stored encrypted on server)
-      setCredentials({});
-    }
-  }, [activeProfile]);
+    if (!activeProfile || !activeProfileId) return;
+
+    setName(activeProfile.name);
+    setColor(activeProfile.color);
+    setCredentials({});
+
+    // Load non-secret credential fields from the server
+    let cancelled = false;
+    const services: ServiceName[] = ["shopify", "meta", "clarity"];
+    services.forEach(async (service) => {
+      try {
+        const res = await fetch(
+          `/api/profiles/${activeProfileId}/credentials?service=${service}`
+        );
+        if (cancelled || !res.ok) return;
+        const { fields } = (await res.json()) as { fields: Record<string, string> };
+        if (fields && Object.keys(fields).length > 0) {
+          setCredentials((prev) => ({
+            ...prev,
+            [service]: { ...prev[service], ...fields },
+          }));
+        }
+      } catch {
+        // ignore
+      }
+    });
+
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeProfileId]);
 
   const updateCreds = useCallback(
     <K extends keyof ServiceCredentials>(
@@ -179,9 +143,15 @@ export function ProfileEditor() {
     const serviceCreds = credentials[service];
     if (!serviceCreds) return;
 
-    // Check all fields have values
+    // At least one non-empty field required
     const values = Object.values(serviceCreds);
-    if (values.length === 0 || values.some((v) => !v || String(v).trim() === "")) return;
+    if (values.length === 0 || values.every((v) => !v || String(v).trim() === "")) return;
+
+    // If service is already configured, token fields can be empty (backend preserves them)
+    // If NOT configured, all fields must be filled
+    if (!isConfigured(service)) {
+      if (values.some((v) => !v || String(v).trim() === "")) return;
+    }
 
     setSavingService(service);
     try {
@@ -190,8 +160,28 @@ export function ProfileEditor() {
         service,
         serviceCreds as unknown as Record<string, string>
       );
-      // Clear form after save
-      setCredentials((prev) => ({ ...prev, [service]: undefined }));
+      // Reload non-secret fields; clear token fields
+      const res = await fetch(
+        `/api/profiles/${activeProfileId}/credentials?service=${service}`
+      );
+      if (res.ok) {
+        const { fields } = (await res.json()) as { fields: Record<string, string> };
+        setCredentials((prev) => ({ ...prev, [service]: fields }));
+      } else {
+        setCredentials((prev) => ({ ...prev, [service]: undefined }));
+      }
+
+      // Auto-test connection after saving
+      try {
+        const testRes = await fetch(
+          `/api/test-connection?profileId=${activeProfileId}&service=${service}`
+        );
+        if (!testRes.ok) {
+          console.warn(`Credentials saved but connection test failed for ${service}`);
+        }
+      } catch (err) {
+        console.warn(`Connection test error for ${service}:`, err);
+      }
     } finally {
       setSavingService(null);
     }
@@ -226,12 +216,7 @@ export function ProfileEditor() {
     setDeleteOpen(false);
   };
 
-  // Default env-var profile selected
-  if (!activeProfile && activeProfileId === null) {
-    return <DefaultProfileCard />;
-  }
-
-  // No profile selected at all
+  // No profile selected
   if (!activeProfile) {
     return (
       <Card>
@@ -433,8 +418,8 @@ export function ProfileEditor() {
               label="Ad Account ID"
               value={credentials.meta?.adAccountId ?? ""}
               onChange={(v) => updateCreds("meta", "adAccountId", v)}
-              placeholder="123456789"
-              helpText="ID de tu cuenta publicitaria de Meta"
+              placeholder="123456789 (solo números, sin el prefijo 'act_')"
+              helpText="ID de tu cuenta publicitaria de Meta. Encuéntralo en Configuración de la cuenta > Información de la cuenta. Solo ingresa los números, sin el prefijo 'act_'."
             />
             <CredentialField
               label="Access Token"
@@ -442,7 +427,7 @@ export function ProfileEditor() {
               onChange={(v) => updateCreds("meta", "accessToken", v)}
               placeholder="EAA..."
               isSecret
-              helpText="Token de acceso de larga duracion de Meta"
+              helpText="Token de acceso de larga duración de Meta. Permisos requeridos: ads_read, ads_management, business_management, pages_read_engagement"
             />
             <CredentialField
               label="API Version"

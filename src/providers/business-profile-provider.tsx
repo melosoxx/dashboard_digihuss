@@ -25,7 +25,7 @@ interface ProfilesApiResponse {
     configuredServices: string[];
   }>;
   preferences: {
-    active_profile_id: string | null;
+    active_profile_id: string;
     aggregate_mode: boolean;
     selected_profile_ids: string[];
   };
@@ -34,12 +34,12 @@ interface ProfilesApiResponse {
 interface BusinessProfileContextValue {
   profiles: BusinessProfile[];
   activeProfile: BusinessProfile | null;
-  activeProfileId: string | null;
+  activeProfileId: string;
   aggregateMode: boolean;
   selectedProfileIds: string[];
   isHydrated: boolean;
   isLoading: boolean;
-  setActiveProfileId: (id: string | null) => void;
+  setActiveProfileId: (id: string) => void;
   setAggregateMode: (enabled: boolean) => void;
   setSelectedProfileIds: (ids: string[]) => void;
   addProfile: (data: { name: string; color?: string }) => Promise<BusinessProfile>;
@@ -80,7 +80,7 @@ export function BusinessProfileProvider({ children }: { children: ReactNode }) {
   });
 
   const profiles = (data?.profiles ?? []).map(mapProfile);
-  const activeProfileId = data?.preferences.active_profile_id ?? null;
+  const activeProfileId = data?.preferences.active_profile_id ?? profiles[0]?.id ?? "";
   const aggregateMode = data?.preferences.aggregate_mode ?? false;
   const selectedProfileIds = data?.preferences.selected_profile_ids ?? [];
   const activeProfile = profiles.find((p) => p.id === activeProfileId) ?? null;
@@ -100,7 +100,7 @@ export function BusinessProfileProvider({ children }: { children: ReactNode }) {
   );
 
   const setActiveProfileId = useCallback(
-    (id: string | null) => {
+    (id: string) => {
       // Optimistic update
       queryClient.setQueryData<ProfilesApiResponse>(["profiles"], (old) => {
         if (!old) return old;
@@ -236,6 +236,9 @@ export function BusinessProfileProvider({ children }: { children: ReactNode }) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["profiles"] });
+      queryClient.invalidateQueries({ queryKey: ["shopify"] });
+      queryClient.invalidateQueries({ queryKey: ["meta"] });
+      queryClient.invalidateQueries({ queryKey: ["clarity"] });
     },
   });
 
@@ -255,6 +258,9 @@ export function BusinessProfileProvider({ children }: { children: ReactNode }) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["profiles"] });
+      queryClient.invalidateQueries({ queryKey: ["shopify"] });
+      queryClient.invalidateQueries({ queryKey: ["meta"] });
+      queryClient.invalidateQueries({ queryKey: ["clarity"] });
     },
   });
 

@@ -63,6 +63,13 @@ export const datePresets: DatePreset[] = [
     }),
   },
   {
+    label: "Últimos 15 días",
+    getValue: () => ({
+      startDate: formatDateForApi(subDays(new Date(), 15)),
+      endDate: formatDateForApi(new Date()),
+    }),
+  },
+  {
     label: "Últimos 30 días",
     getValue: () => ({
       startDate: formatDateForApi(subDays(new Date(), 30)),
@@ -85,5 +92,19 @@ export const datePresets: DatePreset[] = [
         endDate: formatDateForApi(endOfMonth(lastMonth)),
       };
     },
+  },
+  {
+    label: "Últimos 3 meses",
+    getValue: () => ({
+      startDate: formatDateForApi(subMonths(new Date(), 3)),
+      endDate: formatDateForApi(new Date()),
+    }),
+  },
+  {
+    label: "Últimos 6 meses",
+    getValue: () => ({
+      startDate: formatDateForApi(subMonths(new Date(), 6)),
+      endDate: formatDateForApi(new Date()),
+    }),
   },
 ];

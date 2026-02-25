@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { resolveMetaClientByProfile } from "@/lib/credentials";
+import { resolveShopifyClientByProfile } from "@/lib/credentials";
 
 const querySchema = z.object({
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -29,21 +29,18 @@ export async function GET(request: NextRequest) {
         { status: 400 }
       );
     }
-    const client = await resolveMetaClientByProfile(profileId);
+    const client = await resolveShopifyClientByProfile(profileId);
 
-    const data = await client.getAccountInsights(
+    const data = await client.getOrdersList(
       parsed.data.startDate,
       parsed.data.endDate
     );
 
     return NextResponse.json(data);
-  } catch (error: any) {
-    console.error("Meta account error:", error);
+  } catch (error) {
+    console.error("Shopify orders list error:", error);
     return NextResponse.json(
-      {
-        error: "Failed to fetch account insights from Meta",
-        details: error.message || String(error)
-      },
+      { error: "Failed to fetch orders list from Shopify" },
       { status: 500 }
     );
   }

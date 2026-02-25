@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { resolveShopifyClient, resolveShopifyClientByProfile } from "@/lib/credentials";
+import { resolveShopifyClientByProfile } from "@/lib/credentials";
 import { getPreviousPeriod } from "@/lib/date-utils";
 import { calculatePercentChange } from "@/lib/utils";
 
@@ -25,9 +25,13 @@ export async function GET(request: NextRequest) {
     }
 
     const profileId = searchParams.get("profileId");
-    const client = profileId
-      ? await resolveShopifyClientByProfile(profileId)
-      : resolveShopifyClient(request);
+    if (!profileId) {
+      return NextResponse.json(
+        { error: "profileId is required" },
+        { status: 400 }
+      );
+    }
+    const client = await resolveShopifyClientByProfile(profileId);
 
     const previousPeriod = getPreviousPeriod(parsed.data);
 

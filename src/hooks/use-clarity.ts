@@ -21,10 +21,12 @@ function periodLabel(numOfDays: 1 | 2 | 3): string {
   return "Últimos 3 días";
 }
 
-/** Build query params for cache endpoint. profileId is optional. */
-function cacheParams(numOfDays: number, profileId: string | null, extra?: Record<string, string>) {
-  const params = new URLSearchParams({ numOfDays: String(numOfDays) });
-  if (profileId) params.set("profileId", profileId);
+/** Build query params for cache endpoint. */
+function cacheParams(numOfDays: number, profileId: string, extra?: Record<string, string>) {
+  const params = new URLSearchParams({
+    numOfDays: String(numOfDays),
+    profileId,
+  });
   if (extra) {
     for (const [k, v] of Object.entries(extra)) params.set(k, v);
   }

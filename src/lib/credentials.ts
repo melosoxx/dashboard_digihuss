@@ -32,11 +32,11 @@ async function getDecryptedCredentials(
   }
 }
 
-export async function resolveShopifyClientByProfile(profileId: string | null) {
-  if (!profileId) return shopifyClient;
-
+export async function resolveShopifyClientByProfile(profileId: string) {
   const creds = await getDecryptedCredentials(profileId, "shopify");
-  if (!creds || !creds.storeDomain || !creds.adminAccessToken) return shopifyClient;
+  if (!creds || !creds.storeDomain || !creds.adminAccessToken) {
+    throw new Error("Shopify credentials not configured for this profile");
+  }
 
   return createShopifyClient({
     domain: creds.storeDomain,
@@ -45,11 +45,11 @@ export async function resolveShopifyClientByProfile(profileId: string | null) {
   });
 }
 
-export async function resolveMetaClientByProfile(profileId: string | null) {
-  if (!profileId) return metaClient;
-
+export async function resolveMetaClientByProfile(profileId: string) {
   const creds = await getDecryptedCredentials(profileId, "meta");
-  if (!creds || !creds.adAccountId || !creds.accessToken) return metaClient;
+  if (!creds || !creds.adAccountId || !creds.accessToken) {
+    throw new Error("Meta credentials not configured for this profile");
+  }
 
   return createMetaClient({
     accountId: creds.adAccountId,
@@ -58,20 +58,24 @@ export async function resolveMetaClientByProfile(profileId: string | null) {
   });
 }
 
-export async function resolveClarityClientByProfile(profileId: string | null) {
-  if (!profileId) return clarityClient;
-
+export async function resolveClarityClientByProfile(profileId: string) {
   const creds = await getDecryptedCredentials(profileId, "clarity");
-  if (!creds || !creds.apiToken) return clarityClient;
+  if (!creds || !creds.apiToken) {
+    throw new Error("Clarity credentials not configured for this profile");
+  }
+  if (!creds.projectId) {
+    throw new Error("Clarity projectId not configured for this profile");
+  }
 
   return createClarityClient({ token: creds.apiToken });
 }
 
-export async function getClarityProjectId(profileId: string | null): Promise<string | null> {
-  if (!profileId) return process.env.CLARITY_PROJECT_ID ?? null;
-
+export async function getClarityProjectId(profileId: string): Promise<string> {
   const creds = await getDecryptedCredentials(profileId, "clarity");
-  return creds?.projectId ?? process.env.CLARITY_PROJECT_ID ?? null;
+  if (!creds?.projectId) {
+    throw new Error("Clarity project ID not configured for this profile");
+  }
+  return creds.projectId;
 }
 
 // ----------------------------------------------------------------

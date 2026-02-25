@@ -3,32 +3,24 @@ import { requireAuth } from "@/lib/supabase/auth-guard";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 /**
- * Build a base query filtered by user_id and optionally profile_id.
- * When profileId is null we match rows where profile_id IS NULL (default profile).
+ * Build a base query filtered by profile_id.
+ * Security is handled by RLS policies.
  */
 function baseFilter(
   supabase: SupabaseClient,
-  userId: string,
-  profileId: string | null
+  profileId: string
 ) {
-  let q = supabase.from("clarity_cache").select("*").eq("user_id", userId);
-  if (profileId) {
-    q = q.eq("profile_id", profileId);
-  } else {
-    q = q.is("profile_id", null);
-  }
-  return q;
+  return supabase.from("clarity_cache").select("*").eq("profile_id", profileId);
 }
 
 // GET /api/clarity/cache
 // Modes:
-//   ?numOfDays=3                             → latest version (default profile)
-//   ?profileId=xxx&numOfDays=3               → latest version (custom profile)
-//   ?numOfDays=3&action=list                 → list versions
+//   ?profileId=xxx&numOfDays=3               → latest version for profile
+//   ?profileId=xxx&action=list               → list versions for profile
 //   ?versionId=uuid                          → specific version by ID
 export async function GET(request: NextRequest) {
   try {
-    const { supabase, user } = await requireAuth();
+    const { supabase } = await requireAuth();
     const { searchParams } = request.nextUrl;
     const profileId = searchParams.get("profileId");
     const action = searchParams.get("action");
@@ -37,7 +29,11 @@ export async function GET(request: NextRequest) {
 
     // MODE: List available versions (lightweight - no data column)
     if (action === "list") {
-      const { data: versions, error } = await baseFilter(supabase, user.id, profileId)
+      if (!profileId) {
+        return NextResponse.json({ error: "profileId is required" }, { status: 400 });
+      }
+
+      const { data: versions, error } = await baseFilter(supabase, profileId)
         .select("id, fetched_at, num_of_days")
         .order("fetched_at", { ascending: false })
         .limit(50);
@@ -62,7 +58,6 @@ export async function GET(request: NextRequest) {
         .from("clarity_cache")
         .select("id, data, fetched_at")
         .eq("id", versionId)
-        .eq("user_id", user.id)
         .single();
 
       if (error || !data) {
@@ -77,7 +72,11 @@ export async function GET(request: NextRequest) {
     }
 
     // MODE: Fetch latest version (default)
-    const { data, error } = await baseFilter(supabase, user.id, profileId)
+    if (!profileId) {
+      return NextResponse.json({ error: "profileId is required" }, { status: 400 });
+    }
+
+    const { data, error } = await baseFilter(supabase, profileId)
       .select("id, data, fetched_at")
       .eq("num_of_days", numOfDays)
       .order("fetched_at", { ascending: false })

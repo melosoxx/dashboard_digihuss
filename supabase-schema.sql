@@ -179,3 +179,81 @@ CREATE POLICY "Users can insert own clarity quota"
 CREATE POLICY "Users can update own clarity quota"
   ON clarity_quota FOR UPDATE
   USING (profile_id IN (SELECT id FROM profiles WHERE user_id = auth.uid()));
+
+-- ============================================================
+-- MIGRATION: Remove env-based profile, make active_profile_id NOT NULL
+-- ============================================================
+
+-- 1. Para usuarios con NULL, establecer su primer perfil como activo
+UPDATE user_preferences
+SET active_profile_id = (
+  SELECT p.id FROM profiles p
+  WHERE p.user_id = user_preferences.user_id
+  ORDER BY p.created_at ASC LIMIT 1
+)
+WHERE active_profile_id IS NULL
+  AND EXISTS (SELECT 1 FROM profiles WHERE profiles.user_id = user_preferences.user_id);
+
+-- 2. Hacer active_profile_id NOT NULL
+ALTER TABLE user_preferences
+  ALTER COLUMN active_profile_id SET NOT NULL;
+
+-- 3. Cambiar ON DELETE SET NULL a ON DELETE RESTRICT
+ALTER TABLE user_preferences
+  DROP CONSTRAINT user_preferences_active_profile_id_fkey,
+  ADD CONSTRAINT user_preferences_active_profile_id_fkey
+    FOREIGN KEY (active_profile_id)
+    REFERENCES profiles(id) ON DELETE RESTRICT;
+
+-- 4. Trigger: auto-establecer primer perfil como activo
+CREATE OR REPLACE FUNCTION auto_set_active_profile()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO user_preferences (user_id, active_profile_id, aggregate_mode)
+  VALUES (NEW.user_id, NEW.id, false)
+  ON CONFLICT (user_id) DO NOTHING;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER set_first_profile_active
+AFTER INSERT ON profiles
+FOR EACH ROW EXECUTE FUNCTION auto_set_active_profile();
+
+-- 5. Trigger: prevenir borrar último perfil o auto-cambiar si es activo
+CREATE OR REPLACE FUNCTION prevent_delete_active_profile()
+RETURNS TRIGGER AS $$
+DECLARE
+  profile_count INT;
+  is_active BOOLEAN;
+BEGIN
+  SELECT EXISTS(
+    SELECT 1 FROM user_preferences
+    WHERE user_id = OLD.user_id AND active_profile_id = OLD.id
+  ) INTO is_active;
+
+  IF is_active THEN
+    SELECT COUNT(*) INTO profile_count
+    FROM profiles WHERE user_id = OLD.user_id AND id != OLD.id;
+
+    IF profile_count = 0 THEN
+      RAISE EXCEPTION 'No puedes eliminar tu único perfil';
+    END IF;
+
+    -- Auto-cambiar a otro perfil
+    UPDATE user_preferences
+    SET active_profile_id = (
+      SELECT id FROM profiles
+      WHERE user_id = OLD.user_id AND id != OLD.id
+      ORDER BY created_at ASC LIMIT 1
+    )
+    WHERE user_id = OLD.user_id;
+  END IF;
+
+  RETURN OLD;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER prevent_delete_last_profile
+BEFORE DELETE ON profiles
+FOR EACH ROW EXECUTE FUNCTION prevent_delete_active_profile();

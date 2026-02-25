@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { resolveClarityClient, resolveClarityClientByProfile } from "@/lib/credentials";
+import { resolveClarityClientByProfile } from "@/lib/credentials";
 import { requireAuth } from "@/lib/supabase/auth-guard";
 
 export async function GET(request: NextRequest) {
@@ -11,13 +11,17 @@ export async function GET(request: NextRequest) {
       : 3;
 
     const profileId = searchParams.get("profileId");
+    if (!profileId) {
+      return NextResponse.json(
+        { error: "profileId is required" },
+        { status: 400 }
+      );
+    }
 
     const { supabase, user } = await requireAuth();
 
     // Resolve client and fetch data
-    const client = profileId
-      ? await resolveClarityClientByProfile(profileId)
-      : resolveClarityClient(request);
+    const client = await resolveClarityClientByProfile(profileId);
 
     const data = await client.getInsights(numOfDays);
 
@@ -26,8 +30,7 @@ export async function GET(request: NextRequest) {
     const { error: cacheError } = await supabase
       .from("clarity_cache")
       .insert({
-        user_id: user.id,
-        profile_id: profileId || null,
+        profile_id: profileId,
         num_of_days: numOfDays,
         data: data,
         fetched_at: now,

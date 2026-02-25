@@ -23,10 +23,15 @@ class MetaAdsClient {
   constructor(creds?: MetaClientCreds) {
     const version = creds?.version || process.env.META_API_VERSION || "v21.0";
     const token = creds?.token || process.env.META_ACCESS_TOKEN;
-    const accountId = creds?.accountId || process.env.META_AD_ACCOUNT_ID;
+    let accountId = creds?.accountId || process.env.META_AD_ACCOUNT_ID;
 
     if (!token || !accountId) {
       throw new Error("Missing Meta credentials");
+    }
+
+    // Remove 'act_' prefix if it exists since we add it in API calls
+    if (accountId.startsWith("act_")) {
+      accountId = accountId.substring(4);
     }
 
     this.baseUrl = `https://graph.facebook.com/${version}`;
@@ -67,7 +72,19 @@ class MetaAdsClient {
     const response = await fetch(url);
 
     if (!response.ok) {
-      throw new Error(`Meta API error: ${response.status} ${response.statusText}`);
+      let errorDetail = "";
+      try {
+        const errorBody = await response.json();
+        errorDetail = errorBody.error?.message || JSON.stringify(errorBody);
+      } catch {
+        errorDetail = response.statusText;
+      }
+      const error = new Error(`Meta API error (account insights): ${response.status} - ${errorDetail}`);
+      // Add permission error flag for better handling
+      if (response.status === 403 && errorDetail.includes("NOT grant")) {
+        (error as any).isPermissionError = true;
+      }
+      throw error;
     }
 
     const json: MetaInsightsResponse = await response.json();
@@ -180,32 +197,35 @@ class MetaAdsClient {
   }
 
   async getActiveAds(startDate: string, endDate: string): Promise<MetaActiveAd[]> {
-    // 1. Get active ads with creation date
-    const adsParams = new URLSearchParams({
-      fields: "id,name,created_time,campaign{name},adset{name}",
-      filtering: JSON.stringify([
-        { field: "effective_status", operator: "IN", value: ["ACTIVE"] },
-      ]),
-      limit: "100",
-      access_token: this.accessToken,
-    });
+    // Try to get active ads with creation date first
+    let adsMap = new Map<string, { id: string; name: string; created_time: string; campaign?: { name: string }; adset?: { name: string } }>();
 
-    const adsUrl = `${this.baseUrl}/act_${this.adAccountId}/ads?${adsParams}`;
-    const adsResponse = await fetch(adsUrl);
+    try {
+      const adsParams = new URLSearchParams({
+        fields: "id,name,created_time,campaign{name},adset{name}",
+        filtering: JSON.stringify([
+          { field: "effective_status", operator: "IN", value: ["ACTIVE"] },
+        ]),
+        limit: "100",
+        access_token: this.accessToken,
+      });
 
-    if (!adsResponse.ok) {
-      throw new Error(`Meta API error (ads): ${adsResponse.status} ${adsResponse.statusText}`);
+      const adsUrl = `${this.baseUrl}/act_${this.adAccountId}/ads?${adsParams}`;
+      const adsResponse = await fetch(adsUrl);
+
+      if (adsResponse.ok) {
+        const adsJson: { data: Array<{ id: string; name: string; created_time: string; campaign?: { name: string }; adset?: { name: string } }> } =
+          await adsResponse.json();
+        adsMap = new Map(
+          (adsJson.data || []).map((ad) => [ad.id, ad])
+        );
+      }
+    } catch (error) {
+      // If ads endpoint fails (403 permissions), continue with insights only
+      console.warn("Failed to fetch ads metadata, using insights only:", error);
     }
 
-    const adsJson: { data: Array<{ id: string; name: string; created_time: string; campaign?: { name: string }; adset?: { name: string } }> } =
-      await adsResponse.json();
-    const adsMap = new Map(
-      (adsJson.data || []).map((ad) => [ad.id, ad])
-    );
-
-    if (adsMap.size === 0) return [];
-
-    // 2. Get insights for active ads
+    // Get insights for active ads
     const insightsParams = new URLSearchParams({
       fields: "ad_id,ad_name,campaign_name,adset_name,spend,impressions,clicks,ctr,actions",
       time_range: JSON.stringify({ since: startDate, until: endDate }),
@@ -221,12 +241,24 @@ class MetaAdsClient {
     const insightsResponse = await fetch(insightsUrl);
 
     if (!insightsResponse.ok) {
-      throw new Error(`Meta API error (ad insights): ${insightsResponse.status} ${insightsResponse.statusText}`);
+      let errorDetail = "";
+      try {
+        const errorBody = await insightsResponse.json();
+        errorDetail = errorBody.error?.message || JSON.stringify(errorBody);
+      } catch {
+        errorDetail = insightsResponse.statusText;
+      }
+      const error = new Error(`Meta API error (ad insights): ${insightsResponse.status} - ${errorDetail}`);
+      // Add permission error flag for better handling
+      if (insightsResponse.status === 403 && errorDetail.includes("NOT grant")) {
+        (error as any).isPermissionError = true;
+      }
+      throw error;
     }
 
     const insightsJson: MetaInsightsResponse = await insightsResponse.json();
 
-    // 3. Join ads with their insights
+    // Build result from insights
     const result: MetaActiveAd[] = [];
 
     for (const row of insightsJson.data || []) {
@@ -248,25 +280,27 @@ class MetaAdsClient {
         clicks: linkClicks,
         ctr: linkCtr,
         conversions: this.extractConversions(row),
-        createdAt: adMeta?.created_time ?? "",
+        createdAt: adMeta?.created_time ?? new Date().toISOString(),
       });
     }
 
-    // Include active ads with no insights in the period (0 spend/ctr)
-    for (const [adId, ad] of adsMap) {
-      if (!result.some((r) => r.adId === adId)) {
-        result.push({
-          adId,
-          adName: ad.name,
-          adsetName: ad.adset?.name ?? "",
-          campaignName: ad.campaign?.name ?? "",
-          spend: 0,
-          impressions: 0,
-          clicks: 0,
-          ctr: 0,
-          conversions: 0,
-          createdAt: ad.created_time,
-        });
+    // Include active ads with no insights in the period (only if we have ads metadata)
+    if (adsMap.size > 0) {
+      for (const [adId, ad] of adsMap) {
+        if (!result.some((r) => r.adId === adId)) {
+          result.push({
+            adId,
+            adName: ad.name,
+            adsetName: ad.adset?.name ?? "",
+            campaignName: ad.campaign?.name ?? "",
+            spend: 0,
+            impressions: 0,
+            clicks: 0,
+            ctr: 0,
+            conversions: 0,
+            createdAt: ad.created_time,
+          });
+        }
       }
     }
 
@@ -282,7 +316,16 @@ class MetaAdsClient {
     try {
       const url = `${this.baseUrl}/act_${this.adAccountId}?fields=name,account_id,business_name&access_token=${this.accessToken}`;
       const response = await fetch(url);
-      if (!response.ok) return { connected: false };
+      if (!response.ok) {
+        let errorDetail = "";
+        try {
+          const errorBody = await response.json();
+          errorDetail = errorBody.error?.message || JSON.stringify(errorBody);
+        } catch {
+          errorDetail = response.statusText;
+        }
+        throw new Error(`Meta API error: ${response.status} - ${errorDetail}`);
+      }
       const data = await response.json();
       return {
         connected: true,
@@ -290,8 +333,11 @@ class MetaAdsClient {
         businessName: data.business_name,
         accountId: data.account_id,
       };
-    } catch {
-      return { connected: false };
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error("Failed to connect to Meta");
     }
   }
 }

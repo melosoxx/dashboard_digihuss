@@ -16,8 +16,8 @@ export function useMetaAds() {
       const params = new URLSearchParams({
         startDate: dateRange.startDate,
         endDate: dateRange.endDate,
+        profileId: activeProfileId,
       });
-      if (activeProfileId) params.set("profileId", activeProfileId);
       const res = await fetch(`/api/meta/ads?${params}`);
       if (!res.ok) throw new Error(`Failed to fetch Meta ads: ${res.status}`);
       return res.json();
@@ -37,8 +37,8 @@ export function useMetaAdsets() {
       const params = new URLSearchParams({
         startDate: dateRange.startDate,
         endDate: dateRange.endDate,
+        profileId: activeProfileId,
       });
-      if (activeProfileId) params.set("profileId", activeProfileId);
       const res = await fetch(`/api/meta/adsets?${params}`);
       if (!res.ok) throw new Error(`Failed to fetch Meta adsets: ${res.status}`);
       return res.json();
@@ -58,8 +58,8 @@ export function useMetaCampaigns() {
       const params = new URLSearchParams({
         startDate: dateRange.startDate,
         endDate: dateRange.endDate,
+        profileId: activeProfileId,
       });
-      if (activeProfileId) params.set("profileId", activeProfileId);
       const res = await fetch(`/api/meta/campaigns?${params}`);
       if (!res.ok) throw new Error(`Failed to fetch Meta campaigns: ${res.status}`);
       return res.json();

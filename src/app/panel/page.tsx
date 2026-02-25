@@ -17,22 +17,22 @@ import { ErrorDisplay } from "@/components/shared/error-display";
 import { SpendVsRevenueChart } from "@/components/roi/spend-vs-revenue";
 import { MarketingFunnel } from "@/components/panel/marketing-funnel";
 import { ActiveAdsCard } from "@/components/panel/top-campaigns-card";
+import { RecentOrdersCard } from "@/components/panel/recent-orders-card";
 import { SalesAttribution } from "@/components/panel/sales-attribution";
 import { SectionLabel } from "@/components/panel/section-label";
-import { IntegrationLogos } from "@/components/panel/integration-logos";
 import { useShopifyOrders } from "@/hooks/use-shopify-orders";
+import { useShopifyOrderList } from "@/hooks/use-shopify-order-list";
 import { useShopifyAnalytics } from "@/hooks/use-shopify-analytics";
 import { useMetaAccount } from "@/hooks/use-meta-account";
 import { useMetaAds } from "@/hooks/use-meta-campaigns";
-import { useClarity } from "@/hooks/use-clarity";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 
 export default function PanelGeneralPage() {
   const shopify = useShopifyOrders();
+  const orderList = useShopifyOrderList();
   const analytics = useShopifyAnalytics();
   const meta = useMetaAccount();
   const activeAds = useMetaAds();
-  const clarity = useClarity();
   const isLoadingMain = shopify.isLoading || meta.isLoading;
 
   const revenue = shopify.data?.totalRevenue ?? 0;
@@ -52,14 +52,28 @@ export default function PanelGeneralPage() {
   const revenueTrend = analytics.data?.periodComparison;
 
   const combinedData = useMemo(() => {
+    // Normalize date to YYYY-MM-DD format
+    const normalizeDate = (dateStr: string): string => {
+      if (!dateStr) return "";
+      // If already in YYYY-MM-DD format, return as-is
+      if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+      // Otherwise parse and format
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) return dateStr;
+      return date.toISOString().split("T")[0];
+    };
+
     const revenueByDate = new Map<string, number>();
     const spendByDate = new Map<string, number>();
 
     for (const day of shopify.data?.dailyRevenue ?? []) {
-      revenueByDate.set(day.date, day.revenue);
+      const normalizedDate = normalizeDate(day.date);
+      revenueByDate.set(normalizedDate, day.revenue);
     }
     for (const day of meta.data?.dailyMetrics ?? []) {
-      spendByDate.set(day.date, day.spend);
+      const normalizedDate = normalizeDate(day.date);
+      const existing = spendByDate.get(normalizedDate) || 0;
+      spendByDate.set(normalizedDate, existing + day.spend);
     }
 
     const allDates = new Set([...revenueByDate.keys(), ...spendByDate.keys()]);
@@ -82,18 +96,6 @@ export default function PanelGeneralPage() {
       <PageHeader
         title="Analytics & Attribution"
         description="Vista ejecutiva en tiempo real del rendimiento de marketing"
-        actions={
-          <IntegrationLogos
-            shopifyStatus={shopify.isLoading ? "loading" : shopify.error ? "error" : "connected"}
-            metaStatus={meta.isLoading ? "loading" : meta.error ? "error" : "connected"}
-            clarityStatus={
-              clarity.isFetching ? "loading"
-              : clarity.error ? "error"
-              : clarity.data ? "connected"
-              : "idle"
-            }
-          />
-        }
       />
 
       {errorSources.length > 0 && (
@@ -219,6 +221,14 @@ export default function PanelGeneralPage() {
           checkouts={analytics.data?.checkoutCount ?? 0}
           orders={orderCount}
           isLoading={isLoadingMain || analytics.isLoading}
+        />
+      </div>
+
+      {/* Orders table */}
+      <div className="mb-6">
+        <RecentOrdersCard
+          orders={orderList.data ?? []}
+          isLoading={orderList.isLoading}
         />
       </div>
     </div>

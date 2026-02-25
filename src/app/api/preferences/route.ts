@@ -3,7 +3,7 @@ import { z } from "zod";
 import { requireAuth } from "@/lib/supabase/auth-guard";
 
 const preferencesSchema = z.object({
-  active_profile_id: z.string().uuid().nullable().optional(),
+  active_profile_id: z.string().uuid().optional(),
   aggregate_mode: z.boolean().optional(),
   selected_profile_ids: z.array(z.string().uuid()).optional(),
 });

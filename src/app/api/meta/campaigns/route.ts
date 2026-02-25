@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { resolveMetaClient, resolveMetaClientByProfile } from "@/lib/credentials";
+import { resolveMetaClientByProfile } from "@/lib/credentials";
 
 const querySchema = z.object({
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -23,9 +23,13 @@ export async function GET(request: NextRequest) {
     }
 
     const profileId = searchParams.get("profileId");
-    const client = profileId
-      ? await resolveMetaClientByProfile(profileId)
-      : resolveMetaClient(request);
+    if (!profileId) {
+      return NextResponse.json(
+        { error: "profileId is required" },
+        { status: 400 }
+      );
+    }
+    const client = await resolveMetaClientByProfile(profileId);
 
     const campaigns = await client.getCampaignInsights(
       parsed.data.startDate,
@@ -33,7 +37,7 @@ export async function GET(request: NextRequest) {
     );
 
     return NextResponse.json({ campaigns });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Meta campaigns error:", error);
     return NextResponse.json(
       { error: "Failed to fetch campaign insights from Meta" },

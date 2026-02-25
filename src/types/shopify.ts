@@ -16,12 +16,21 @@ export interface ShopifyOrder {
   name: string;
   createdAt: string;
   displayFinancialStatus: string;
+  customer: { displayName: string } | null;
   currentTotalPriceSet: ShopifyMoneySet;
   totalDiscountsSet: ShopifyMoneySet;
   subtotalPriceSet: ShopifyMoneySet;
   lineItems: {
     edges: Array<{ node: ShopifyLineItem }>;
   };
+}
+
+export interface OrderListItem {
+  name: string;
+  createdAt: string;
+  customerName: string;
+  total: number;
+  currency: string;
 }
 
 export interface ShopifyOrderEdge {
