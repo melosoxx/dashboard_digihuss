@@ -25,9 +25,11 @@ import { useShopifyOrderList } from "@/hooks/use-shopify-order-list";
 import { useShopifyAnalytics } from "@/hooks/use-shopify-analytics";
 import { useMetaAccount } from "@/hooks/use-meta-account";
 import { useMetaAds } from "@/hooks/use-meta-campaigns";
+import { useBusinessProfile } from "@/providers/business-profile-provider";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 
 export default function PanelGeneralPage() {
+  const { aggregateMode } = useBusinessProfile();
   const shopify = useShopifyOrders();
   const orderList = useShopifyOrderList();
   const analytics = useShopifyAnalytics();
@@ -229,6 +231,7 @@ export default function PanelGeneralPage() {
         <RecentOrdersCard
           orders={orderList.data ?? []}
           isLoading={orderList.isLoading}
+          aggregateMode={aggregateMode}
         />
       </div>
     </div>

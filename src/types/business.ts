@@ -1,5 +1,13 @@
 export type ServiceName = "shopify" | "meta" | "clarity";
 
+export type ValidationStatus = "untested" | "valid" | "invalid";
+
+export interface ServiceValidation {
+  status: ValidationStatus;
+  lastValidatedAt?: string;
+  lastErrorMessage?: string;
+}
+
 export interface ShopifyCredentials {
   storeDomain: string;
   adminApiVersion: string;
@@ -28,6 +36,11 @@ export interface BusinessProfile {
   name: string;
   color: string;
   configuredServices: ServiceName[];
+  validationStatus?: {
+    shopify?: ServiceValidation;
+    meta?: ServiceValidation;
+    clarity?: ServiceValidation;
+  };
   createdAt: string;
   updatedAt: string;
 }

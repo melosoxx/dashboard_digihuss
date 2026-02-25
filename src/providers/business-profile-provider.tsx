@@ -23,6 +23,13 @@ interface ProfilesApiResponse {
     created_at: string;
     updated_at: string;
     configuredServices: string[];
+    validationStatus?: {
+      [service: string]: {
+        status: "untested" | "valid" | "invalid";
+        lastValidatedAt?: string;
+        lastErrorMessage?: string;
+      };
+    };
   }>;
   preferences: {
     active_profile_id: string;
@@ -59,6 +66,7 @@ function mapProfile(raw: ProfilesApiResponse["profiles"][0]): BusinessProfile {
     name: raw.name,
     color: raw.color,
     configuredServices: raw.configuredServices as ServiceName[],
+    validationStatus: raw.validationStatus,
     createdAt: raw.created_at,
     updatedAt: raw.updated_at,
   };

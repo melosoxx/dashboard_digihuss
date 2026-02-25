@@ -31,6 +31,8 @@ export interface OrderListItem {
   customerName: string;
   total: number;
   currency: string;
+  profileName?: string;
+  profileColor?: string;
 }
 
 export interface ShopifyOrderEdge {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useBusinessProfile } from "@/providers/business-profile-provider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -18,8 +19,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Save, Trash2, Loader2, CheckCircle2, Shield } from "lucide-react";
-import type { ServiceCredentials, ServiceName } from "@/types/business";
+import { Save, Trash2, Loader2, CheckCircle2, Shield, AlertCircle, Clock } from "lucide-react";
+import type { ServiceCredentials, ServiceName, ServiceValidation } from "@/types/business";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 const PROFILE_COLORS = [
   "#3b82f6", "#ef4444", "#10b981", "#f59e0b",
@@ -37,26 +39,103 @@ function isDefaultName(n: string): boolean {
   return false;
 }
 
-function ServiceStatusBadge({ configured }: { configured: boolean }) {
-  return (
-    <div className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${
-      configured
-        ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-        : "bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400"
-    }`}>
-      {configured ? (
-        <>
-          <CheckCircle2 className="h-3 w-3" />
-          Configurado
-        </>
-      ) : (
-        <>
-          <Shield className="h-3 w-3" />
-          No configurado
-        </>
-      )}
-    </div>
-  );
+function ServiceStatusBadge({
+  configured,
+  validation
+}: {
+  configured: boolean;
+  validation?: ServiceValidation;
+}) {
+  // State 1: Not configured
+  if (!configured) {
+    return (
+      <div className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
+        <Shield className="h-3 w-3" />
+        Sin configurar
+      </div>
+    );
+  }
+
+  // State 2: Configured but untested
+  if (!validation || validation.status === "untested") {
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 cursor-help">
+              <Clock className="h-3 w-3" />
+              No validado
+            </div>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p className="text-xs">Credenciales guardadas pero no probadas</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  }
+
+  // State 3: Valid
+  if (validation.status === "valid") {
+    const lastValidated = validation.lastValidatedAt
+      ? new Date(validation.lastValidatedAt).toLocaleString("es-ES", {
+          dateStyle: "short",
+          timeStyle: "short",
+        })
+      : "Desconocido";
+
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 cursor-help">
+              <CheckCircle2 className="h-3 w-3" />
+              Validado
+            </div>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p className="text-xs">Última validación: {lastValidated}</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  }
+
+  // State 4: Invalid
+  if (validation.status === "invalid") {
+    const lastValidated = validation.lastValidatedAt
+      ? new Date(validation.lastValidatedAt).toLocaleString("es-ES", {
+          dateStyle: "short",
+          timeStyle: "short",
+        })
+      : "Desconocido";
+
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 cursor-help">
+              <AlertCircle className="h-3 w-3" />
+              Error de conexión
+            </div>
+          </TooltipTrigger>
+          <TooltipContent className="max-w-xs">
+            <p className="text-xs font-medium">Error de validación</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Última prueba: {lastValidated}
+            </p>
+            {validation.lastErrorMessage && (
+              <p className="text-xs text-red-600 dark:text-red-400 mt-1">
+                {validation.lastErrorMessage}
+              </p>
+            )}
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  }
+
+  return null;
 }
 
 export function ProfileEditor() {
@@ -68,6 +147,7 @@ export function ProfileEditor() {
     saveCredentials,
     deleteCredentials,
   } = useBusinessProfile();
+  const queryClient = useQueryClient();
 
   const [name, setName] = useState("");
   const [color, setColor] = useState(PROFILE_COLORS[0]);
@@ -174,11 +254,15 @@ export function ProfileEditor() {
       // Auto-test connection after saving
       try {
         const testRes = await fetch(
-          `/api/test-connection?profileId=${activeProfileId}&service=${service}`
+          `/api/test-connection?profileId=${activeProfileId}&service=${service}`,
+          { method: "POST" }
         );
         if (!testRes.ok) {
           console.warn(`Credentials saved but connection test failed for ${service}`);
         }
+        // IMPORTANT: Refetch profiles to get updated validation status
+        await new Promise(resolve => setTimeout(resolve, 500)); // Brief delay for DB write
+        queryClient.invalidateQueries({ queryKey: ["profiles"] });
       } catch (err) {
         console.warn(`Connection test error for ${service}:`, err);
       }
@@ -328,7 +412,10 @@ export function ProfileEditor() {
           </TabsContent>
 
           <TabsContent value="shopify" className="space-y-6 pt-4">
-            <ServiceStatusBadge configured={isConfigured("shopify")} />
+            <ServiceStatusBadge
+              configured={isConfigured("shopify")}
+              validation={activeProfile.validationStatus?.shopify}
+            />
             {isConfigured("shopify") && (
               <p className="text-xs text-muted-foreground">
                 Las credenciales estan almacenadas de forma segura. Completa los campos para actualizarlas.
@@ -408,7 +495,10 @@ export function ProfileEditor() {
           </TabsContent>
 
           <TabsContent value="meta" className="space-y-6 pt-4">
-            <ServiceStatusBadge configured={isConfigured("meta")} />
+            <ServiceStatusBadge
+              configured={isConfigured("meta")}
+              validation={activeProfile.validationStatus?.meta}
+            />
             {isConfigured("meta") && (
               <p className="text-xs text-muted-foreground">
                 Las credenciales estan almacenadas de forma segura. Completa los campos para actualizarlas.
@@ -488,7 +578,10 @@ export function ProfileEditor() {
           </TabsContent>
 
           <TabsContent value="clarity" className="space-y-6 pt-4">
-            <ServiceStatusBadge configured={isConfigured("clarity")} />
+            <ServiceStatusBadge
+              configured={isConfigured("clarity")}
+              validation={activeProfile.validationStatus?.clarity}
+            />
             {isConfigured("clarity") && (
               <p className="text-xs text-muted-foreground">
                 Las credenciales estan almacenadas de forma segura. Completa los campos para actualizarlas.

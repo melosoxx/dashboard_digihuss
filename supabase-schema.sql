@@ -257,3 +257,27 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER prevent_delete_last_profile
 BEFORE DELETE ON profiles
 FOR EACH ROW EXECUTE FUNCTION prevent_delete_active_profile();
+
+-- ============================================================
+-- MIGRATION: Add credential validation status tracking
+-- Run this migration in Supabase SQL Editor
+-- ============================================================
+
+-- 1. Add validation status columns to profile_credentials
+ALTER TABLE profile_credentials
+  ADD COLUMN validation_status TEXT NOT NULL DEFAULT 'untested'
+    CHECK (validation_status IN ('untested', 'valid', 'invalid')),
+  ADD COLUMN last_validated_at TIMESTAMPTZ,
+  ADD COLUMN last_error_message TEXT;
+
+-- 2. Add index for filtering by validation status
+CREATE INDEX idx_profile_credentials_validation
+  ON profile_credentials(profile_id, validation_status);
+
+-- 3. Add comments to document the schema change
+COMMENT ON COLUMN profile_credentials.validation_status IS
+  'Validation status: untested (never tested), valid (last test passed), invalid (last test failed)';
+COMMENT ON COLUMN profile_credentials.last_validated_at IS
+  'Timestamp of the most recent validation test';
+COMMENT ON COLUMN profile_credentials.last_error_message IS
+  'Error message from the most recent failed validation (null if valid)';

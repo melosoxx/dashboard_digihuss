@@ -8,6 +8,7 @@ import type { OrderListItem } from "@/types/shopify";
 interface RecentOrdersCardProps {
   orders: OrderListItem[];
   isLoading: boolean;
+  aggregateMode?: boolean;
 }
 
 function formatOrderDate(iso: string): string {
@@ -20,7 +21,7 @@ function formatOrderDate(iso: string): string {
   });
 }
 
-export function RecentOrdersCard({ orders, isLoading }: RecentOrdersCardProps) {
+export function RecentOrdersCard({ orders, isLoading, aggregateMode }: RecentOrdersCardProps) {
   if (isLoading) {
     return (
       <Card>
@@ -53,6 +54,9 @@ export function RecentOrdersCard({ orders, isLoading }: RecentOrdersCardProps) {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border/30">
+                  {aggregateMode && (
+                    <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-left pb-3">Perfil</th>
+                  )}
                   <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-left pb-3">Pedido</th>
                   <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-left pb-3">Fecha</th>
                   <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-left pb-3">Cliente</th>
@@ -60,8 +64,21 @@ export function RecentOrdersCard({ orders, isLoading }: RecentOrdersCardProps) {
                 </tr>
               </thead>
               <tbody>
-                {orders.map((order) => (
-                  <tr key={order.name} className="border-b border-border/20 last:border-0">
+                {orders.map((order, idx) => (
+                  <tr key={`${order.name}-${idx}`} className="border-b border-border/20 last:border-0">
+                    {aggregateMode && (
+                      <td className="py-3 pr-4">
+                        <span className="flex items-center gap-1.5">
+                          <span
+                            className="h-2.5 w-2.5 rounded-full shrink-0"
+                            style={{ backgroundColor: order.profileColor ?? "#3b82f6" }}
+                          />
+                          <span className="text-[12px] text-muted-foreground truncate max-w-[100px]">
+                            {order.profileName ?? ""}
+                          </span>
+                        </span>
+                      </td>
+                    )}
                     <td className="py-3 pr-4">
                       <span className="text-[13px] font-medium">{order.name}</span>
                     </td>
@@ -76,7 +93,7 @@ export function RecentOrdersCard({ orders, isLoading }: RecentOrdersCardProps) {
                       </span>
                     </td>
                     <td className="py-3 text-right text-[13px] font-medium">
-                      {formatCurrency(order.total)}
+                      {formatCurrency(order.total, order.currency)}
                     </td>
                   </tr>
                 ))}

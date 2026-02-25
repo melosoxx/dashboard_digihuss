@@ -7,6 +7,7 @@ import {
   resolveMetaClientByProfile,
   resolveClarityClientByProfile,
 } from "@/lib/credentials";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function POST(request: NextRequest) {
   const { searchParams } = request.nextUrl;
@@ -30,28 +31,68 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const supabase = createAdminClient();
+    let validationStatus: "valid" | "invalid" = "invalid";
+    let errorMsg: string | null = null;
+
     try {
       if (service === "shopify") {
         const client = await resolveShopifyClientByProfile(profileId);
-        results.shopify = await client.checkConnection();
+        const isConnected = await client.checkConnection();
+        results.shopify = isConnected;
+        validationStatus = isConnected ? "valid" : "invalid";
+        if (!isConnected) {
+          errorMsg = "Failed to connect to Shopify API";
+        }
       } else if (service === "meta") {
         const client = await resolveMetaClientByProfile(profileId);
         const metaResult = await client.checkConnection();
         results.meta = metaResult.connected;
+        validationStatus = metaResult.connected ? "valid" : "invalid";
         if (metaResult.connected) {
           metaAccountInfo = {
             accountName: metaResult.accountName,
             businessName: metaResult.businessName,
             accountId: metaResult.accountId,
           };
+        } else {
+          errorMsg = "Failed to connect to Meta Ads API";
         }
       } else if (service === "clarity") {
         const client = await resolveClarityClientByProfile(profileId);
-        results.clarity = await client.checkConnection();
+        const isConnected = await client.checkConnection();
+        results.clarity = isConnected;
+        validationStatus = isConnected ? "valid" : "invalid";
+        if (!isConnected) {
+          errorMsg = "Failed to connect to Microsoft Clarity API";
+        }
       }
     } catch (err) {
       errorMessage = err instanceof Error ? err.message : String(err);
+      errorMsg = errorMessage;
+      validationStatus = "invalid";
     }
+
+    // CRITICAL: Persist validation result to database
+    try {
+      const { error: updateError } = await supabase
+        .from("profile_credentials")
+        .update({
+          validation_status: validationStatus,
+          last_validated_at: new Date().toISOString(),
+          last_error_message: errorMsg,
+        })
+        .eq("profile_id", profileId)
+        .eq("service", service);
+
+      if (updateError) {
+        console.error("Failed to persist validation status:", updateError);
+      }
+    } catch (persistError) {
+      console.error("Error persisting validation status:", persistError);
+      // Don't fail the request if we can't persist - just log it
+    }
+
     return NextResponse.json({ ...results, metaAccountInfo, error: errorMessage });
   }
 

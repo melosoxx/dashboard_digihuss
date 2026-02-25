@@ -25,24 +25,38 @@ export async function GET() {
         .single(),
     ]);
 
-    // Check which services are configured per profile
+    // Check which services are configured per profile AND their validation status
     const profileIds = (profilesResult.data ?? []).map((p) => p.id);
     const { data: credRows } = await supabase
       .from("profile_credentials")
-      .select("profile_id, service")
+      .select("profile_id, service, validation_status, last_validated_at, last_error_message")
       .in("profile_id", profileIds.length > 0 ? profileIds : ["__none__"]);
 
     const configuredServices = new Map<string, Set<string>>();
+    const validationStatus = new Map<string, Record<string, any>>();
+
     for (const row of credRows ?? []) {
+      // Track configured services
       if (!configuredServices.has(row.profile_id)) {
         configuredServices.set(row.profile_id, new Set());
       }
       configuredServices.get(row.profile_id)!.add(row.service);
+
+      // Track validation status
+      if (!validationStatus.has(row.profile_id)) {
+        validationStatus.set(row.profile_id, {});
+      }
+      validationStatus.get(row.profile_id)![row.service] = {
+        status: row.validation_status,
+        lastValidatedAt: row.last_validated_at,
+        lastErrorMessage: row.last_error_message,
+      };
     }
 
     const profiles = (profilesResult.data ?? []).map((p) => ({
       ...p,
       configuredServices: Array.from(configuredServices.get(p.id) ?? []),
+      validationStatus: validationStatus.get(p.id) ?? {},
     }));
 
     const preferences = prefsResult.data ?? {

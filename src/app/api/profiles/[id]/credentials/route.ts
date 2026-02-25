@@ -122,13 +122,17 @@ export async function PUT(
     // Encrypt credentials
     const { encrypted, iv } = encrypt(JSON.stringify(merged));
 
-    // Upsert into profile_credentials
+    // Upsert into profile_credentials and reset validation status
     const { error } = await supabase.from("profile_credentials").upsert(
       {
         profile_id: id,
         service: parsed.data.service,
         encrypted_data: encrypted,
         iv,
+        // IMPORTANT: Reset validation status when credentials are updated
+        validation_status: "untested",
+        last_validated_at: null,
+        last_error_message: null,
       },
       { onConflict: "profile_id,service" }
     );

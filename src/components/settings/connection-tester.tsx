@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Loader2, CheckCircle2, XCircle, Wifi } from "lucide-react";
 
@@ -19,6 +20,7 @@ interface ConnectionTesterProps {
 export function ConnectionTester({ profileId, service, onMetaAccountInfo }: ConnectionTesterProps) {
   const [status, setStatus] = useState<"idle" | "testing" | "success" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState<string>("");
+  const queryClient = useQueryClient();
 
   const handleTest = async () => {
     if (!profileId) return;
@@ -39,6 +41,9 @@ export function ConnectionTester({ profileId, service, onMetaAccountInfo }: Conn
         setStatus("error");
         setErrorMessage(data.error || "No se pudo conectar al servicio");
       }
+
+      // CRITICAL: Invalidate profiles query to refetch validation status
+      queryClient.invalidateQueries({ queryKey: ["profiles"] });
     } catch (err) {
       setStatus("error");
       setErrorMessage(err instanceof Error ? err.message : "Error desconocido");
