@@ -91,12 +91,13 @@ export function ProfileSwitcher() {
       <SelectContent>
         {profiles.map((profile) => (
           <SelectItem key={profile.id} value={profile.id}>
-            <span className="flex items-center gap-2">
+            <span className={cn("flex items-center gap-2", !profile.isActive && "opacity-50")}>
               <span
                 className="h-3 w-3 rounded-full shrink-0"
                 style={{ backgroundColor: profile.color }}
               />
               {profile.name}
+              {!profile.isActive && <span className="text-xs text-muted-foreground">(Inactivo)</span>}
             </span>
           </SelectItem>
         ))}
@@ -114,7 +115,7 @@ export function ProfileSwitcher() {
 // ----- Multi-select Popover (2+ profiles) -----
 
 interface MultiSelectProps {
-  profiles: { id: string; name: string; color: string }[];
+  profiles: { id: string; name: string; color: string; isActive: boolean }[];
   activeProfileId: string;
   aggregateMode: boolean;
   selectedProfileIds: string[];
@@ -240,10 +241,13 @@ function MultiSelectSwitcher({
                   )}
                 </div>
                 <span
-                  className="h-3 w-3 rounded-full shrink-0"
+                  className={cn("h-3 w-3 rounded-full shrink-0", !profile.isActive && "opacity-50")}
                   style={{ backgroundColor: profile.color }}
                 />
-                <span className="truncate">{profile.name}</span>
+                <span className={cn("truncate", !profile.isActive && "opacity-50")}>
+                  {profile.name}
+                  {!profile.isActive && <span className="text-xs text-muted-foreground ml-1">(Inactivo)</span>}
+                </span>
               </button>
             );
           })}

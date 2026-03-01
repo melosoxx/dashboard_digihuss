@@ -1,9 +1,19 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Image as ImageIcon, Video, Loader2 } from "lucide-react";
 import { formatCurrency, cn } from "@/lib/utils";
+import { useBusinessProfile } from "@/providers/business-profile-provider";
 import type { MetaActiveAd } from "@/types/meta";
 
 interface ActiveAdsCardProps {
@@ -37,6 +47,32 @@ function formatShortDate(iso: string): string {
 }
 
 export function ActiveAdsCard({ ads, isLoading }: ActiveAdsCardProps) {
+  const [previewAd, setPreviewAd] = useState<MetaActiveAd | null>(null);
+  const [videoSource, setVideoSource] = useState<string | null>(null);
+  const [loadingVideo, setLoadingVideo] = useState(false);
+  const { activeProfileId } = useBusinessProfile();
+
+  useEffect(() => {
+    if (!previewAd) {
+      setVideoSource(null);
+      setLoadingVideo(false);
+      return;
+    }
+
+    if (previewAd.objectType === "VIDEO" && previewAd.videoId) {
+      setLoadingVideo(true);
+      const params = new URLSearchParams({
+        videoId: previewAd.videoId,
+        profileId: activeProfileId,
+      });
+      fetch(`/api/meta/video-source?${params}`)
+        .then((res) => res.json())
+        .then((data) => setVideoSource(data.source || null))
+        .catch(() => setVideoSource(null))
+        .finally(() => setLoadingVideo(false));
+    }
+  }, [previewAd, activeProfileId]);
+
   if (isLoading) {
     return (
       <Card>
@@ -53,6 +89,7 @@ export function ActiveAdsCard({ ads, isLoading }: ActiveAdsCardProps) {
   }
 
   const sorted = [...ads].sort((a, b) => b.ctr - a.ctr);
+  const isVideo = previewAd?.objectType === "VIDEO";
 
   return (
     <Card>
@@ -84,11 +121,26 @@ export function ActiveAdsCard({ ads, isLoading }: ActiveAdsCardProps) {
                 {sorted.map((ad) => {
                   const ctrBadge = getCtrBadge(ad.ctr);
                   return (
-                    <tr key={ad.adId} className="border-b border-border/20 last:border-0">
+                    <tr key={ad.adId} className="border-b border-border/10 last:border-0 hover:bg-white/[0.03] transition-colors duration-150">
                       <td className="py-3 pr-4">
-                        <span className="text-[13px] font-medium truncate block max-w-[200px]" title={ad.adName}>
-                          {ad.adName}
-                        </span>
+                        <div className="flex items-center gap-1.5">
+                          {ad.thumbnailUrl && (
+                            <button
+                              onClick={() => setPreviewAd(ad)}
+                              className="flex-shrink-0 text-muted-foreground/60 hover:text-muted-foreground transition-colors"
+                              title="Ver preview del anuncio"
+                            >
+                              {ad.objectType === "VIDEO" ? (
+                                <Video className="size-3.5" />
+                              ) : (
+                                <ImageIcon className="size-3.5" />
+                              )}
+                            </button>
+                          )}
+                          <span className="text-[13px] font-medium truncate block max-w-[200px]" title={ad.adName}>
+                            {ad.adName}
+                          </span>
+                        </div>
                       </td>
                       <td className="py-3 pr-4">
                         <span className="text-[13px] text-muted-foreground truncate block max-w-[160px]" title={ad.adsetName}>
@@ -133,6 +185,52 @@ export function ActiveAdsCard({ ads, isLoading }: ActiveAdsCardProps) {
             </table>
           </div>
         )}
+
+        <Dialog open={!!previewAd} onOpenChange={(open) => !open && setPreviewAd(null)}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-sm font-medium truncate">
+                {previewAd?.adName}
+              </DialogTitle>
+              <DialogDescription className="text-xs text-muted-foreground">
+                {isVideo ? "Video" : "Imagen"} &middot; {previewAd?.campaignName}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex justify-center">
+              {isVideo && loadingVideo && (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="size-6 animate-spin text-muted-foreground" />
+                </div>
+              )}
+              {isVideo && !loadingVideo && videoSource && (
+                // eslint-disable-next-line jsx-a11y/media-has-caption
+                <video
+                  src={videoSource}
+                  controls
+                  className="rounded-md max-h-[400px] w-auto"
+                  poster={previewAd?.thumbnailUrl}
+                />
+              )}
+              {isVideo && !loadingVideo && !videoSource && previewAd?.thumbnailUrl && (
+                // Fallback: show thumbnail if video source unavailable
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={previewAd.thumbnailUrl}
+                  alt={`Preview de ${previewAd.adName}`}
+                  className="rounded-md max-h-[400px] w-auto object-contain"
+                />
+              )}
+              {!isVideo && previewAd?.thumbnailUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={previewAd.thumbnailUrl}
+                  alt={`Preview de ${previewAd.adName}`}
+                  className="rounded-md max-h-[400px] w-auto object-contain"
+                />
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
       </CardContent>
     </Card>
   );

@@ -19,6 +19,7 @@ const ORDERS_QUERY = `
           displayFinancialStatus
           customer {
             displayName
+            email
           }
           currentTotalPriceSet {
             shopMoney {
@@ -171,6 +172,7 @@ class ShopifyClient {
         name: o.name,
         createdAt: o.createdAt,
         customerName: o.customer?.displayName ?? "Sin nombre",
+        customerEmail: o.customer?.email ?? "",
         total: parseFloat(o.currentTotalPriceSet.shopMoney.amount),
         currency: o.currentTotalPriceSet.shopMoney.currencyCode,
       }))

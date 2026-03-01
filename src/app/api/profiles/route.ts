@@ -15,7 +15,7 @@ export async function GET() {
     const [profilesResult, prefsResult] = await Promise.all([
       supabase
         .from("profiles")
-        .select("id, name, color, created_at, updated_at")
+        .select("*")
         .eq("user_id", user.id)
         .order("created_at", { ascending: true }),
       supabase
@@ -93,7 +93,7 @@ export async function POST(request: Request) {
         name: parsed.data.name,
         color: parsed.data.color ?? "#3b82f6",
       })
-      .select("id, name, color, created_at, updated_at")
+      .select("*")
       .single();
 
     if (error) {

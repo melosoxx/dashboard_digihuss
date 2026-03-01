@@ -22,7 +22,7 @@ CREATE INDEX idx_profiles_user_id ON profiles(user_id);
 CREATE TABLE profile_credentials (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   profile_id      UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  service         TEXT NOT NULL CHECK (service IN ('shopify', 'meta', 'clarity')),
+  service         TEXT NOT NULL CHECK (service IN ('shopify', 'meta', 'clarity', 'mercadopago')),
   encrypted_data  TEXT NOT NULL,
   iv              TEXT NOT NULL,
   created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -281,3 +281,14 @@ COMMENT ON COLUMN profile_credentials.last_validated_at IS
   'Timestamp of the most recent validation test';
 COMMENT ON COLUMN profile_credentials.last_error_message IS
   'Error message from the most recent failed validation (null if valid)';
+
+-- ============================================================
+-- MIGRATION: Add MercadoPago keywords for transaction filtering
+-- Run this migration in Supabase SQL Editor
+-- ============================================================
+
+ALTER TABLE profiles
+  ADD COLUMN mp_keywords TEXT[] NOT NULL DEFAULT '{}';
+
+COMMENT ON COLUMN profiles.mp_keywords IS
+  'Keywords matched case-insensitively against MercadoPago transaction descriptions to assign transactions to this profile';

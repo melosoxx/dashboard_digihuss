@@ -3,6 +3,7 @@ import { type NextRequest } from "next/server";
 import { shopifyClient, createShopifyClient } from "./shopify";
 import { metaClient, createMetaClient } from "./meta";
 import { clarityClient, createClarityClient } from "./clarity";
+import { createMercadoPagoClient } from "./mercadopago";
 import { createAdminClient } from "./supabase/admin";
 import { decrypt } from "./encryption";
 
@@ -12,7 +13,7 @@ import { decrypt } from "./encryption";
 
 async function getDecryptedCredentials(
   profileId: string,
-  service: "shopify" | "meta" | "clarity"
+  service: "shopify" | "meta" | "clarity" | "mercadopago"
 ): Promise<Record<string, string> | null> {
   const supabase = createAdminClient();
   const { data, error } = await supabase
@@ -76,6 +77,29 @@ export async function getClarityProjectId(profileId: string): Promise<string> {
     throw new Error("Clarity project ID not configured for this profile");
   }
   return creds.projectId;
+}
+
+export async function getMpKeywords(profileId: string): Promise<string[]> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("mp_keywords")
+    .eq("id", profileId)
+    .single();
+
+  if (error || !data) return [];
+  return data.mp_keywords ?? [];
+}
+
+export async function resolveMercadoPagoClientByProfile(profileId: string) {
+  const creds = await getDecryptedCredentials(profileId, "mercadopago");
+  if (!creds || !creds.accessToken) {
+    throw new Error("MercadoPago credentials not configured for this profile");
+  }
+
+  return createMercadoPagoClient({
+    accessToken: creds.accessToken,
+  });
 }
 
 // ----------------------------------------------------------------

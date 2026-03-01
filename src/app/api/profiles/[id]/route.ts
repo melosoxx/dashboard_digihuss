@@ -5,6 +5,8 @@ import { requireAuth } from "@/lib/supabase/auth-guard";
 const updateSchema = z.object({
   name: z.string().min(1).max(100).optional(),
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+  is_active: z.boolean().optional(),
+  mp_keywords: z.array(z.string().min(1).max(200)).max(20).optional(),
 });
 
 // PATCH /api/profiles/[id] - Update profile
@@ -26,7 +28,7 @@ export async function PATCH(
       .from("profiles")
       .update(parsed.data)
       .eq("id", id)
-      .select("id, name, color, created_at, updated_at")
+      .select("*")
       .single();
 
     if (error) {

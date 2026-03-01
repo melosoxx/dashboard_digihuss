@@ -16,7 +16,7 @@ export interface ShopifyOrder {
   name: string;
   createdAt: string;
   displayFinancialStatus: string;
-  customer: { displayName: string } | null;
+  customer: { displayName: string; email: string | null } | null;
   currentTotalPriceSet: ShopifyMoneySet;
   totalDiscountsSet: ShopifyMoneySet;
   subtotalPriceSet: ShopifyMoneySet;
@@ -29,6 +29,7 @@ export interface OrderListItem {
   name: string;
   createdAt: string;
   customerName: string;
+  customerEmail?: string;
   total: number;
   currency: string;
   profileName?: string;

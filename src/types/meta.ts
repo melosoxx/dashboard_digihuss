@@ -76,6 +76,9 @@ export interface MetaActiveAd {
   ctr: number;
   conversions: number;
   createdAt: string;
+  thumbnailUrl?: string;
+  objectType?: string;
+  videoId?: string;
 }
 
 export interface MetaAdsetInsight {

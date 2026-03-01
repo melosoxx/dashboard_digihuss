@@ -2,8 +2,10 @@ import {
   LayoutGrid,
   ShoppingBag,
   Megaphone,
+  Wallet,
   MousePointerClick,
   Settings,
+  Wrench,
 } from "lucide-react";
 
 export const NAV_ITEMS: ReadonlyArray<{
@@ -15,8 +17,10 @@ export const NAV_ITEMS: ReadonlyArray<{
   { label: "Panel General", href: "/panel", icon: LayoutGrid },
   { label: "Shopify", href: "/", icon: ShoppingBag },
   { label: "Meta Ads", href: "/ads", icon: Megaphone },
+  { label: "Finanzas", href: "/finanzas", icon: Wallet },
   { label: "Clarity", href: "/ux-insights", icon: MousePointerClick },
   { label: "Configuracion", href: "/configuracion", icon: Settings },
+  { label: "Admin Tools", href: "/admin-tools", icon: Wrench },
 ];
 
 export const QUERY_STALE_TIME = 5 * 60 * 1000; // 5 minutes

@@ -19,7 +19,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Save, Trash2, Loader2, CheckCircle2, Shield, AlertCircle, Clock } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Save, Trash2, Loader2, CheckCircle2, Shield, AlertCircle, Clock, X, Plus } from "lucide-react";
 import type { ServiceCredentials, ServiceName, ServiceValidation } from "@/types/business";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
@@ -157,6 +158,10 @@ export function ProfileEditor() {
   const [saving, setSaving] = useState(false);
   const [savingService, setSavingService] = useState<ServiceName | null>(null);
   const [deletingService, setDeletingService] = useState<ServiceName | null>(null);
+  const [isActive, setIsActive] = useState(true);
+  const [mpKeywords, setMpKeywords] = useState<string[]>([]);
+  const [newKeyword, setNewKeyword] = useState("");
+  const [savingKeywords, setSavingKeywords] = useState(false);
 
   // Sync form state & load non-secret fields when the active profile changes
   useEffect(() => {
@@ -164,11 +169,14 @@ export function ProfileEditor() {
 
     setName(activeProfile.name);
     setColor(activeProfile.color);
+    setIsActive(activeProfile.isActive);
+    setMpKeywords(activeProfile.mpKeywords ?? []);
+    setNewKeyword("");
     setCredentials({});
 
     // Load non-secret credential fields from the server
     let cancelled = false;
-    const services: ServiceName[] = ["shopify", "meta", "clarity"];
+    const services: ServiceName[] = ["shopify", "meta", "clarity", "mercadopago"];
     services.forEach(async (service) => {
       try {
         const res = await fetch(
@@ -212,7 +220,7 @@ export function ProfileEditor() {
     if (!activeProfileId) return;
     setSaving(true);
     try {
-      await updateProfile(activeProfileId, { name, color });
+      await updateProfile(activeProfileId, { name, color, is_active: isActive });
     } finally {
       setSaving(false);
     }
@@ -294,6 +302,27 @@ export function ProfileEditor() {
     [name, activeProfileId, updateProfile]
   );
 
+  const handleSaveKeywords = async () => {
+    if (!activeProfileId) return;
+    setSavingKeywords(true);
+    try {
+      await updateProfile(activeProfileId, { mp_keywords: mpKeywords });
+    } finally {
+      setSavingKeywords(false);
+    }
+  };
+
+  const handleAddKeyword = () => {
+    const trimmed = newKeyword.trim();
+    if (!trimmed) return;
+    if (mpKeywords.some((k) => k.toLowerCase() === trimmed.toLowerCase())) {
+      setNewKeyword("");
+      return;
+    }
+    setMpKeywords((prev) => [...prev, trimmed]);
+    setNewKeyword("");
+  };
+
   const handleDelete = async () => {
     if (!activeProfileId) return;
     await deleteProfile(activeProfileId);
@@ -323,6 +352,7 @@ export function ProfileEditor() {
     shopify: "Shopify",
     meta: "Meta Ads",
     clarity: "Clarity",
+    mercadopago: "MercadoPago",
   };
 
   return (
@@ -372,6 +402,9 @@ export function ProfileEditor() {
             <TabsTrigger value="clarity" className="flex-1">
               Clarity
             </TabsTrigger>
+            <TabsTrigger value="mercadopago" className="flex-1">
+              MercadoPago
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="general" className="space-y-6 pt-4">
@@ -400,6 +433,19 @@ export function ProfileEditor() {
                   />
                 ))}
               </div>
+            </div>
+            <div className="flex items-center justify-between rounded-lg border border-border/50 p-3">
+              <div className="space-y-0.5">
+                <Label htmlFor="is-active-switch">Negocio activo</Label>
+                <p className="text-xs text-muted-foreground">
+                  Los negocios inactivos no reciben gastos nuevos
+                </p>
+              </div>
+              <Switch
+                id="is-active-switch"
+                checked={isActive}
+                onCheckedChange={setIsActive}
+              />
             </div>
             <Button onClick={handleSaveGeneral} disabled={saving}>
               {saving ? (
@@ -650,6 +696,151 @@ export function ProfileEditor() {
                   </DialogContent>
                 </Dialog>
               )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="mercadopago" className="space-y-6 pt-4">
+            <ServiceStatusBadge
+              configured={isConfigured("mercadopago")}
+              validation={activeProfile.validationStatus?.mercadopago}
+            />
+            {isConfigured("mercadopago") && (
+              <p className="text-xs text-muted-foreground">
+                Las credenciales estan almacenadas de forma segura. Completa los campos para actualizarlas.
+              </p>
+            )}
+            <CredentialField
+              label="Access Token"
+              value={credentials.mercadopago?.accessToken ?? ""}
+              onChange={(v) => updateCreds("mercadopago", "accessToken", v)}
+              placeholder="APP_USR-..."
+              isSecret
+              helpText="Token de acceso de MercadoPago. Obtenelo en mercadopago.com.ar/developers/panel/app"
+            />
+            <div className="flex items-center gap-3">
+              <Button
+                onClick={() => handleSaveServiceCredentials("mercadopago")}
+                disabled={savingService === "mercadopago"}
+                size="sm"
+              >
+                {savingService === "mercadopago" ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Save className="mr-2 h-4 w-4" />
+                )}
+                Guardar credenciales
+              </Button>
+              <ConnectionTester profileId={activeProfileId} service="mercadopago" />
+              {isConfigured("mercadopago") && (
+                <Dialog
+                  open={deleteServiceOpen === "mercadopago"}
+                  onOpenChange={(open) => setDeleteServiceOpen(open ? "mercadopago" : null)}
+                >
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm" className="text-destructive hover:text-destructive">
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Borrar
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Borrar credenciales de {SERVICE_LABELS.mercadopago}</DialogTitle>
+                      <DialogDescription>
+                        Se eliminaran las credenciales de {SERVICE_LABELS.mercadopago} de este perfil. Esta accion no se puede deshacer.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setDeleteServiceOpen(null)}>
+                        Cancelar
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        onClick={() => handleDeleteServiceCredentials("mercadopago")}
+                        disabled={deletingService === "mercadopago"}
+                      >
+                        {deletingService === "mercadopago" && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Borrar
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              )}
+            </div>
+
+            {/* Keywords section for transaction filtering */}
+            <div className="space-y-3 pt-2 border-t border-border/30">
+              <div className="space-y-1">
+                <Label>Palabras clave de transacciones</Label>
+                <p className="text-xs text-muted-foreground">
+                  Filtra las transacciones de MercadoPago por palabras clave en la descripcion.
+                  Util cuando varias tiendas comparten la misma cuenta de MP.
+                </p>
+              </div>
+
+              {mpKeywords.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {mpKeywords.map((kw, idx) => (
+                    <span
+                      key={idx}
+                      className="inline-flex items-center gap-1 rounded-full bg-primary/10 text-primary px-2.5 py-1 text-xs font-medium"
+                    >
+                      {kw}
+                      <button
+                        type="button"
+                        onClick={() => setMpKeywords((prev) => prev.filter((_, i) => i !== idx))}
+                        className="ml-0.5 hover:text-destructive transition-colors"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              <div className="flex gap-2">
+                <Input
+                  value={newKeyword}
+                  onChange={(e) => setNewKeyword(e.target.value)}
+                  placeholder='Ej: "RobertoPugliese" o "World Wide Hustle"'
+                  className="text-sm"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleAddKeyword();
+                    }
+                  }}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={!newKeyword.trim()}
+                  onClick={handleAddKeyword}
+                >
+                  <Plus className="mr-1 h-3 w-3" />
+                  Agregar
+                </Button>
+              </div>
+
+              {mpKeywords.length === 0 && (
+                <p className="text-xs text-amber-600 dark:text-amber-400">
+                  Sin palabras clave: se mostraran todas las transacciones de la cuenta.
+                </p>
+              )}
+
+              <Button
+                onClick={handleSaveKeywords}
+                disabled={savingKeywords}
+                size="sm"
+                variant="outline"
+              >
+                {savingKeywords ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Save className="mr-2 h-4 w-4" />
+                )}
+                Guardar palabras clave
+              </Button>
             </div>
           </TabsContent>
         </Tabs>

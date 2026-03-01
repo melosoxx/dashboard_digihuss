@@ -4,7 +4,7 @@ import { requireAuth } from "@/lib/supabase/auth-guard";
 import { encrypt, decrypt } from "@/lib/encryption";
 
 const credentialSchema = z.object({
-  service: z.enum(["shopify", "meta", "clarity"]),
+  service: z.enum(["shopify", "meta", "clarity", "mercadopago"]),
   credentials: z.record(z.string(), z.string()),
 });
 
@@ -13,6 +13,7 @@ const SECRET_FIELDS: Record<string, string[]> = {
   shopify: ["adminAccessToken"],
   meta: ["accessToken"],
   clarity: ["apiToken"],
+  mercadopago: ["accessToken"],
 };
 
 // GET /api/profiles/[id]/credentials?service=shopify - Get non-secret fields
@@ -26,7 +27,7 @@ export async function GET(
     const url = new URL(request.url);
     const service = url.searchParams.get("service");
 
-    if (!service || !["shopify", "meta", "clarity"].includes(service)) {
+    if (!service || !["shopify", "meta", "clarity", "mercadopago"].includes(service)) {
       return NextResponse.json({ error: "Invalid service" }, { status: 400 });
     }
 
@@ -162,7 +163,7 @@ export async function DELETE(
     const url = new URL(request.url);
     const service = url.searchParams.get("service");
 
-    if (!service || !["shopify", "meta", "clarity"].includes(service)) {
+    if (!service || !["shopify", "meta", "clarity", "mercadopago"].includes(service)) {
       return NextResponse.json({ error: "Invalid service" }, { status: 400 });
     }
 

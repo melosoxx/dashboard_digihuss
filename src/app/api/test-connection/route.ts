@@ -6,6 +6,7 @@ import {
   resolveShopifyClientByProfile,
   resolveMetaClientByProfile,
   resolveClarityClientByProfile,
+  resolveMercadoPagoClientByProfile,
 } from "@/lib/credentials";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -18,6 +19,7 @@ export async function POST(request: NextRequest) {
     shopify: false,
     meta: false,
     clarity: false,
+    mercadopago: false,
   };
   let metaAccountInfo: { accountName?: string; businessName?: string; accountId?: string } | null = null;
   let errorMessage: string | null = null;
@@ -65,6 +67,14 @@ export async function POST(request: NextRequest) {
         validationStatus = isConnected ? "valid" : "invalid";
         if (!isConnected) {
           errorMsg = "Failed to connect to Microsoft Clarity API";
+        }
+      } else if (service === "mercadopago") {
+        const client = await resolveMercadoPagoClientByProfile(profileId);
+        const mpResult = await client.checkConnection();
+        results.mercadopago = mpResult.connected;
+        validationStatus = mpResult.connected ? "valid" : "invalid";
+        if (!mpResult.connected) {
+          errorMsg = "Failed to connect to MercadoPago API";
         }
       }
     } catch (err) {

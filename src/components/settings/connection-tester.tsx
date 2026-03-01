@@ -13,7 +13,7 @@ export interface MetaAccountInfo {
 
 interface ConnectionTesterProps {
   profileId: string | null;
-  service: "shopify" | "meta" | "clarity";
+  service: "shopify" | "meta" | "clarity" | "mercadopago";
   onMetaAccountInfo?: (info: MetaAccountInfo) => void;
 }
 

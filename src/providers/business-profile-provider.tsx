@@ -20,6 +20,8 @@ interface ProfilesApiResponse {
     id: string;
     name: string;
     color: string;
+    is_active?: boolean;
+    mp_keywords: string[];
     created_at: string;
     updated_at: string;
     configuredServices: string[];
@@ -40,6 +42,7 @@ interface ProfilesApiResponse {
 
 interface BusinessProfileContextValue {
   profiles: BusinessProfile[];
+  activeProfiles: BusinessProfile[];
   activeProfile: BusinessProfile | null;
   activeProfileId: string;
   aggregateMode: boolean;
@@ -50,7 +53,7 @@ interface BusinessProfileContextValue {
   setAggregateMode: (enabled: boolean) => void;
   setSelectedProfileIds: (ids: string[]) => void;
   addProfile: (data: { name: string; color?: string }) => Promise<BusinessProfile>;
-  updateProfile: (id: string, updates: { name?: string; color?: string }) => Promise<void>;
+  updateProfile: (id: string, updates: { name?: string; color?: string; is_active?: boolean; mp_keywords?: string[] }) => Promise<void>;
   deleteProfile: (id: string) => Promise<void>;
   saveCredentials: (profileId: string, service: ServiceName, credentials: Record<string, string>) => Promise<void>;
   deleteCredentials: (profileId: string, service: ServiceName) => Promise<void>;
@@ -65,6 +68,8 @@ function mapProfile(raw: ProfilesApiResponse["profiles"][0]): BusinessProfile {
     id: raw.id,
     name: raw.name,
     color: raw.color,
+    isActive: raw.is_active ?? true,
+    mpKeywords: raw.mp_keywords ?? [],
     configuredServices: raw.configuredServices as ServiceName[],
     validationStatus: raw.validationStatus,
     createdAt: raw.created_at,
@@ -88,6 +93,7 @@ export function BusinessProfileProvider({ children }: { children: ReactNode }) {
   });
 
   const profiles = (data?.profiles ?? []).map(mapProfile);
+  const activeBusinessProfiles = profiles.filter((p) => p.isActive);
   const activeProfileId = data?.preferences.active_profile_id ?? profiles[0]?.id ?? "";
   const aggregateMode = data?.preferences.aggregate_mode ?? false;
   const selectedProfileIds = data?.preferences.selected_profile_ids ?? [];
@@ -177,6 +183,8 @@ export function BusinessProfileProvider({ children }: { children: ReactNode }) {
         id: raw.id,
         name: raw.name,
         color: raw.color,
+        isActive: raw.is_active ?? true,
+        mpKeywords: raw.mp_keywords ?? [],
         configuredServices: [],
         createdAt: raw.created_at,
         updatedAt: raw.updated_at,
@@ -186,7 +194,7 @@ export function BusinessProfileProvider({ children }: { children: ReactNode }) {
   );
 
   const updateProfileMutation = useMutation({
-    mutationFn: async ({ id, updates }: { id: string; updates: { name?: string; color?: string } }) => {
+    mutationFn: async ({ id, updates }: { id: string; updates: { name?: string; color?: string; is_active?: boolean; mp_keywords?: string[] } }) => {
       const res = await fetch(`/api/profiles/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -194,13 +202,17 @@ export function BusinessProfileProvider({ children }: { children: ReactNode }) {
       });
       if (!res.ok) throw new Error("Failed to update profile");
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["profiles"] });
+      if (variables.updates.mp_keywords !== undefined) {
+        queryClient.invalidateQueries({ queryKey: ["mercadopago"] });
+        queryClient.invalidateQueries({ queryKey: ["finance"] });
+      }
     },
   });
 
   const updateProfile = useCallback(
-    async (id: string, updates: { name?: string; color?: string }) => {
+    async (id: string, updates: { name?: string; color?: string; is_active?: boolean; mp_keywords?: string[] }) => {
       await updateProfileMutation.mutateAsync({ id, updates });
     },
     [updateProfileMutation]
@@ -247,6 +259,7 @@ export function BusinessProfileProvider({ children }: { children: ReactNode }) {
       queryClient.invalidateQueries({ queryKey: ["shopify"] });
       queryClient.invalidateQueries({ queryKey: ["meta"] });
       queryClient.invalidateQueries({ queryKey: ["clarity"] });
+      queryClient.invalidateQueries({ queryKey: ["mercadopago"] });
     },
   });
 
@@ -269,6 +282,7 @@ export function BusinessProfileProvider({ children }: { children: ReactNode }) {
       queryClient.invalidateQueries({ queryKey: ["shopify"] });
       queryClient.invalidateQueries({ queryKey: ["meta"] });
       queryClient.invalidateQueries({ queryKey: ["clarity"] });
+      queryClient.invalidateQueries({ queryKey: ["mercadopago"] });
     },
   });
 
@@ -287,6 +301,7 @@ export function BusinessProfileProvider({ children }: { children: ReactNode }) {
     <BusinessProfileContext.Provider
       value={{
         profiles,
+        activeProfiles: activeBusinessProfiles,
         activeProfile,
         activeProfileId,
         aggregateMode,

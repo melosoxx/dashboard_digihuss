@@ -2,6 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatCurrency } from "@/lib/utils";
 import type { OrderListItem } from "@/types/shopify";
 
@@ -65,7 +66,7 @@ export function RecentOrdersCard({ orders, isLoading, aggregateMode }: RecentOrd
               </thead>
               <tbody>
                 {orders.map((order, idx) => (
-                  <tr key={`${order.name}-${idx}`} className="border-b border-border/20 last:border-0">
+                  <tr key={`${order.name}-${idx}`} className="border-b border-border/10 last:border-0 hover:bg-white/[0.03] transition-colors duration-150">
                     {aggregateMode && (
                       <td className="py-3 pr-4">
                         <span className="flex items-center gap-1.5">
@@ -88,9 +89,24 @@ export function RecentOrdersCard({ orders, isLoading, aggregateMode }: RecentOrd
                       </span>
                     </td>
                     <td className="py-3 pr-4">
-                      <span className="text-[13px] text-muted-foreground truncate block max-w-[200px]" title={order.customerName}>
-                        {order.customerName}
-                      </span>
+                      {order.customerEmail ? (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="text-[13px] text-muted-foreground truncate block max-w-[200px] cursor-default">
+                                {order.customerName}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent side="top">
+                              {order.customerEmail}
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      ) : (
+                        <span className="text-[13px] text-muted-foreground truncate block max-w-[200px]" title={order.customerName}>
+                          {order.customerName}
+                        </span>
+                      )}
                     </td>
                     <td className="py-3 text-right text-[13px] font-medium">
                       {formatCurrency(order.total, order.currency)}

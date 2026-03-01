@@ -198,11 +198,11 @@ class MetaAdsClient {
 
   async getActiveAds(startDate: string, endDate: string): Promise<MetaActiveAd[]> {
     // Try to get active ads with creation date first
-    let adsMap = new Map<string, { id: string; name: string; created_time: string; campaign?: { name: string }; adset?: { name: string } }>();
+    let adsMap = new Map<string, { id: string; name: string; created_time: string; campaign?: { name: string }; adset?: { name: string }; creative?: { thumbnail_url?: string; object_type?: string; video_id?: string } }>();
 
     try {
       const adsParams = new URLSearchParams({
-        fields: "id,name,created_time,campaign{name},adset{name}",
+        fields: "id,name,created_time,campaign{name},adset{name},creative{thumbnail_url,object_type,video_id}",
         filtering: JSON.stringify([
           { field: "effective_status", operator: "IN", value: ["ACTIVE"] },
         ]),
@@ -214,7 +214,7 @@ class MetaAdsClient {
       const adsResponse = await fetch(adsUrl);
 
       if (adsResponse.ok) {
-        const adsJson: { data: Array<{ id: string; name: string; created_time: string; campaign?: { name: string }; adset?: { name: string } }> } =
+        const adsJson: { data: Array<{ id: string; name: string; created_time: string; campaign?: { name: string }; adset?: { name: string }; creative?: { thumbnail_url?: string; object_type?: string; video_id?: string } }> } =
           await adsResponse.json();
         adsMap = new Map(
           (adsJson.data || []).map((ad) => [ad.id, ad])
@@ -281,6 +281,9 @@ class MetaAdsClient {
         ctr: linkCtr,
         conversions: this.extractConversions(row),
         createdAt: adMeta?.created_time ?? new Date().toISOString(),
+        thumbnailUrl: adMeta?.creative?.thumbnail_url,
+        objectType: adMeta?.creative?.object_type,
+        videoId: adMeta?.creative?.video_id,
       });
     }
 
@@ -299,12 +302,23 @@ class MetaAdsClient {
             ctr: 0,
             conversions: 0,
             createdAt: ad.created_time,
+            thumbnailUrl: ad.creative?.thumbnail_url,
+            objectType: ad.creative?.object_type,
+            videoId: ad.creative?.video_id,
           });
         }
       }
     }
 
     return result;
+  }
+
+  async getVideoSource(videoId: string): Promise<string | null> {
+    const url = `${this.baseUrl}/${videoId}?fields=source&access_token=${this.accessToken}`;
+    const response = await fetch(url);
+    if (!response.ok) return null;
+    const data = await response.json();
+    return data.source || null;
   }
 
   async checkConnection(): Promise<{
