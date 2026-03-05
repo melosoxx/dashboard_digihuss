@@ -41,3 +41,18 @@ export interface ClarityVersion {
   fetchedAt: string;
   numOfDays: 1 | 2 | 3;
 }
+
+/** A single daily clarity snapshot as stored in the database */
+export interface ClarityDailySnapshot {
+  date: string;
+  data: ClarityInsights;
+  fetchedAt: string;
+}
+
+/** Response from /api/clarity/daily in aggregate mode */
+export interface ClarityDailyResponse {
+  data: ClarityInsights | null;
+  daysAvailable: number;
+  dateRange: { start: string; end: string } | null;
+  lastFetchedAt: string | null;
+}

@@ -130,4 +130,11 @@ export function createClarityClient(creds: ClarityClientCreds): ClarityClient {
   return new ClarityClient(creds);
 }
 
-export const clarityClient = new ClarityClient();
+let _clarityClient: ClarityClient | null = null;
+
+export function getClarityClient(): ClarityClient {
+  if (!_clarityClient) {
+    _clarityClient = new ClarityClient();
+  }
+  return _clarityClient;
+}

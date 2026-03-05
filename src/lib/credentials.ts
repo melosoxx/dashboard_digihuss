@@ -1,8 +1,8 @@
 import "server-only";
 import { type NextRequest } from "next/server";
-import { shopifyClient, createShopifyClient } from "./shopify";
-import { metaClient, createMetaClient } from "./meta";
-import { clarityClient, createClarityClient } from "./clarity";
+import { getShopifyClient, createShopifyClient } from "./shopify";
+import { getMetaClient, createMetaClient } from "./meta";
+import { getClarityClient, createClarityClient } from "./clarity";
 import { createMercadoPagoClient } from "./mercadopago";
 import { createAdminClient } from "./supabase/admin";
 import { decrypt } from "./encryption";
@@ -114,7 +114,7 @@ export function resolveShopifyClient(request: NextRequest) {
   if (domain && token) {
     return createShopifyClient({ domain, version, token });
   }
-  return shopifyClient;
+  return getShopifyClient();
 }
 
 export function resolveMetaClient(request: NextRequest) {
@@ -125,7 +125,7 @@ export function resolveMetaClient(request: NextRequest) {
   if (accountId && token) {
     return createMetaClient({ accountId, token, version });
   }
-  return metaClient;
+  return getMetaClient();
 }
 
 export function resolveClarityClient(request: NextRequest) {
@@ -134,5 +134,5 @@ export function resolveClarityClient(request: NextRequest) {
   if (token) {
     return createClarityClient({ token });
   }
-  return clarityClient;
+  return getClarityClient();
 }

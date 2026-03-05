@@ -317,4 +317,11 @@ export function createShopifyClient(creds: ShopifyClientCreds): ShopifyClient {
   return new ShopifyClient(creds);
 }
 
-export const shopifyClient = new ShopifyClient();
+let _shopifyClient: ShopifyClient | null = null;
+
+export function getShopifyClient(): ShopifyClient {
+  if (!_shopifyClient) {
+    _shopifyClient = new ShopifyClient();
+  }
+  return _shopifyClient;
+}

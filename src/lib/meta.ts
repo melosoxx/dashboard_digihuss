@@ -360,4 +360,11 @@ export function createMetaClient(creds: MetaClientCreds): MetaAdsClient {
   return new MetaAdsClient(creds);
 }
 
-export const metaClient = new MetaAdsClient();
+let _metaClient: MetaAdsClient | null = null;
+
+export function getMetaClient(): MetaAdsClient {
+  if (!_metaClient) {
+    _metaClient = new MetaAdsClient();
+  }
+  return _metaClient;
+}

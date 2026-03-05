@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
-import { shopifyClient } from "@/lib/shopify";
-import { metaClient } from "@/lib/meta";
+import { getShopifyClient } from "@/lib/shopify";
+import { getMetaClient } from "@/lib/meta";
 
 export async function GET() {
   const [shopifyOk, metaOk] = await Promise.all([
-    shopifyClient.checkConnection(),
-    metaClient.checkConnection(),
+    getShopifyClient().checkConnection(),
+    getMetaClient().checkConnection(),
   ]);
 
   return NextResponse.json({

@@ -292,3 +292,40 @@ ALTER TABLE profiles
 
 COMMENT ON COLUMN profiles.mp_keywords IS
   'Keywords matched case-insensitively against MercadoPago transaction descriptions to assign transactions to this profile';
+
+-- ============================================================
+-- MIGRATION: Daily Clarity snapshots & cron log
+-- ============================================================
+
+-- Daily accumulated Clarity data (one snapshot per profile per calendar date)
+CREATE TABLE clarity_daily (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  profile_id  UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  date        DATE NOT NULL,
+  data        JSONB NOT NULL,
+  fetched_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE(profile_id, date)
+);
+
+CREATE INDEX idx_clarity_daily_profile_date ON clarity_daily(profile_id, date DESC);
+
+ALTER TABLE clarity_daily ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view own clarity daily"
+  ON clarity_daily FOR SELECT
+  USING (profile_id IN (SELECT id FROM profiles WHERE user_id = auth.uid()));
+
+CREATE POLICY "Users can insert own clarity daily"
+  ON clarity_daily FOR INSERT
+  WITH CHECK (profile_id IN (SELECT id FROM profiles WHERE user_id = auth.uid()));
+
+-- Cron execution log (only accessible via service role key)
+CREATE TABLE clarity_cron_log (
+  id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  run_at              TIMESTAMPTZ NOT NULL DEFAULT now(),
+  profiles_processed  INT NOT NULL DEFAULT 0,
+  profiles_succeeded  INT NOT NULL DEFAULT 0,
+  profiles_failed     INT NOT NULL DEFAULT 0,
+  errors              JSONB,
+  duration_ms         INT
+);

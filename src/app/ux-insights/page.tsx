@@ -21,7 +21,6 @@ import { ErrorDisplay } from "@/components/shared/error-display";
 import { ClarityHeatmapLink } from "@/components/clarity/clarity-heatmap-link";
 import { ClarityFetchControl } from "@/components/clarity/clarity-fetch-control";
 import { useClarity } from "@/hooks/use-clarity";
-import { useDateRange } from "@/providers/date-range-provider";
 import { formatNumber } from "@/lib/utils";
 
 function formatSeconds(seconds: number): string {
@@ -93,20 +92,16 @@ function BreakdownCard({
 }
 
 export default function UXInsightsPage() {
-  const { dateRange } = useDateRange();
   const {
     data,
     isLoading,
     isFetching,
     error,
-    fetchClarity,
-    loadCache,
-    isLoadingCache,
-    fetchedAt,
+    fetchToday,
+    isManualFetching,
+    lastFetchedAt,
+    daysAvailable,
     rateLimited,
-    versions,
-    selectedVersionId,
-    selectVersion,
   } = useClarity();
 
   const totalFrustration =
@@ -119,7 +114,7 @@ export default function UXInsightsPage() {
     <div>
       <PageHeader
         title="Insights de UX"
-        description="Analíticas de comportamiento de usuario con Microsoft Clarity (máximo 3 días)"
+        description="Datos historicos de comportamiento de usuario con Microsoft Clarity"
       />
 
       {error && (
@@ -130,17 +125,12 @@ export default function UXInsightsPage() {
       <div className="grid gap-4 grid-cols-1 md:grid-cols-2 mb-6">
         <ClarityFetchControl
           isFetching={isFetching}
-          isLoadingCache={isLoadingCache}
+          isManualFetching={isManualFetching}
           hasData={!!data}
-          fetchedAt={fetchedAt}
-          startDate={dateRange.startDate}
-          endDate={dateRange.endDate}
+          lastFetchedAt={lastFetchedAt}
+          daysAvailable={daysAvailable}
           rateLimited={rateLimited}
-          onLoadCache={loadCache}
-          onFetch={fetchClarity}
-          versions={versions}
-          selectedVersionId={selectedVersionId}
-          onSelectVersion={selectVersion}
+          onFetchToday={fetchToday}
         />
         <ClarityHeatmapLink isLoading={isLoading} />
       </div>

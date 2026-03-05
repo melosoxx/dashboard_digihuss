@@ -8,29 +8,16 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { RefreshCw, Info, Database, CalendarDays, History, AlertTriangle } from "lucide-react";
-import type { ClarityVersion } from "@/types/clarity";
+import { RefreshCw, Info, Database, AlertTriangle } from "lucide-react";
 
 interface ClarityFetchControlProps {
   isFetching: boolean;
-  isLoadingCache: boolean;
+  isManualFetching: boolean;
   hasData: boolean;
-  fetchedAt: string | null;
-  startDate: string;
-  endDate: string;
+  lastFetchedAt: string | null;
+  daysAvailable: number;
   rateLimited: boolean;
-  onLoadCache: () => void;
-  onFetch: () => void;
-  versions: ClarityVersion[];
-  selectedVersionId: string | null;
-  onSelectVersion: (versionId: string) => void;
+  onFetchToday: () => void;
 }
 
 function formatLastFetch(iso: string): string {
@@ -44,27 +31,16 @@ function formatLastFetch(iso: string): string {
   });
 }
 
-const PERIOD_LABELS: Record<number, string> = {
-  1: "Hoy",
-  2: "2 dias",
-  3: "3 dias",
-};
-
 export function ClarityFetchControl({
   isFetching,
-  isLoadingCache,
+  isManualFetching,
   hasData,
-  fetchedAt,
-  startDate,
-  endDate,
+  lastFetchedAt,
+  daysAvailable,
   rateLimited,
-  onLoadCache,
-  onFetch,
-  versions,
-  selectedVersionId,
-  onSelectVersion,
+  onFetchToday,
 }: ClarityFetchControlProps) {
-  const isWorking = isFetching || isLoadingCache;
+  const isWorking = isFetching || isManualFetching;
 
   return (
     <TooltipProvider>
@@ -82,11 +58,11 @@ export function ClarityFetchControl({
                 </button>
               </TooltipTrigger>
               <TooltipContent side="left" className="max-w-[240px] p-3">
-                <p className="font-medium mb-1">Como funciona Clarity</p>
+                <p className="font-medium mb-1">Recoleccion automatica</p>
                 <p className="text-[11px] leading-relaxed opacity-90">
-                  Microsoft Clarity tiene un limite de 10 consultas diarias a su API.
-                  Cada consulta se guarda como una version que podes revisar despues.
-                  El contador se reinicia a medianoche UTC.
+                  Los datos de Clarity se recolectan automaticamente todos los dias
+                  a las 23:59. Podes usar el boton para actualizar los datos de hoy
+                  manualmente si es necesario.
                 </p>
               </TooltipContent>
             </Tooltip>
@@ -102,122 +78,56 @@ export function ClarityFetchControl({
             </div>
           )}
 
-          {/* ── SECTION 1: Fetch new data ── */}
-          <div className="space-y-2">
-            <div className="flex items-center gap-1.5">
-              <CalendarDays className="h-3 w-3 text-blue-400 shrink-0" />
-              <span className="text-[11px] font-medium text-foreground/80">
-                {startDate === endDate
-                  ? new Date(startDate + "T00:00:00").toLocaleDateString("es-AR", { day: "2-digit", month: "short", year: "numeric" })
-                  : `${new Date(startDate + "T00:00:00").toLocaleDateString("es-AR", { day: "2-digit", month: "short" })} - ${new Date(endDate + "T00:00:00").toLocaleDateString("es-AR", { day: "2-digit", month: "short", year: "numeric" })}`}
-              </span>
-            </div>
-
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant={hasData ? "outline" : "default"}
-                  size="sm"
-                  className="w-full"
-                  disabled={isWorking || rateLimited}
-                  onClick={onFetch}
-                >
-                  {isFetching ? (
-                    <>
-                      <RefreshCw className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                      Consultando...
-                    </>
-                  ) : (
-                    <>
-                      <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
-                      Actualizar datos
-                    </>
-                  )}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="text-[11px]">
-                Consultar API de Clarity con el periodo seleccionado (consume 1 call)
-              </TooltipContent>
-            </Tooltip>
-
-            {fetchedAt && (
-              <p className="text-[10px] text-muted-foreground text-center">
-                Ultima consulta: {formatLastFetch(fetchedAt)}
-              </p>
-            )}
-          </div>
-
-          {/* Divider */}
-          <div className="border-t border-border/50" />
-
-          {/* ── SECTION 2: Saved versions ── */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5">
-                <History className="h-3 w-3 text-muted-foreground shrink-0" />
-                <span className="text-[11px] font-medium text-foreground/80">
-                  Versiones guardadas
+          {/* Data availability indicator */}
+          <div className="flex items-center gap-2 rounded-md bg-muted/50 px-3 py-2">
+            <Database className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+            <div className="text-[11px]">
+              {daysAvailable > 0 ? (
+                <span className="text-foreground/80">
+                  <span className="font-medium">{daysAvailable}</span>{" "}
+                  {daysAvailable === 1 ? "dia" : "dias"} de datos en este rango
                 </span>
-              </div>
-              {versions.length > 0 && (
-                <span className="text-[10px] text-muted-foreground">
-                  {versions.length}
+              ) : (
+                <span className="text-muted-foreground">
+                  Sin datos para este rango
                 </span>
               )}
             </div>
-
-            {versions.length > 0 ? (
-              <>
-                <Select
-                  value={selectedVersionId ?? undefined}
-                  onValueChange={onSelectVersion}
-                >
-                  <SelectTrigger className="h-8 text-[11px] w-full">
-                    <SelectValue placeholder="Seleccionar version..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {versions.map((v, index) => (
-                      <SelectItem key={v.id} value={v.id} className="text-[11px]">
-                        {formatLastFetch(v.fetchedAt)} — {PERIOD_LABELS[v.numOfDays] ?? `${v.numOfDays}d`}
-                        {index === 0 && " (mas reciente)"}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="w-full"
-                      disabled={isWorking || !selectedVersionId}
-                      onClick={onLoadCache}
-                    >
-                      {isLoadingCache ? (
-                        <>
-                          <Database className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                          Cargando...
-                        </>
-                      ) : (
-                        <>
-                          <Database className="mr-1.5 h-3.5 w-3.5" />
-                          Cargar version
-                        </>
-                      )}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" className="text-[11px]">
-                    Cargar la version seleccionada (no consume calls)
-                  </TooltipContent>
-                </Tooltip>
-              </>
-            ) : (
-              <p className="text-[11px] text-muted-foreground/60 text-center py-1">
-                Aun no hay versiones. Usa &quot;Actualizar datos&quot; para crear la primera.
-              </p>
-            )}
           </div>
+
+          {/* Manual fetch button */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant={hasData ? "outline" : "default"}
+                size="sm"
+                className="w-full"
+                disabled={isWorking || rateLimited}
+                onClick={onFetchToday}
+              >
+                {isManualFetching ? (
+                  <>
+                    <RefreshCw className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                    Consultando...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
+                    Actualizar hoy
+                  </>
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-[11px]">
+              Consultar API de Clarity para el dia de hoy (consume 1 call)
+            </TooltipContent>
+          </Tooltip>
+
+          {lastFetchedAt && (
+            <p className="text-[10px] text-muted-foreground text-center">
+              Ultima actualizacion: {formatLastFetch(lastFetchedAt)}
+            </p>
+          )}
         </CardContent>
       </Card>
     </TooltipProvider>
