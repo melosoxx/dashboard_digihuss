@@ -16,12 +16,45 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { KPICard } from "@/components/dashboard/kpi-card";
+import type { ProfileBreakdownItem } from "@/components/dashboard/kpi-card";
 import { PageHeader } from "@/components/shared/page-header";
 import { ErrorDisplay } from "@/components/shared/error-display";
 import { ClarityHeatmapLink } from "@/components/clarity/clarity-heatmap-link";
 import { ClarityFetchControl } from "@/components/clarity/clarity-fetch-control";
 import { useClarity } from "@/hooks/use-clarity";
+import { useClarityAllProfiles, type ProfileClarityData } from "@/hooks/use-clarity-all-profiles";
 import { formatNumber } from "@/lib/utils";
+import type { ClarityInsights } from "@/types/clarity";
+
+interface BreakdownResult {
+  items: ProfileBreakdownItem[];
+  totalValue: number;
+  totalFormatted: string;
+}
+
+function buildBreakdown(
+  profilesData: ProfileClarityData[],
+  extractor: (d: ClarityInsights) => number,
+  formatter: (v: number) => string,
+  aggregation: "sum" | "average" = "sum"
+): BreakdownResult {
+  const items = profilesData
+    .filter((p) => p.data !== null)
+    .map((p) => ({
+      profileName: p.profileName,
+      profileColor: p.profileColor,
+      rawValue: extractor(p.data!),
+      formattedValue: formatter(extractor(p.data!)),
+    }));
+
+  const sum = items.reduce((s, item) => s + item.rawValue, 0);
+  const totalValue =
+    aggregation === "average" && items.length > 0
+      ? sum / items.length
+      : sum;
+
+  return { items, totalValue, totalFormatted: formatter(totalValue) };
+}
 
 function formatSeconds(seconds: number): string {
   if (seconds < 60) return `${seconds}s`;
@@ -95,14 +128,25 @@ export default function UXInsightsPage() {
   const {
     data,
     isLoading,
-    isFetching,
     error,
-    fetchToday,
-    isManualFetching,
-    lastFetchedAt,
-    daysAvailable,
-    rateLimited,
   } = useClarity();
+
+  const {
+    profilesData: allProfilesClarity,
+    isLoading: allProfilesLoading,
+    isFetching,
+    daysAvailable,
+    lastFetchedAt,
+    fetchAllToday,
+    isManualFetching,
+    rateLimited,
+  } = useClarityAllProfiles();
+
+  const sesiones = buildBreakdown(allProfilesClarity, (d) => d.traffic.totalSessions, formatNumber);
+  const usuarios = buildBreakdown(allProfilesClarity, (d) => d.traffic.distinctUsers, formatNumber);
+  const paginas = buildBreakdown(allProfilesClarity, (d) => d.traffic.pagesPerSession, (v) => v.toFixed(2), "average");
+  const scroll = buildBreakdown(allProfilesClarity, (d) => d.scrollDepth, (v) => `${v.toFixed(1)}%`, "average");
+  const tiempo = buildBreakdown(allProfilesClarity, (d) => d.engagement.activeTime, formatSeconds);
 
   const totalFrustration =
     (data?.frustration.deadClicks ?? 0) +
@@ -126,11 +170,11 @@ export default function UXInsightsPage() {
         <ClarityFetchControl
           isFetching={isFetching}
           isManualFetching={isManualFetching}
-          hasData={!!data}
+          hasData={sesiones.items.length > 0}
           lastFetchedAt={lastFetchedAt}
           daysAvailable={daysAvailable}
           rateLimited={rateLimited}
-          onFetchToday={fetchToday}
+          onFetchToday={fetchAllToday}
         />
         <ClarityHeatmapLink isLoading={isLoading} />
       </div>
@@ -139,43 +183,53 @@ export default function UXInsightsPage() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5 mb-6">
         <KPICard
           title="Sesiones"
-          value={data?.traffic.totalSessions ?? 0}
-          formattedValue={formatNumber(data?.traffic.totalSessions ?? 0)}
+          value={sesiones.totalValue}
+          formattedValue={sesiones.totalFormatted}
           icon={Eye}
           iconClassName="text-blue-500"
-          isLoading={isLoading}
+          isLoading={isLoading || allProfilesLoading}
+          breakdown={sesiones.items}
+          breakdownLoading={allProfilesLoading}
         />
         <KPICard
           title="Usuarios Únicos"
-          value={data?.traffic.distinctUsers ?? 0}
-          formattedValue={formatNumber(data?.traffic.distinctUsers ?? 0)}
+          value={usuarios.totalValue}
+          formattedValue={usuarios.totalFormatted}
           icon={Users}
           iconClassName="text-violet-500"
-          isLoading={isLoading}
+          isLoading={isLoading || allProfilesLoading}
+          breakdown={usuarios.items}
+          breakdownLoading={allProfilesLoading}
         />
         <KPICard
           title="Páginas / Sesión"
-          value={data?.traffic.pagesPerSession ?? 0}
-          formattedValue={(data?.traffic.pagesPerSession ?? 0).toFixed(2)}
+          value={paginas.totalValue}
+          formattedValue={paginas.totalFormatted}
           icon={BarChart3}
           iconClassName="text-teal-500"
-          isLoading={isLoading}
+          isLoading={isLoading || allProfilesLoading}
+          breakdown={paginas.items}
+          breakdownLoading={allProfilesLoading}
         />
         <KPICard
           title="Profundidad de Scroll"
-          value={data?.scrollDepth ?? 0}
-          formattedValue={`${(data?.scrollDepth ?? 0).toFixed(1)}%`}
+          value={scroll.totalValue}
+          formattedValue={scroll.totalFormatted}
           icon={ArrowDownUp}
           iconClassName="text-amber-500"
-          isLoading={isLoading}
+          isLoading={isLoading || allProfilesLoading}
+          breakdown={scroll.items}
+          breakdownLoading={allProfilesLoading}
         />
         <KPICard
           title="Tiempo Activo"
-          value={data?.engagement.activeTime ?? 0}
-          formattedValue={formatSeconds(data?.engagement.activeTime ?? 0)}
+          value={tiempo.totalValue}
+          formattedValue={tiempo.totalFormatted}
           icon={Clock}
           iconClassName="text-emerald-500"
-          isLoading={isLoading}
+          isLoading={isLoading || allProfilesLoading}
+          breakdown={tiempo.items}
+          breakdownLoading={allProfilesLoading}
         />
       </div>
 

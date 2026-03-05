@@ -70,6 +70,48 @@ CREATE TABLE clarity_quota (
 
 CREATE INDEX idx_clarity_quota_profile_date ON clarity_quota(profile_id, date);
 
+-- Expense categories (system + custom per profile)
+CREATE TABLE expense_categories (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  profile_id  UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  name        TEXT NOT NULL,
+  slug        TEXT NOT NULL,
+  icon        TEXT,
+  color       TEXT NOT NULL DEFAULT '#6b7280',
+  type        TEXT NOT NULL CHECK (type IN ('fixed', 'variable')),
+  sort_order  INT NOT NULL DEFAULT 99,
+  is_system   BOOLEAN NOT NULL DEFAULT false,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE(profile_id, slug)
+);
+
+CREATE INDEX idx_expense_categories_profile ON expense_categories(profile_id);
+CREATE INDEX idx_expense_categories_system ON expense_categories(is_system);
+
+-- Manual and recurring expenses
+CREATE TABLE expenses (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  profile_id      UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  category_id     UUID NOT NULL REFERENCES expense_categories(id),
+  description     TEXT NOT NULL,
+  amount          NUMERIC(12, 2) NOT NULL,
+  currency        TEXT NOT NULL DEFAULT 'ARS',
+  expense_date    DATE NOT NULL,
+  source          TEXT NOT NULL DEFAULT 'manual',
+  is_recurring    BOOLEAN NOT NULL DEFAULT false,
+  recurrence_day  INT CHECK (recurrence_day >= 1 AND recurrence_day <= 28),
+  is_general      BOOLEAN NOT NULL DEFAULT false,
+  split_among     INT,
+  notes           TEXT,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_expenses_profile_date ON expenses(profile_id, expense_date DESC);
+CREATE INDEX idx_expenses_recurring ON expenses(is_recurring) WHERE is_recurring = true;
+CREATE INDEX idx_expenses_general ON expenses(is_general) WHERE is_general = true;
+
 -- 2. AUTO-UPDATE updated_at TRIGGER
 -- ============================================================
 
@@ -88,6 +130,12 @@ CREATE TRIGGER set_updated_at BEFORE UPDATE ON profile_credentials
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
 CREATE TRIGGER set_updated_at BEFORE UPDATE ON user_preferences
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+CREATE TRIGGER set_updated_at BEFORE UPDATE ON expense_categories
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+CREATE TRIGGER set_updated_at BEFORE UPDATE ON expenses
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
 -- 3. ROW LEVEL SECURITY (RLS)
@@ -178,6 +226,44 @@ CREATE POLICY "Users can insert own clarity quota"
 
 CREATE POLICY "Users can update own clarity quota"
   ON clarity_quota FOR UPDATE
+  USING (profile_id IN (SELECT id FROM profiles WHERE user_id = auth.uid()));
+
+-- expense_categories (system categories visible to all, custom via profile ownership)
+ALTER TABLE expense_categories ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view system and own categories"
+  ON expense_categories FOR SELECT
+  USING (is_system OR profile_id IN (SELECT id FROM profiles WHERE user_id = auth.uid()));
+
+CREATE POLICY "Users can insert own categories"
+  ON expense_categories FOR INSERT
+  WITH CHECK (profile_id IN (SELECT id FROM profiles WHERE user_id = auth.uid()));
+
+CREATE POLICY "Users can update own categories"
+  ON expense_categories FOR UPDATE
+  USING (profile_id IN (SELECT id FROM profiles WHERE user_id = auth.uid()));
+
+CREATE POLICY "Users can delete own categories"
+  ON expense_categories FOR DELETE
+  USING (profile_id IN (SELECT id FROM profiles WHERE user_id = auth.uid()));
+
+-- expenses (access through profile ownership)
+ALTER TABLE expenses ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view own expenses"
+  ON expenses FOR SELECT
+  USING (profile_id IN (SELECT id FROM profiles WHERE user_id = auth.uid()));
+
+CREATE POLICY "Users can insert own expenses"
+  ON expenses FOR INSERT
+  WITH CHECK (profile_id IN (SELECT id FROM profiles WHERE user_id = auth.uid()));
+
+CREATE POLICY "Users can update own expenses"
+  ON expenses FOR UPDATE
+  USING (profile_id IN (SELECT id FROM profiles WHERE user_id = auth.uid()));
+
+CREATE POLICY "Users can delete own expenses"
+  ON expenses FOR DELETE
   USING (profile_id IN (SELECT id FROM profiles WHERE user_id = auth.uid()));
 
 -- ============================================================

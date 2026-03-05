@@ -4,7 +4,7 @@ import { resolveClarityClientByProfile } from "@/lib/credentials";
 
 export const runtime = "nodejs";
 
-export async function POST(request: NextRequest) {
+export async function GET(request: NextRequest) {
   try {
     // Authenticate via CRON_SECRET
     const authHeader = request.headers.get("authorization");
