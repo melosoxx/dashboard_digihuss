@@ -64,7 +64,7 @@ export function useMetaAccount() {
     })),
   });
 
-  if (!aggregateMode) return singleResult;
+  if (!aggregateMode) return { ...singleResult, profileBreakdown: undefined };
 
   const isLoading = multiResults.some((r) => r.isLoading);
   const isFetching = multiResults.some((r) => r.isFetching);
@@ -96,7 +96,14 @@ export function useMetaAccount() {
     };
   }
 
-  return { data, isLoading, isFetching, error, isError: !!error };
+  const profileBreakdown = enabledIds
+    .map((pid, idx) => {
+      const d = multiResults[idx]?.data;
+      return d ? { profileId: pid, data: d } : null;
+    })
+    .filter(Boolean) as Array<{ profileId: string; data: MetaAccountInsights }>;
+
+  return { data, isLoading, isFetching, error, isError: !!error, profileBreakdown };
 }
 
 function mergeDailyMetrics(arrays: MetaDailyMetric[][]): MetaDailyMetric[] {

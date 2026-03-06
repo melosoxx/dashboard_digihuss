@@ -29,7 +29,7 @@ import { useBusinessProfile } from "@/providers/business-profile-provider";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 
 export default function PanelGeneralPage() {
-  const { aggregateMode } = useBusinessProfile();
+  const { aggregateMode, profiles } = useBusinessProfile();
   const shopify = useShopifyOrders();
   const orderList = useShopifyOrderList();
   const analytics = useShopifyAnalytics();
@@ -87,6 +87,36 @@ export default function PanelGeneralPage() {
         adSpend: spendByDate.get(date) ?? 0,
       }));
   }, [shopify.data, meta.data]);
+
+  const funnelBreakdown = useMemo(() => {
+    if (!aggregateMode) return undefined;
+    const shopifyBk = shopify.profileBreakdown;
+    const analyticsBk = analytics.profileBreakdown;
+    const metaBk = meta.profileBreakdown;
+    if (!shopifyBk?.length && !analyticsBk?.length && !metaBk?.length) return undefined;
+
+    const profileIds = new Set([
+      ...(shopifyBk ?? []).map((b) => b.profileId),
+      ...(analyticsBk ?? []).map((b) => b.profileId),
+      ...(metaBk ?? []).map((b) => b.profileId),
+    ]);
+
+    return Array.from(profileIds).map((pid) => {
+      const profile = profiles.find((p) => p.id === pid);
+      const s = shopifyBk?.find((b) => b.profileId === pid)?.data;
+      const a = analyticsBk?.find((b) => b.profileId === pid)?.data;
+      const m = metaBk?.find((b) => b.profileId === pid)?.data;
+      return {
+        profileName: profile?.name ?? pid,
+        profileColor: profile?.color ?? "#888",
+        impressions: m?.impressions ?? 0,
+        clicks: m?.clicks ?? 0,
+        landingSessions: a?.checkoutSessions ?? 0,
+        checkouts: a?.checkoutCount ?? 0,
+        orders: s?.orderCount ?? 0,
+      };
+    });
+  }, [aggregateMode, profiles, shopify.profileBreakdown, analytics.profileBreakdown, meta.profileBreakdown]);
 
   const errorSources = [
     shopify.error && "Shopify",
@@ -223,6 +253,7 @@ export default function PanelGeneralPage() {
           checkouts={analytics.data?.checkoutCount ?? 0}
           orders={orderCount}
           isLoading={isLoadingMain || analytics.isLoading}
+          profileBreakdown={funnelBreakdown}
         />
       </div>
 

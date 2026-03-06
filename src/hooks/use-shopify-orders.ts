@@ -62,7 +62,7 @@ export function useShopifyOrders() {
     })),
   });
 
-  if (!aggregateMode) return singleResult;
+  if (!aggregateMode) return { ...singleResult, profileBreakdown: undefined };
 
   // Merge aggregate results
   const isLoading = multiResults.some((r) => r.isLoading);
@@ -83,7 +83,14 @@ export function useShopifyOrders() {
     };
   }
 
-  return { data, isLoading, isFetching, error, isError: !!error };
+  const profileBreakdown = enabledIds
+    .map((pid, idx) => {
+      const d = multiResults[idx]?.data;
+      return d ? { profileId: pid, data: d } : null;
+    })
+    .filter(Boolean) as Array<{ profileId: string; data: OrdersAggregate }>;
+
+  return { data, isLoading, isFetching, error, isError: !!error, profileBreakdown };
 }
 
 function mergeDailyRevenue(arrays: DailyRevenue[][]): DailyRevenue[] {
