@@ -6,6 +6,7 @@ import { useBusinessProfile } from "@/providers/business-profile-provider";
 import { QUERY_STALE_TIME } from "@/lib/constants";
 import type { OrdersAggregate, DailyRevenue, TopProduct } from "@/types/shopify";
 import type { MetaAccountInsights, MetaDailyMetric } from "@/types/meta";
+import { getEnabledProfileIds } from "@/lib/aggregate-utils";
 
 // --- Shopify Orders Aggregation ---
 
@@ -13,9 +14,10 @@ export function useAggregatedShopifyOrders() {
   const { dateRange } = useDateRange();
   const { aggregateMode, selectedProfileIds, profiles } =
     useBusinessProfile();
+  const enabledIds = getEnabledProfileIds(profiles, "shopify", selectedProfileIds);
 
   const selectedProfiles = profiles.filter((p) =>
-    selectedProfileIds.includes(p.id)
+    enabledIds.includes(p.id)
   );
 
   const results = useQueries({
@@ -76,9 +78,10 @@ export function useAggregatedShopifyProducts() {
   const { dateRange } = useDateRange();
   const { aggregateMode, selectedProfileIds, profiles } =
     useBusinessProfile();
+  const enabledIds = getEnabledProfileIds(profiles, "shopify", selectedProfileIds);
 
   const selectedProfiles = profiles.filter((p) =>
-    selectedProfileIds.includes(p.id)
+    enabledIds.includes(p.id)
   );
 
   const results = useQueries({
@@ -127,9 +130,10 @@ export function useAggregatedMetaAccount() {
   const { dateRange } = useDateRange();
   const { aggregateMode, selectedProfileIds, profiles } =
     useBusinessProfile();
+  const enabledIds = getEnabledProfileIds(profiles, "meta", selectedProfileIds);
 
   const selectedProfiles = profiles.filter((p) =>
-    selectedProfileIds.includes(p.id)
+    enabledIds.includes(p.id)
   );
 
   const results = useQueries({

@@ -5,11 +5,13 @@ import { useDateRange } from "@/providers/date-range-provider";
 import { useBusinessProfile } from "@/providers/business-profile-provider";
 import { QUERY_STALE_TIME, QUERY_REFETCH_INTERVAL } from "@/lib/constants";
 import type { MercadoPagoSummary } from "@/types/finance";
+import { getEnabledProfileIds } from "@/lib/aggregate-utils";
 
 export function useMercadoPago() {
   const { dateRange } = useDateRange();
-  const { activeProfileId, aggregateMode, selectedProfileIds } =
+  const { activeProfileId, aggregateMode, selectedProfileIds, profiles } =
     useBusinessProfile();
+  const enabledIds = getEnabledProfileIds(profiles, "mercadopago", selectedProfileIds);
 
   const singleResult = useQuery<MercadoPagoSummary>({
     queryKey: [
@@ -35,7 +37,7 @@ export function useMercadoPago() {
   });
 
   const multiResults = useQueries({
-    queries: (aggregateMode ? selectedProfileIds : []).map((pid) => ({
+    queries: (aggregateMode ? enabledIds : []).map((pid) => ({
       queryKey: [
         "mercadopago",
         "payments",

@@ -5,7 +5,8 @@ import { getMetaClient, createMetaClient } from "./meta";
 import { getClarityClient, createClarityClient } from "./clarity";
 import { createMercadoPagoClient } from "./mercadopago";
 import { createAdminClient } from "./supabase/admin";
-import { decrypt } from "./encryption";
+import { decrypt, encrypt } from "./encryption";
+import { isTokenExpired, refreshShopifyToken } from "./shopify-token";
 
 // ----------------------------------------------------------------
 // Profile-based credential resolution (Supabase flow)
@@ -33,16 +34,53 @@ async function getDecryptedCredentials(
   }
 }
 
+async function refreshAndPersistShopifyToken(
+  profileId: string,
+  creds: Record<string, string>
+): Promise<string> {
+  const { accessToken, expiresAt } = await refreshShopifyToken(
+    creds.storeDomain,
+    creds.clientId,
+    creds.clientSecret
+  );
+
+  // Update the stored credentials with the fresh token
+  const updated = { ...creds, adminAccessToken: accessToken, tokenExpiresAt: expiresAt };
+  const { encrypted, iv } = encrypt(JSON.stringify(updated));
+
+  const supabase = createAdminClient();
+  await supabase
+    .from("profile_credentials")
+    .update({ encrypted_data: encrypted, iv, updated_at: new Date().toISOString() })
+    .eq("profile_id", profileId)
+    .eq("service", "shopify");
+
+  return accessToken;
+}
+
 export async function resolveShopifyClientByProfile(profileId: string) {
   const creds = await getDecryptedCredentials(profileId, "shopify");
-  if (!creds || !creds.storeDomain || !creds.adminAccessToken) {
+  if (!creds || !creds.storeDomain) {
     throw new Error("Shopify credentials not configured for this profile");
+  }
+
+  let token = creds.adminAccessToken;
+
+  // Auto-refresh if client credentials are configured and token is expired
+  if (creds.clientId && creds.clientSecret) {
+    if (!token || isTokenExpired(creds.tokenExpiresAt)) {
+      token = await refreshAndPersistShopifyToken(profileId, creds);
+    }
+  }
+
+  if (!token) {
+    throw new Error("Shopify access token not available for this profile");
   }
 
   return createShopifyClient({
     domain: creds.storeDomain,
     version: creds.adminApiVersion || "2026-01",
-    token: creds.adminAccessToken,
+    token,
   });
 }
 

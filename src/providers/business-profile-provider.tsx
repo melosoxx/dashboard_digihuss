@@ -25,6 +25,7 @@ interface ProfilesApiResponse {
     created_at: string;
     updated_at: string;
     configuredServices: string[];
+    disabled_services: string[];
     validationStatus?: {
       [service: string]: {
         status: "untested" | "valid" | "invalid";
@@ -53,7 +54,7 @@ interface BusinessProfileContextValue {
   setAggregateMode: (enabled: boolean) => void;
   setSelectedProfileIds: (ids: string[]) => void;
   addProfile: (data: { name: string; color?: string }) => Promise<BusinessProfile>;
-  updateProfile: (id: string, updates: { name?: string; color?: string; is_active?: boolean; mp_keywords?: string[] }) => Promise<void>;
+  updateProfile: (id: string, updates: { name?: string; color?: string; is_active?: boolean; mp_keywords?: string[]; disabled_services?: string[] }) => Promise<void>;
   deleteProfile: (id: string) => Promise<void>;
   saveCredentials: (profileId: string, service: ServiceName, credentials: Record<string, string>) => Promise<void>;
   deleteCredentials: (profileId: string, service: ServiceName) => Promise<void>;
@@ -71,6 +72,7 @@ function mapProfile(raw: ProfilesApiResponse["profiles"][0]): BusinessProfile {
     isActive: raw.is_active ?? true,
     mpKeywords: raw.mp_keywords ?? [],
     configuredServices: raw.configuredServices as ServiceName[],
+    disabledServices: (raw.disabled_services ?? []) as ServiceName[],
     validationStatus: raw.validationStatus,
     createdAt: raw.created_at,
     updatedAt: raw.updated_at,
@@ -186,6 +188,7 @@ export function BusinessProfileProvider({ children }: { children: ReactNode }) {
         isActive: raw.is_active ?? true,
         mpKeywords: raw.mp_keywords ?? [],
         configuredServices: [],
+        disabledServices: [],
         createdAt: raw.created_at,
         updatedAt: raw.updated_at,
       };
@@ -194,7 +197,7 @@ export function BusinessProfileProvider({ children }: { children: ReactNode }) {
   );
 
   const updateProfileMutation = useMutation({
-    mutationFn: async ({ id, updates }: { id: string; updates: { name?: string; color?: string; is_active?: boolean; mp_keywords?: string[] } }) => {
+    mutationFn: async ({ id, updates }: { id: string; updates: { name?: string; color?: string; is_active?: boolean; mp_keywords?: string[]; disabled_services?: string[] } }) => {
       const res = await fetch(`/api/profiles/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -212,7 +215,7 @@ export function BusinessProfileProvider({ children }: { children: ReactNode }) {
   });
 
   const updateProfile = useCallback(
-    async (id: string, updates: { name?: string; color?: string; is_active?: boolean; mp_keywords?: string[] }) => {
+    async (id: string, updates: { name?: string; color?: string; is_active?: boolean; mp_keywords?: string[]; disabled_services?: string[] }) => {
       await updateProfileMutation.mutateAsync({ id, updates });
     },
     [updateProfileMutation]

@@ -12,6 +12,9 @@ export interface ShopifyCredentials {
   storeDomain: string;
   adminApiVersion: string;
   adminAccessToken: string;
+  clientId?: string;
+  clientSecret?: string;
+  tokenExpiresAt?: string;
 }
 
 export interface MetaCredentials {
@@ -43,6 +46,7 @@ export interface BusinessProfile {
   isActive: boolean;
   mpKeywords: string[];
   configuredServices: ServiceName[];
+  disabledServices: ServiceName[];
   validationStatus?: {
     shopify?: ServiceValidation;
     meta?: ServiceValidation;

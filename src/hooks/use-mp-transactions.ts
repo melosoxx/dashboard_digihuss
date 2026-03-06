@@ -5,11 +5,13 @@ import { useDateRange } from "@/providers/date-range-provider";
 import { useBusinessProfile } from "@/providers/business-profile-provider";
 import { QUERY_STALE_TIME, QUERY_REFETCH_INTERVAL } from "@/lib/constants";
 import type { MpTransaction } from "@/types/finance";
+import { getEnabledProfileIds } from "@/lib/aggregate-utils";
 
 export function useMpTransactions() {
   const { dateRange } = useDateRange();
   const { activeProfileId, aggregateMode, selectedProfileIds, profiles } =
     useBusinessProfile();
+  const enabledIds = getEnabledProfileIds(profiles, "mercadopago", selectedProfileIds);
 
   // --- Individual mode ---
   const singleResult = useQuery<MpTransaction[]>({
@@ -37,7 +39,7 @@ export function useMpTransactions() {
 
   // --- Aggregate mode ---
   const selectedProfiles = profiles.filter((p) =>
-    selectedProfileIds.includes(p.id)
+    enabledIds.includes(p.id)
   );
 
   const multiResults = useQueries({

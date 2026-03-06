@@ -5,11 +5,13 @@ import { useDateRange } from "@/providers/date-range-provider";
 import { useBusinessProfile } from "@/providers/business-profile-provider";
 import { QUERY_STALE_TIME, QUERY_REFETCH_INTERVAL } from "@/lib/constants";
 import type { MetaActiveAd, MetaCampaignInsight, MetaAdsetInsight } from "@/types/meta";
+import { getEnabledProfileIds } from "@/lib/aggregate-utils";
 
 export function useMetaAds() {
   const { dateRange } = useDateRange();
-  const { activeProfileId, aggregateMode, selectedProfileIds } =
+  const { activeProfileId, aggregateMode, selectedProfileIds, profiles } =
     useBusinessProfile();
+  const enabledIds = getEnabledProfileIds(profiles, "meta", selectedProfileIds);
 
   // --- Individual mode ---
   const singleResult = useQuery<{ ads: MetaActiveAd[] }>({
@@ -31,7 +33,7 @@ export function useMetaAds() {
 
   // --- Aggregate mode ---
   const multiResults = useQueries({
-    queries: (aggregateMode ? selectedProfileIds : []).map((pid) => ({
+    queries: (aggregateMode ? enabledIds : []).map((pid) => ({
       queryKey: ["meta", "ads", dateRange.startDate, dateRange.endDate, pid],
       queryFn: async () => {
         const params = new URLSearchParams({

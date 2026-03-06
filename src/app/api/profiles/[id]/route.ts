@@ -7,6 +7,7 @@ const updateSchema = z.object({
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
   is_active: z.boolean().optional(),
   mp_keywords: z.array(z.string().min(1).max(200)).max(20).optional(),
+  disabled_services: z.array(z.enum(["shopify", "meta", "clarity", "mercadopago"])).optional(),
 });
 
 // PATCH /api/profiles/[id] - Update profile

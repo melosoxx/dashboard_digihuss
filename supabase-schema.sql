@@ -405,6 +405,17 @@ CREATE POLICY "Users can insert own clarity daily"
   ON clarity_daily FOR INSERT
   WITH CHECK (profile_id IN (SELECT id FROM profiles WHERE user_id = auth.uid()));
 
+-- ============================================================
+-- MIGRATION: Toggle on/off de servicios por perfil
+-- Run this migration in Supabase SQL Editor
+-- ============================================================
+
+ALTER TABLE profiles
+  ADD COLUMN disabled_services TEXT[] NOT NULL DEFAULT '{}';
+
+COMMENT ON COLUMN profiles.disabled_services IS
+  'Services disabled for data fetching on this profile (e.g. {"meta","clarity"})';
+
 -- Cron execution log (only accessible via service role key)
 CREATE TABLE clarity_cron_log (
   id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),

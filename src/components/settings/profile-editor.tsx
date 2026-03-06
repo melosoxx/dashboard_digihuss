@@ -323,6 +323,18 @@ export function ProfileEditor() {
     setNewKeyword("");
   };
 
+  const isServiceDisabled = (service: ServiceName) =>
+    activeProfile?.disabledServices?.includes(service) ?? false;
+
+  const handleToggleService = async (service: ServiceName, enabled: boolean) => {
+    if (!activeProfileId || !activeProfile) return;
+    const current = activeProfile.disabledServices ?? [];
+    const updated = enabled
+      ? current.filter((s) => s !== service)
+      : [...current, service];
+    await updateProfile(activeProfileId, { disabled_services: updated });
+  };
+
   const handleDelete = async () => {
     if (!activeProfileId) return;
     await deleteProfile(activeProfileId);
@@ -458,6 +470,19 @@ export function ProfileEditor() {
           </TabsContent>
 
           <TabsContent value="shopify" className="space-y-6 pt-4">
+            <div className="flex items-center justify-between rounded-lg border border-border/50 p-3">
+              <div className="space-y-0.5">
+                <Label htmlFor="shopify-enabled-switch">Habilitar datos de Shopify</Label>
+                <p className="text-xs text-muted-foreground">
+                  Desactiva para no traer datos de Shopify en este perfil
+                </p>
+              </div>
+              <Switch
+                id="shopify-enabled-switch"
+                checked={!isServiceDisabled("shopify")}
+                onCheckedChange={(checked) => handleToggleService("shopify", checked)}
+              />
+            </div>
             <ServiceStatusBadge
               configured={isConfigured("shopify")}
               validation={activeProfile.validationStatus?.shopify}
@@ -482,13 +507,42 @@ export function ProfileEditor() {
               helpText="Version del Admin API (ej: 2026-01)"
             />
             <CredentialField
-              label="Access Token"
-              value={credentials.shopify?.adminAccessToken ?? ""}
-              onChange={(v) => updateCreds("shopify", "adminAccessToken", v)}
-              placeholder="shpat_..."
-              isSecret
-              helpText="Token de acceso del Admin API"
+              label="Client ID"
+              value={credentials.shopify?.clientId ?? ""}
+              onChange={(v) => updateCreds("shopify", "clientId", v)}
+              placeholder="086458719205403c9c712d012f..."
+              helpText="Client ID de tu app Shopify (para renovacion automatica del token)"
             />
+            <CredentialField
+              label="Client Secret"
+              value={credentials.shopify?.clientSecret ?? ""}
+              onChange={(v) => updateCreds("shopify", "clientSecret", v)}
+              placeholder="shpss_..."
+              isSecret
+              helpText="Client Secret de tu app Shopify"
+            />
+            {credentials.shopify?.clientId && credentials.shopify?.clientSecret ? (
+              <div className="rounded-lg border border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/30 p-3 space-y-1">
+                <p className="text-xs font-medium text-green-700 dark:text-green-400">
+                  Token auto-gestionado
+                </p>
+                <p className="text-xs text-green-600 dark:text-green-500">
+                  El access token se renueva automaticamente cada 24hs usando las credenciales OAuth.
+                  {credentials.shopify?.tokenExpiresAt && (
+                    <> Expira: {new Date(credentials.shopify.tokenExpiresAt).toLocaleString("es-ES", { dateStyle: "short", timeStyle: "short" })}</>
+                  )}
+                </p>
+              </div>
+            ) : (
+              <CredentialField
+                label="Access Token"
+                value={credentials.shopify?.adminAccessToken ?? ""}
+                onChange={(v) => updateCreds("shopify", "adminAccessToken", v)}
+                placeholder="shpat_..."
+                isSecret
+                helpText="Token de acceso del Admin API (manual, si no usas Client ID/Secret)"
+              />
+            )}
             <div className="flex items-center gap-3">
               <Button
                 onClick={() => handleSaveServiceCredentials("shopify")}
@@ -541,6 +595,19 @@ export function ProfileEditor() {
           </TabsContent>
 
           <TabsContent value="meta" className="space-y-6 pt-4">
+            <div className="flex items-center justify-between rounded-lg border border-border/50 p-3">
+              <div className="space-y-0.5">
+                <Label htmlFor="meta-enabled-switch">Habilitar datos de Meta Ads</Label>
+                <p className="text-xs text-muted-foreground">
+                  Desactiva para no traer datos de Meta Ads en este perfil
+                </p>
+              </div>
+              <Switch
+                id="meta-enabled-switch"
+                checked={!isServiceDisabled("meta")}
+                onCheckedChange={(checked) => handleToggleService("meta", checked)}
+              />
+            </div>
             <ServiceStatusBadge
               configured={isConfigured("meta")}
               validation={activeProfile.validationStatus?.meta}
@@ -624,6 +691,19 @@ export function ProfileEditor() {
           </TabsContent>
 
           <TabsContent value="clarity" className="space-y-6 pt-4">
+            <div className="flex items-center justify-between rounded-lg border border-border/50 p-3">
+              <div className="space-y-0.5">
+                <Label htmlFor="clarity-enabled-switch">Habilitar datos de Clarity</Label>
+                <p className="text-xs text-muted-foreground">
+                  Desactiva para no traer datos de Clarity en este perfil
+                </p>
+              </div>
+              <Switch
+                id="clarity-enabled-switch"
+                checked={!isServiceDisabled("clarity")}
+                onCheckedChange={(checked) => handleToggleService("clarity", checked)}
+              />
+            </div>
             <ServiceStatusBadge
               configured={isConfigured("clarity")}
               validation={activeProfile.validationStatus?.clarity}
@@ -700,6 +780,19 @@ export function ProfileEditor() {
           </TabsContent>
 
           <TabsContent value="mercadopago" className="space-y-6 pt-4">
+            <div className="flex items-center justify-between rounded-lg border border-border/50 p-3">
+              <div className="space-y-0.5">
+                <Label htmlFor="mp-enabled-switch">Habilitar datos de MercadoPago</Label>
+                <p className="text-xs text-muted-foreground">
+                  Desactiva para no traer datos de MercadoPago en este perfil
+                </p>
+              </div>
+              <Switch
+                id="mp-enabled-switch"
+                checked={!isServiceDisabled("mercadopago")}
+                onCheckedChange={(checked) => handleToggleService("mercadopago", checked)}
+              />
+            </div>
             <ServiceStatusBadge
               configured={isConfigured("mercadopago")}
               validation={activeProfile.validationStatus?.mercadopago}

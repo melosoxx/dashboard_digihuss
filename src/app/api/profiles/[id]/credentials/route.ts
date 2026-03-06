@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAuth } from "@/lib/supabase/auth-guard";
 import { encrypt, decrypt } from "@/lib/encryption";
+import { refreshShopifyToken } from "@/lib/shopify-token";
 
 const credentialSchema = z.object({
   service: z.enum(["shopify", "meta", "clarity", "mercadopago"]),
@@ -10,7 +11,7 @@ const credentialSchema = z.object({
 
 /** Fields that are secrets and should never be returned to the client */
 const SECRET_FIELDS: Record<string, string[]> = {
-  shopify: ["adminAccessToken"],
+  shopify: ["adminAccessToken", "clientSecret"],
   meta: ["accessToken"],
   clarity: ["apiToken"],
   mercadopago: ["accessToken"],
@@ -117,6 +118,26 @@ export async function PUT(
         } catch {
           // ignore decrypt errors
         }
+      }
+    }
+
+    // If Shopify client credentials are provided, fetch the first access token
+    if (
+      parsed.data.service === "shopify" &&
+      merged.clientId &&
+      merged.clientSecret &&
+      merged.storeDomain
+    ) {
+      try {
+        const { accessToken, expiresAt } = await refreshShopifyToken(
+          merged.storeDomain,
+          merged.clientId,
+          merged.clientSecret
+        );
+        merged.adminAccessToken = accessToken;
+        merged.tokenExpiresAt = expiresAt;
+      } catch (err) {
+        console.warn("Initial Shopify token fetch failed (will retry on-demand):", err);
       }
     }
 
