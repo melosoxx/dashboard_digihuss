@@ -3,7 +3,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Megaphone, ShoppingBag, Info } from "lucide-react";
-import { formatCurrency, formatNumber } from "@/lib/utils";
+import { formatNumber } from "@/lib/utils";
+import { useCurrency } from "@/providers/currency-provider";
 
 interface SalesAttributionProps {
   totalRevenue: number;
@@ -20,6 +21,7 @@ export function SalesAttribution({
   metaConversions,
   isLoading,
 }: SalesAttributionProps) {
+  const { formatMoney } = useCurrency();
   const organicRevenue = Math.max(totalRevenue - metaRevenue, 0);
   const organicOrders = Math.max(totalOrders - metaConversions, 0);
   const metaPct = totalRevenue > 0 ? (metaRevenue / totalRevenue) * 100 : 0;
@@ -40,12 +42,12 @@ export function SalesAttribution({
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="pb-2 pt-3 px-4">
         <CardTitle className="text-sm font-semibold">Atribucion de Ventas</CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="px-4 pb-3">
         {/* Stacked percentage bar */}
-        <div className="flex h-3 rounded-full overflow-hidden bg-muted/50 mb-2">
+        <div className="flex h-2 rounded-full overflow-hidden bg-muted/50 mb-1.5">
           <div
             className="bg-blue-500 transition-all duration-500"
             style={{ width: `${metaPct}%` }}
@@ -57,54 +59,46 @@ export function SalesAttribution({
         </div>
 
         {/* Legend */}
-        <div className="flex items-center justify-between mb-5">
-          <div className="flex items-center gap-4 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-blue-500" />
-              Meta Ads ({metaPct.toFixed(1)}%)
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-emerald-500" />
-              Organico ({organicPct.toFixed(1)}%)
-            </span>
-          </div>
+        <div className="flex items-center gap-4 text-xs text-muted-foreground mb-3">
+          <span className="flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full bg-blue-500" />
+            Meta Ads ({metaPct.toFixed(1)}%)
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full bg-emerald-500" />
+            Organico ({organicPct.toFixed(1)}%)
+          </span>
         </div>
 
-        {/* Two columns */}
-        <div className="grid grid-cols-2 gap-3">
+        {/* Side-by-side cards */}
+        <div className="grid grid-cols-2 gap-2">
           {/* Meta Ads */}
-          <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-4">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <Megaphone className="h-3.5 w-3.5 text-blue-400" />
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-blue-400">Meta Ads</span>
-              </div>
-              <span className="text-[11px] text-muted-foreground">{metaPct.toFixed(1)}% share</span>
+          <div className="rounded-lg border border-blue-500/20 bg-blue-500/5 p-3">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-blue-400">Meta Ads</span>
+              <span className="text-[10px] text-muted-foreground">{metaPct.toFixed(1)}%</span>
             </div>
-            <p className="text-xl font-bold">{formatCurrency(metaRevenue)}</p>
-            <p className="text-xs text-muted-foreground mt-1">
+            <p className="text-base font-bold">{formatMoney(metaRevenue)}</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
               {formatNumber(metaConversions)} pedidos
             </p>
           </div>
 
           {/* Organic/Other */}
-          <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <ShoppingBag className="h-3.5 w-3.5 text-emerald-400" />
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-emerald-400">Organico / Otros</span>
-              </div>
-              <span className="text-[11px] text-muted-foreground">{organicPct.toFixed(1)}% share</span>
+          <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-400">Orgánico</span>
+              <span className="text-[10px] text-muted-foreground">{organicPct.toFixed(1)}%</span>
             </div>
-            <p className="text-xl font-bold">{formatCurrency(organicRevenue)}</p>
-            <p className="text-xs text-muted-foreground mt-1">
+            <p className="text-base font-bold">{formatMoney(organicRevenue)}</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
               {formatNumber(organicOrders)} pedidos
             </p>
           </div>
         </div>
 
-        <p className="text-[11px] text-muted-foreground/60 mt-4 flex items-center gap-1">
-          <Info className="h-3 w-3" />
+        <p className="text-[10px] text-muted-foreground/50 mt-2.5 flex items-center gap-1">
+          <Info className="h-3 w-3 flex-shrink-0" />
           Atribucion basada en Meta Ads (7 dias clic, 1 dia vista). Data syncs every 15 minutes.
         </p>
       </CardContent>
