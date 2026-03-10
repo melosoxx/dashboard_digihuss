@@ -12,6 +12,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   Info,
+  Instagram,
 } from "lucide-react";
 import { KPICard } from "@/components/dashboard/kpi-card";
 import { PageHeader } from "@/components/shared/page-header";
@@ -28,7 +29,9 @@ import { useShopifyOrderList } from "@/hooks/use-shopify-order-list";
 import { useShopifyAnalytics } from "@/hooks/use-shopify-analytics";
 import { useMetaAccount } from "@/hooks/use-meta-account";
 import { useMetaCampaigns } from "@/hooks/use-meta-campaigns";
+import { useMetaPromotions } from "@/hooks/use-meta-promotions";
 import { useBusinessProfile } from "@/providers/business-profile-provider";
+import { useClarity } from "@/hooks/use-clarity";
 import { useDateRange } from "@/providers/date-range-provider";
 import { formatNumber } from "@/lib/utils";
 import { useCurrency } from "@/providers/currency-provider";
@@ -50,7 +53,9 @@ export default function PanelGeneralPage() {
   const orderList = useShopifyOrderList();
   const analytics = useShopifyAnalytics();
   const meta = useMetaAccount();
+  const clarity = useClarity();
   const campaignsQuery = useMetaCampaigns();
+  const promotions = useMetaPromotions();
   const isLoadingMain = shopify.isLoading || meta.isLoading;
 
   const revenue = shopify.data?.totalRevenue ?? 0;
@@ -195,8 +200,8 @@ export default function PanelGeneralPage() {
         profileColor: profile?.color ?? "#888",
         impressions: m?.impressions ?? 0,
         clicks: m?.clicks ?? 0,
-        landingSessions: a?.checkoutSessions ?? 0,
-        checkouts: a?.checkoutCount ?? 0,
+        landingSessions: 0, // Clarity no tiene breakdown por perfil
+        checkouts: a?.checkoutSessions ?? 0,
         orders: s?.orderCount ?? 0,
       };
     });
@@ -205,6 +210,7 @@ export default function PanelGeneralPage() {
   const errorSources = [
     shopify.error && "Shopify",
     meta.error && "Meta Ads",
+    promotions.error && "Instagram Promos",
   ].filter(Boolean);
 
   const revenueTrendProp = revenueTrend
@@ -355,16 +361,96 @@ export default function PanelGeneralPage() {
         />
       </div>
 
+      {/* Instagram Promotions */}
+      {(promotions.configured || promotions.isLoading) && (
+        <>
+          <SectionLabel title="Promociones de Instagram" />
+          <div className="grid gap-3 grid-cols-2 md:grid-cols-4 mb-4">
+            <KPICard
+              title="Gasto Promos"
+              value={promotions.data?.spend ?? 0}
+              formattedValue={formatMoney(promotions.data?.spend ?? 0)}
+              icon={Instagram}
+              iconClassName="text-fuchsia-500"
+              isLoading={promotions.isLoading}
+            />
+            <KPICard
+              title="Impresiones"
+              value={promotions.data?.impressions ?? 0}
+              formattedValue={formatNumber(promotions.data?.impressions ?? 0)}
+              icon={Instagram}
+              iconClassName="text-fuchsia-500"
+              isLoading={promotions.isLoading}
+            />
+            <KPICard
+              title="Clics"
+              value={promotions.data?.clicks ?? 0}
+              formattedValue={formatNumber(promotions.data?.clicks ?? 0)}
+              icon={Instagram}
+              iconClassName="text-fuchsia-500"
+              isLoading={promotions.isLoading}
+            />
+            <KPICard
+              title="CTR Promos"
+              value={promotions.data?.ctr ?? 0}
+              formattedValue={`${(promotions.data?.ctr ?? 0).toFixed(2)}%`}
+              icon={Instagram}
+              iconClassName="text-fuchsia-500"
+              isLoading={promotions.isLoading}
+            />
+          </div>
+          {promotions.ads.length > 0 && (
+            <Card className="mb-6">
+              <CardContent className="px-4 py-3">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+                  Anuncios activos ({promotions.ads.length})
+                </p>
+                <div className="space-y-2">
+                  {promotions.ads
+                    .sort((a, b) => b.spend - a.spend)
+                    .slice(0, 10)
+                    .map((ad) => (
+                      <div
+                        key={ad.adId}
+                        className="flex items-center gap-3 rounded-lg border border-border/40 p-2"
+                      >
+                        {ad.thumbnailUrl && (
+                          <img
+                            src={ad.thumbnailUrl}
+                            alt=""
+                            className="h-10 w-10 rounded object-cover flex-shrink-0"
+                          />
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium truncate">{ad.adName}</p>
+                          <p className="text-xs text-muted-foreground truncate">
+                            {ad.linkUrl || ad.campaignName}
+                          </p>
+                        </div>
+                        <div className="flex gap-4 text-xs text-muted-foreground flex-shrink-0">
+                          <span>{formatMoney(ad.spend)}</span>
+                          <span>{formatNumber(ad.impressions)} imp</span>
+                          <span>{ad.ctr.toFixed(2)}% CTR</span>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </>
+      )}
+
       {/* Funnel */}
       <SectionLabel title="Funnel" />
       <div className="mb-6">
         <MarketingFunnel
           impressions={meta.data?.impressions ?? 0}
           clicks={meta.data?.clicks ?? 0}
-          landingSessions={analytics.data?.checkoutSessions ?? 0}
-          checkouts={analytics.data?.checkoutCount ?? 0}
+          landingSessions={clarity.data?.traffic.totalSessions ?? 0}
+          checkouts={analytics.data?.checkoutSessions ?? 0}
           orders={orderCount}
-          isLoading={isLoadingMain || analytics.isLoading}
+          isLoading={isLoadingMain || analytics.isLoading || clarity.isLoading}
           profileBreakdown={funnelBreakdown}
         />
       </div>

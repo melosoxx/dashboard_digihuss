@@ -140,6 +140,9 @@ class MetaAdsClient {
       fields: "campaign_name,campaign_id,spend,impressions,clicks,cpc,ctr,actions,action_values",
       time_range: JSON.stringify({ since: startDate, until: endDate }),
       level: "campaign",
+      filtering: JSON.stringify([
+        { field: "campaign.effective_status", operator: "IN", value: ["ACTIVE"] },
+      ]),
       access_token: this.accessToken,
     });
 
@@ -198,11 +201,11 @@ class MetaAdsClient {
 
   async getActiveAds(startDate: string, endDate: string): Promise<MetaActiveAd[]> {
     // Try to get active ads with creation date first
-    let adsMap = new Map<string, { id: string; name: string; created_time: string; campaign?: { name: string }; adset?: { name: string }; creative?: { thumbnail_url?: string; object_type?: string; video_id?: string } }>();
+    let adsMap = new Map<string, { id: string; name: string; created_time: string; campaign?: { name: string }; adset?: { name: string }; creative?: { thumbnail_url?: string; object_type?: string; video_id?: string; link_url?: string } }>();
 
     try {
       const adsParams = new URLSearchParams({
-        fields: "id,name,created_time,campaign{name},adset{name},creative{thumbnail_url,object_type,video_id}",
+        fields: "id,name,created_time,campaign{name},adset{name},creative{thumbnail_url,object_type,video_id,link_url}",
         filtering: JSON.stringify([
           { field: "effective_status", operator: "IN", value: ["ACTIVE"] },
         ]),
@@ -214,7 +217,7 @@ class MetaAdsClient {
       const adsResponse = await fetch(adsUrl);
 
       if (adsResponse.ok) {
-        const adsJson: { data: Array<{ id: string; name: string; created_time: string; campaign?: { name: string }; adset?: { name: string }; creative?: { thumbnail_url?: string; object_type?: string; video_id?: string } }> } =
+        const adsJson: { data: Array<{ id: string; name: string; created_time: string; campaign?: { name: string }; adset?: { name: string }; creative?: { thumbnail_url?: string; object_type?: string; video_id?: string; link_url?: string } }> } =
           await adsResponse.json();
         adsMap = new Map(
           (adsJson.data || []).map((ad) => [ad.id, ad])
@@ -284,6 +287,7 @@ class MetaAdsClient {
         thumbnailUrl: adMeta?.creative?.thumbnail_url,
         objectType: adMeta?.creative?.object_type,
         videoId: adMeta?.creative?.video_id,
+        linkUrl: adMeta?.creative?.link_url,
       });
     }
 
@@ -305,6 +309,7 @@ class MetaAdsClient {
             thumbnailUrl: ad.creative?.thumbnail_url,
             objectType: ad.creative?.object_type,
             videoId: ad.creative?.video_id,
+            linkUrl: ad.creative?.link_url,
           });
         }
       }

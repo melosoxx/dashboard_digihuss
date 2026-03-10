@@ -639,6 +639,39 @@ export function ProfileEditor() {
               placeholder="v21.0"
               helpText="Version del Graph API (ej: v21.0)"
             />
+
+            {/* Promociones de Instagram */}
+            <div className="space-y-4 pt-4 border-t border-border/30">
+              <div className="space-y-1">
+                <Label className="text-sm font-medium">Promociones de Instagram</Label>
+                <p className="text-xs text-muted-foreground">
+                  Opcional. Si usas una cuenta publicitaria personal para promocionar posts de Instagram, completa estos campos.
+                </p>
+              </div>
+              <CredentialField
+                label="Promotions Ad Account ID"
+                value={credentials.meta?.promotionsAdAccountId ?? ""}
+                onChange={(v) => updateCreds("meta", "promotionsAdAccountId", v)}
+                placeholder="206192705 (solo numeros, sin 'act_')"
+                helpText="ID de la cuenta publicitaria personal donde se registran las promociones de Instagram"
+              />
+              <CredentialField
+                label="Promotions Access Token"
+                value={credentials.meta?.promotionsAccessToken ?? ""}
+                onChange={(v) => updateCreds("meta", "promotionsAccessToken", v)}
+                placeholder="Dejar vacio para usar el mismo token"
+                isSecret
+                helpText="Token para la cuenta de promociones. Si es el mismo token que arriba, dejalo vacio."
+              />
+              <CredentialField
+                label="Dominio de Promociones"
+                value={credentials.meta?.promotionsDomain ?? ""}
+                onChange={(v) => updateCreds("meta", "promotionsDomain", v)}
+                placeholder="mueblesfactory.shop"
+                helpText="Dominio o URL que identifica a este negocio en los enlaces de las promociones (ej: mueblesfactory.shop, academiadelcerrajero.site)"
+              />
+            </div>
+
             <div className="flex items-center gap-3">
               <Button
                 onClick={() => handleSaveServiceCredentials("meta")}

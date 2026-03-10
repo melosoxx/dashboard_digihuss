@@ -43,7 +43,7 @@ export function CampaignPerformanceCard({ campaigns, isLoading }: CampaignPerfor
       <CardContent>
         {sorted.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-4">
-            No se encontraron campañas activas
+            No hay campañas activas en este momento
           </p>
         ) : (
           <div className="overflow-x-auto">

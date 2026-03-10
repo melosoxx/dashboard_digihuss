@@ -97,6 +97,32 @@ export async function resolveMetaClientByProfile(profileId: string) {
   });
 }
 
+export async function resolveMetaPromotionsClientByProfile(
+  profileId: string
+): Promise<{
+  client: ReturnType<typeof createMetaClient>;
+  domain: string;
+  promotionsAdAccountId: string;
+} | null> {
+  const creds = await getDecryptedCredentials(profileId, "meta");
+  if (!creds || !creds.promotionsAdAccountId) return null;
+
+  const token = creds.promotionsAccessToken || creds.accessToken;
+  if (!token) return null;
+
+  const client = createMetaClient({
+    accountId: creds.promotionsAdAccountId,
+    token,
+    version: creds.apiVersion || "v21.0",
+  });
+
+  return {
+    client,
+    domain: creds.promotionsDomain || "",
+    promotionsAdAccountId: creds.promotionsAdAccountId,
+  };
+}
+
 export async function resolveClarityClientByProfile(profileId: string) {
   const creds = await getDecryptedCredentials(profileId, "clarity");
   if (!creds || !creds.apiToken) {

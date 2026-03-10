@@ -12,7 +12,7 @@ const credentialSchema = z.object({
 /** Fields that are secrets and should never be returned to the client */
 const SECRET_FIELDS: Record<string, string[]> = {
   shopify: ["adminAccessToken", "clientSecret"],
-  meta: ["accessToken"],
+  meta: ["accessToken", "promotionsAccessToken"],
   clarity: ["apiToken"],
   mercadopago: ["accessToken"],
 };

@@ -79,6 +79,7 @@ export interface MetaActiveAd {
   thumbnailUrl?: string;
   objectType?: string;
   videoId?: string;
+  linkUrl?: string;
 }
 
 export interface MetaAdsetInsight {

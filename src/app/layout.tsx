@@ -7,6 +7,7 @@ import { AuthProvider } from "@/providers/auth-provider";
 import { DateRangeProvider } from "@/providers/date-range-provider";
 import { BusinessProfileProvider } from "@/providers/business-profile-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { CurrencyProvider } from "@/providers/currency-provider";
 import { AppShell } from "@/components/layout/app-shell";
 
 const geistSans = Geist({
@@ -39,9 +40,11 @@ export default function RootLayout({
             <AuthProvider>
               <BusinessProfileProvider>
                 <DateRangeProvider>
-                  <TooltipProvider>
-                    <AppShell>{children}</AppShell>
-                  </TooltipProvider>
+                  <CurrencyProvider>
+                    <TooltipProvider>
+                      <AppShell>{children}</AppShell>
+                    </TooltipProvider>
+                  </CurrencyProvider>
                 </DateRangeProvider>
               </BusinessProfileProvider>
             </AuthProvider>

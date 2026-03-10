@@ -21,6 +21,10 @@ export interface MetaCredentials {
   adAccountId: string;
   accessToken: string;
   apiVersion: string;
+  // Promociones de Instagram (opcional)
+  promotionsAdAccountId?: string;
+  promotionsAccessToken?: string;
+  promotionsDomain?: string;
 }
 
 export interface ClarityCredentials {
