@@ -20,9 +20,10 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
-import { Save, Trash2, Loader2, CheckCircle2, Shield, AlertCircle, Clock, X, Plus } from "lucide-react";
+import { Save, Trash2, Loader2, CheckCircle2, Shield, AlertCircle, Clock, X, Plus, Mail } from "lucide-react";
 import type { ServiceCredentials, ServiceName, ServiceValidation } from "@/types/business";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { EmailConfigForm } from "@/components/comprobantes/email-config-form";
 
 const PROFILE_COLORS = [
   "#3b82f6", "#ef4444", "#10b981", "#f59e0b",
@@ -416,6 +417,10 @@ export function ProfileEditor() {
             </TabsTrigger>
             <TabsTrigger value="mercadopago" className="flex-1">
               MercadoPago
+            </TabsTrigger>
+            <TabsTrigger value="comprobantes" className="flex-1">
+              <Mail className="mr-1.5 h-3.5 w-3.5" />
+              Comprobantes
             </TabsTrigger>
           </TabsList>
 
@@ -968,6 +973,10 @@ export function ProfileEditor() {
                 Guardar palabras clave
               </Button>
             </div>
+          </TabsContent>
+
+          <TabsContent value="comprobantes" className="space-y-6 pt-4">
+            <EmailConfigForm />
           </TabsContent>
         </Tabs>
       </CardContent>

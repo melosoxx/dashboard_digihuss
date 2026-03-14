@@ -53,7 +53,7 @@ export default function LoginPage() {
       <CardHeader className="text-center">
         <CardTitle className="text-xl">Iniciar Sesion</CardTitle>
         <p className="text-sm text-muted-foreground">
-          Ingresa a tu cuenta de WWH Dashboard
+          Ingresa a tu cuenta de Digital Products Dashboard
         </p>
       </CardHeader>
       <CardContent>

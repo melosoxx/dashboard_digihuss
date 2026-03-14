@@ -81,7 +81,7 @@ export default function SignupPage() {
       <CardHeader className="text-center">
         <CardTitle className="text-xl">Crear Cuenta</CardTitle>
         <p className="text-sm text-muted-foreground">
-          Registrate en WWH Dashboard
+          Registrate en Digital Products Dashboard
         </p>
       </CardHeader>
       <CardContent>

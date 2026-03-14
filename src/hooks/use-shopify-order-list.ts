@@ -63,6 +63,7 @@ export function useShopifyOrderList() {
         const orders: OrderListItem[] = await res.json();
         return orders.map((order) => ({
           ...order,
+          profileId: profile.id,
           profileName: profile.name,
           profileColor: profile.color,
         }));

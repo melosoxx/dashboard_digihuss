@@ -401,39 +401,70 @@ export default function PanelGeneralPage() {
           </div>
           {promotions.ads.length > 0 && (
             <Card className="mb-6">
-              <CardContent className="px-4 py-3">
-                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+              <CardContent className="px-5 py-4">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-4">
                   Anuncios activos ({promotions.ads.length})
                 </p>
-                <div className="space-y-2">
-                  {promotions.ads
-                    .sort((a, b) => b.spend - a.spend)
-                    .slice(0, 10)
-                    .map((ad) => (
-                      <div
-                        key={ad.adId}
-                        className="flex items-center gap-3 rounded-lg border border-border/40 p-2"
-                      >
-                        {ad.thumbnailUrl && (
-                          <img
-                            src={ad.thumbnailUrl}
-                            alt=""
-                            className="h-10 w-10 rounded object-cover flex-shrink-0"
-                          />
-                        )}
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium truncate">{ad.adName}</p>
-                          <p className="text-xs text-muted-foreground truncate">
-                            {ad.linkUrl || ad.campaignName}
-                          </p>
-                        </div>
-                        <div className="flex gap-4 text-xs text-muted-foreground flex-shrink-0">
-                          <span>{formatMoney(ad.spend)}</span>
-                          <span>{formatNumber(ad.impressions)} imp</span>
-                          <span>{ad.ctr.toFixed(2)}% CTR</span>
-                        </div>
-                      </div>
-                    ))}
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-border/30">
+                        <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-left pb-3">Anuncio</th>
+                        <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right pb-3">Duración</th>
+                        <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right pb-3">Gasto</th>
+                        <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right pb-3">Impresiones</th>
+                        <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right pb-3">CTR</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {promotions.ads
+                        .sort((a, b) => b.spend - a.spend)
+                        .slice(0, 10)
+                        .map((ad) => (
+                          <tr key={ad.adId} className="border-b border-border/10 last:border-0 hover:bg-white/[0.03] transition-colors">
+                            <td className="py-4 pr-6">
+                              <div className="flex items-center gap-3">
+                                {ad.thumbnailUrl && (
+                                  <img
+                                    src={ad.thumbnailUrl}
+                                    alt=""
+                                    className="h-11 w-11 rounded-md object-cover flex-shrink-0"
+                                  />
+                                )}
+                                <div className="min-w-0">
+                                  <p className="text-[14px] font-medium truncate max-w-[280px]">{ad.adName}</p>
+                                  <p className="text-xs text-muted-foreground truncate max-w-[280px]">
+                                    {ad.linkUrl || ad.campaignName}
+                                  </p>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="py-4 text-right">
+                              <span className="text-[15px] font-semibold text-violet-300">
+                                {ad.createdAt
+                                  ? (() => {
+                                      const days = Math.floor(
+                                        (Date.now() - new Date(ad.createdAt).getTime()) /
+                                          (1000 * 60 * 60 * 24)
+                                      );
+                                      return days === 0 ? "Hoy" : days === 1 ? "1 día" : `${days} días`;
+                                    })()
+                                  : "—"}
+                              </span>
+                            </td>
+                            <td className="py-4 text-right">
+                              <span className="text-[15px] font-semibold text-violet-300">{formatMoney(ad.spend)}</span>
+                            </td>
+                            <td className="py-4 text-right">
+                              <span className="text-[15px] font-semibold text-violet-300">{formatNumber(ad.impressions)}</span>
+                            </td>
+                            <td className="py-4 text-right">
+                              <span className="text-[15px] font-semibold text-violet-300">{ad.ctr.toFixed(2)}%</span>
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
                 </div>
               </CardContent>
             </Card>

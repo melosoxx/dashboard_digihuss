@@ -175,8 +175,19 @@ class ShopifyClient {
         customerEmail: o.customer?.email ?? "",
         total: parseFloat(o.currentTotalPriceSet.shopMoney.amount),
         currency: o.currentTotalPriceSet.shopMoney.currencyCode,
+        lineItems: o.lineItems.edges.map((e) => ({
+          title: e.node.title,
+          quantity: e.node.quantity,
+        })),
       }))
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+
+  async getOrderByName(orderName: string): Promise<ShopifyOrder | null> {
+    const queryFilter = `name:${orderName} AND financial_status:paid`;
+    const variables: Record<string, unknown> = { query: queryFilter };
+    const data = await this.query<ShopifyOrdersConnection>(ORDERS_QUERY, variables);
+    return data.orders.edges[0]?.node ?? null;
   }
 
   async getTopProducts(startDate: string, endDate: string, limit = 10): Promise<TopProduct[]> {

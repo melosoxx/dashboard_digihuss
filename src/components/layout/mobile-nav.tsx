@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, Zap } from "lucide-react";
+import { Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NAV_ITEMS } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
@@ -28,12 +28,13 @@ export function MobileNav() {
       </SheetTrigger>
       <SheetContent side="left" className="w-56 p-0 bg-sidebar border-sidebar-border">
         <SheetTitle className="flex h-14 items-center gap-2.5 border-b border-sidebar-border px-5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-cyan-400">
-            <Zap className="h-4 w-4 text-white" />
+          <div className="logo-glow flex items-center justify-center">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logoo.png" alt="Logo" className="h-11 w-11 object-contain" />
           </div>
           <div className="flex flex-col">
-            <span className="text-sm font-bold text-foreground tracking-tight">WWH</span>
-            <span className="text-[10px] text-muted-foreground leading-none">Dashboard</span>
+            <span className="text-sm font-bold text-foreground tracking-tight">Digital Products</span>
+            <span className="dashboard-glow text-[10px] font-semibold leading-none tracking-[0.25em] uppercase text-center w-full">Dashboard</span>
           </div>
         </SheetTitle>
         <nav className="p-3 space-y-0.5">
@@ -48,10 +49,10 @@ export function MobileNav() {
                   "flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-medium transition-all duration-150",
                   isActive
                     ? "bg-primary/15 text-primary border border-primary/20"
-                    : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground border border-transparent"
+                    : "sidebar-nav-item hover:bg-sidebar-accent border border-transparent"
                 )}
               >
-                <item.icon className={cn("h-4 w-4", isActive ? "text-primary" : "")} />
+                <item.icon className={cn("h-4 w-4", isActive ? "text-primary" : "sidebar-nav-icon")} />
                 <span>{item.label}</span>
               </Link>
             );

@@ -12,9 +12,9 @@ import { isTokenExpired, refreshShopifyToken } from "./shopify-token";
 // Profile-based credential resolution (Supabase flow)
 // ----------------------------------------------------------------
 
-async function getDecryptedCredentials(
+export async function getDecryptedCredentials(
   profileId: string,
-  service: "shopify" | "meta" | "clarity" | "mercadopago"
+  service: "shopify" | "meta" | "clarity" | "mercadopago" | "email"
 ): Promise<Record<string, string> | null> {
   const supabase = createAdminClient();
   const { data, error } = await supabase

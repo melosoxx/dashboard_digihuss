@@ -25,6 +25,11 @@ export interface ShopifyOrder {
   };
 }
 
+export interface OrderLineItemSummary {
+  title: string;
+  quantity: number;
+}
+
 export interface OrderListItem {
   name: string;
   createdAt: string;
@@ -32,6 +37,8 @@ export interface OrderListItem {
   customerEmail?: string;
   total: number;
   currency: string;
+  lineItems?: OrderLineItemSummary[];
+  profileId?: string;
   profileName?: string;
   profileColor?: string;
 }

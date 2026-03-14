@@ -1,9 +1,13 @@
 "use client";
 
+import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatCurrency } from "@/lib/utils";
+import { useBusinessProfile } from "@/providers/business-profile-provider";
+import { useEmailSendStatus } from "@/hooks/use-email-send-status";
+import { SendButton } from "@/components/comprobantes/send-button";
 import type { OrderListItem } from "@/types/shopify";
 
 interface RecentOrdersCardProps {
@@ -23,6 +27,11 @@ function formatOrderDate(iso: string): string {
 }
 
 export function RecentOrdersCard({ orders, isLoading, aggregateMode }: RecentOrdersCardProps) {
+  const { activeProfileId } = useBusinessProfile();
+
+  const orderNames = useMemo(() => orders.map((o) => o.name), [orders]);
+  const { data: sendStatusMap } = useEmailSendStatus(orderNames);
+
   if (isLoading) {
     return (
       <Card>
@@ -62,6 +71,7 @@ export function RecentOrdersCard({ orders, isLoading, aggregateMode }: RecentOrd
                   <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-left pb-3">Fecha</th>
                   <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-left pb-3">Cliente</th>
                   <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right pb-3">Total</th>
+                  <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-center pb-3 w-12"></th>
                 </tr>
               </thead>
               <tbody>
@@ -110,6 +120,15 @@ export function RecentOrdersCard({ orders, isLoading, aggregateMode }: RecentOrd
                     </td>
                     <td className="py-3 text-right text-[13px] font-medium">
                       {formatCurrency(order.total, order.currency)}
+                    </td>
+                    <td className="py-3 text-center">
+                      <SendButton
+                        profileId={order.profileId ?? activeProfileId}
+                        orderName={order.name}
+                        customerEmail={order.customerEmail}
+                        customerName={order.customerName}
+                        sendStatus={sendStatusMap?.[order.name]}
+                      />
                     </td>
                   </tr>
                 ))}

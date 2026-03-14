@@ -426,3 +426,75 @@ CREATE TABLE clarity_cron_log (
   errors              JSONB,
   duration_ms         INT
 );
+
+-- ============================================================
+-- MIGRATION: Comprobantes (email download links to customers)
+-- ============================================================
+
+-- Allow 'email' as a credential service in profile_credentials
+ALTER TABLE profile_credentials DROP CONSTRAINT profile_credentials_service_check;
+ALTER TABLE profile_credentials ADD CONSTRAINT profile_credentials_service_check
+  CHECK (service IN ('shopify', 'meta', 'clarity', 'mercadopago', 'email'));
+
+-- Email sending configuration per profile
+CREATE TABLE email_config (
+  id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  profile_id       UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  enabled          BOOLEAN NOT NULL DEFAULT false,
+  gmail_address    TEXT NOT NULL DEFAULT '',
+  sender_name      TEXT NOT NULL DEFAULT '',
+  subject_template TEXT NOT NULL DEFAULT 'Tu descarga esta lista!',
+  footer_text      TEXT DEFAULT 'Gracias por tu compra!',
+  download_url     TEXT NOT NULL DEFAULT '',
+  created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE(profile_id)
+);
+
+CREATE INDEX idx_email_config_profile ON email_config(profile_id);
+
+ALTER TABLE email_config ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view own email config"
+  ON email_config FOR SELECT
+  USING (profile_id IN (SELECT id FROM profiles WHERE user_id = auth.uid()));
+
+CREATE POLICY "Users can insert own email config"
+  ON email_config FOR INSERT
+  WITH CHECK (profile_id IN (SELECT id FROM profiles WHERE user_id = auth.uid()));
+
+CREATE POLICY "Users can update own email config"
+  ON email_config FOR UPDATE
+  USING (profile_id IN (SELECT id FROM profiles WHERE user_id = auth.uid()));
+
+CREATE POLICY "Users can delete own email config"
+  ON email_config FOR DELETE
+  USING (profile_id IN (SELECT id FROM profiles WHERE user_id = auth.uid()));
+
+CREATE TRIGGER set_updated_at BEFORE UPDATE ON email_config
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+-- Email send log (tracks every email sent)
+CREATE TABLE email_send_log (
+  id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  profile_id         UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  shopify_order_name TEXT NOT NULL,
+  customer_email     TEXT NOT NULL,
+  customer_name      TEXT,
+  status             TEXT NOT NULL DEFAULT 'sent'
+                     CHECK (status IN ('sent', 'failed')),
+  error_message      TEXT,
+  sent_at            TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_email_send_log_profile_order ON email_send_log(profile_id, shopify_order_name);
+
+ALTER TABLE email_send_log ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view own email logs"
+  ON email_send_log FOR SELECT
+  USING (profile_id IN (SELECT id FROM profiles WHERE user_id = auth.uid()));
+
+CREATE POLICY "Users can insert own email logs"
+  ON email_send_log FOR INSERT
+  WITH CHECK (profile_id IN (SELECT id FROM profiles WHERE user_id = auth.uid()));

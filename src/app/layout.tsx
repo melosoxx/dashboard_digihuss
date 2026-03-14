@@ -21,8 +21,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "WWH Dashboard | World Wide Hustle",
-  description: "Panel de analíticas de negocio para productos digitales World Wide Hustle",
+  title: "Digital Products Dashboard",
+  description: "Panel de analíticas de negocio para productos digitales",
 };
 
 export default function RootLayout({
