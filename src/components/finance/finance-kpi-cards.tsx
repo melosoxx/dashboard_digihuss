@@ -9,7 +9,8 @@ import {
   PopoverContent,
 } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
-import { cn, formatCurrency } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import { useCurrency } from "@/providers/currency-provider";
 import type { FinanceSummary } from "@/types/finance";
 
 interface FinanceKPICardsProps {
@@ -96,12 +97,14 @@ function LineItem({
   color,
   percentage,
   prefix,
+  formatMoney,
 }: {
   label: string;
   amount: number;
   color?: string;
   percentage?: number;
   prefix?: "+" | "-" | "=";
+  formatMoney: (n: number) => string;
 }) {
   return (
     <div className="flex items-center justify-between text-xs py-0.5">
@@ -127,7 +130,7 @@ function LineItem({
         <span className="text-muted-foreground truncate">{label}</span>
       </div>
       <div className="flex items-center gap-2 shrink-0">
-        <span className="font-medium">{formatCurrency(amount)}</span>
+        <span className="font-medium">{formatMoney(amount)}</span>
         {percentage !== undefined && (
           <span className="text-muted-foreground/60 w-10 text-right">
             {percentage.toFixed(0)}%
@@ -140,7 +143,8 @@ function LineItem({
 
 /* ── Main component ── */
 export function FinanceKPICards({ data, isLoading }: FinanceKPICardsProps) {
-  const grossRevenue = data?.grossRevenue ?? 0;
+  const { formatMoney } = useCurrency();
+
   const mpNetRevenue = data?.mpNetRevenue ?? 0;
   const totalExpenses = data?.totalExpenses ?? 0;
   const netProfit = data?.netProfit ?? 0;
@@ -152,11 +156,11 @@ export function FinanceKPICards({ data, isLoading }: FinanceKPICardsProps) {
   const otherExpenses = manualExpenses + recurringExpenses;
 
   return (
-    <div className="grid gap-3 grid-cols-2 md:grid-cols-4 mb-6">
+    <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
       {/* ── Ingresos Netos (Post-Comisiones) ── */}
       <KPIWithPopover
         title="Ingresos Netos"
-        formattedValue={formatCurrency(mpNetRevenue)}
+        formattedValue={formatMoney(mpNetRevenue)}
         icon={DollarSign}
         iconClassName="text-emerald-500"
         isLoading={isLoading}
@@ -168,12 +172,14 @@ export function FinanceKPICards({ data, isLoading }: FinanceKPICardsProps) {
           label="Bruto MercadoPago"
           amount={data?.mpSummary?.grossAmount ?? 0}
           color="#10b981"
+          formatMoney={formatMoney}
         />
         <LineItem
           prefix="-"
           label="Comisiones MP"
           amount={mpFees}
           color="#f59e0b"
+          formatMoney={formatMoney}
         />
         <Separator className="my-2" />
         <div className="flex items-center justify-between text-xs font-bold">
@@ -181,7 +187,7 @@ export function FinanceKPICards({ data, isLoading }: FinanceKPICardsProps) {
             <span className="font-mono text-muted-foreground">=</span>
             Neto recibido
           </span>
-          <span className="text-emerald-500">{formatCurrency(mpNetRevenue)}</span>
+          <span className="text-emerald-500">{formatMoney(mpNetRevenue)}</span>
         </div>
         <Separator className="my-2" />
         <p className="text-[10px] text-muted-foreground">
@@ -192,7 +198,7 @@ export function FinanceKPICards({ data, isLoading }: FinanceKPICardsProps) {
       {/* ── Egresos Totales ── */}
       <KPIWithPopover
         title="Egresos Totales"
-        formattedValue={formatCurrency(totalExpenses)}
+        formattedValue={formatMoney(totalExpenses)}
         icon={TrendingDown}
         iconClassName="text-red-500"
         isLoading={isLoading}
@@ -206,6 +212,7 @@ export function FinanceKPICards({ data, isLoading }: FinanceKPICardsProps) {
             amount={adSpend}
             color="#f43f5e"
             percentage={totalExpenses > 0 ? (adSpend / totalExpenses) * 100 : 0}
+            formatMoney={formatMoney}
           />
         )}
         {manualExpenses > 0 && (
@@ -216,6 +223,7 @@ export function FinanceKPICards({ data, isLoading }: FinanceKPICardsProps) {
             percentage={
               totalExpenses > 0 ? (manualExpenses / totalExpenses) * 100 : 0
             }
+            formatMoney={formatMoney}
           />
         )}
         {recurringExpenses > 0 && (
@@ -226,6 +234,7 @@ export function FinanceKPICards({ data, isLoading }: FinanceKPICardsProps) {
             percentage={
               totalExpenses > 0 ? (recurringExpenses / totalExpenses) * 100 : 0
             }
+            formatMoney={formatMoney}
           />
         )}
         {totalExpenses === 0 && (
@@ -236,14 +245,14 @@ export function FinanceKPICards({ data, isLoading }: FinanceKPICardsProps) {
         <Separator className="my-2" />
         <div className="flex items-center justify-between text-xs font-medium">
           <span>Total</span>
-          <span>{formatCurrency(totalExpenses)}</span>
+          <span>{formatMoney(totalExpenses)}</span>
         </div>
       </KPIWithPopover>
 
       {/* ── Ganancia Neta ── */}
       <KPIWithPopover
         title="Ganancia Neta"
-        formattedValue={formatCurrency(netProfit)}
+        formattedValue={formatMoney(netProfit)}
         icon={Wallet}
         iconClassName={netProfit >= 0 ? "text-emerald-500" : "text-red-500"}
         isLoading={isLoading}
@@ -251,12 +260,12 @@ export function FinanceKPICards({ data, isLoading }: FinanceKPICardsProps) {
         <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
           Calculo
         </p>
-        <LineItem prefix="+" label="Ingresos Netos (MP)" amount={mpNetRevenue} />
+        <LineItem prefix="+" label="Ingresos Netos (MP)" amount={mpNetRevenue} formatMoney={formatMoney} />
         {adSpend > 0 && (
-          <LineItem prefix="-" label="Publicidad" amount={adSpend} />
+          <LineItem prefix="-" label="Publicidad" amount={adSpend} formatMoney={formatMoney} />
         )}
         {otherExpenses > 0 && (
-          <LineItem prefix="-" label="Otros Gastos" amount={otherExpenses} />
+          <LineItem prefix="-" label="Otros Gastos" amount={otherExpenses} formatMoney={formatMoney} />
         )}
         <Separator className="my-2" />
         <div className="flex items-center justify-between text-xs font-bold">
@@ -265,7 +274,7 @@ export function FinanceKPICards({ data, isLoading }: FinanceKPICardsProps) {
             Ganancia Neta
           </span>
           <span className={netProfit >= 0 ? "text-emerald-500" : "text-red-400"}>
-            {formatCurrency(netProfit)}
+            {formatMoney(netProfit)}
           </span>
         </div>
       </KPIWithPopover>
@@ -286,7 +295,7 @@ export function FinanceKPICards({ data, isLoading }: FinanceKPICardsProps) {
             Ganancia Neta / Ingresos Netos x 100
           </p>
           <p className="font-mono text-xs">
-            {formatCurrency(netProfit)} / {formatCurrency(mpNetRevenue)} x 100
+            {formatMoney(netProfit)} / {formatMoney(mpNetRevenue)} x 100
           </p>
           <Separator className="my-2" />
           <p className="font-bold text-teal-500 text-sm">

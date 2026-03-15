@@ -10,9 +10,11 @@ import { OrdersChart } from "@/components/dashboard/orders-chart";
 import { TopProductsTable } from "@/components/dashboard/top-products-table";
 import { PageHeader } from "@/components/shared/page-header";
 import { ErrorDisplay } from "@/components/shared/error-display";
-import { formatCurrency, formatNumber, formatPercentage } from "@/lib/utils";
+import { formatNumber, formatPercentage } from "@/lib/utils";
+import { useCurrency } from "@/providers/currency-provider";
 
 export default function SalesOverviewPage() {
+  const { formatMoney } = useCurrency();
   const orders = useShopifyOrders();
   const products = useShopifyProducts();
   const analytics = useShopifyAnalytics();
@@ -33,7 +35,7 @@ export default function SalesOverviewPage() {
         <KPICard
           title="Ingresos Totales"
           value={orders.data?.totalRevenue ?? 0}
-          formattedValue={formatCurrency(orders.data?.totalRevenue ?? 0)}
+          formattedValue={formatMoney(orders.data?.totalRevenue ?? 0)}
           icon={DollarSign}
           iconClassName="text-emerald-500"
           isLoading={orders.isLoading}
@@ -58,7 +60,7 @@ export default function SalesOverviewPage() {
         <KPICard
           title="Ticket Promedio"
           value={orders.data?.averageOrderValue ?? 0}
-          formattedValue={formatCurrency(orders.data?.averageOrderValue ?? 0)}
+          formattedValue={formatMoney(orders.data?.averageOrderValue ?? 0)}
           icon={Receipt}
           iconClassName="text-emerald-500"
           isLoading={orders.isLoading}

@@ -8,10 +8,11 @@ import { SpendVsRevenueChart } from "@/components/roi/spend-vs-revenue";
 import { CPAChart } from "@/components/roi/cpa-chart";
 import { PageHeader } from "@/components/shared/page-header";
 import { ErrorDisplay } from "@/components/shared/error-display";
-import { formatCurrency } from "@/lib/utils";
+import { useCurrency } from "@/providers/currency-provider";
 import { useMemo } from "react";
 
 export default function ROIAnalysisPage() {
+  const { formatMoney } = useCurrency();
   const shopify = useShopifyOrders();
   const meta = useMetaAccount();
 
@@ -66,7 +67,7 @@ export default function ROIAnalysisPage() {
         <KPICard
           title="Ganancia Neta"
           value={netProfit}
-          formattedValue={formatCurrency(netProfit)}
+          formattedValue={formatMoney(netProfit)}
           icon={DollarSign}
           iconClassName="text-emerald-500"
           isLoading={isLoading}
@@ -87,7 +88,7 @@ export default function ROIAnalysisPage() {
         <KPICard
           title="Costo por Adquisición"
           value={cpa}
-          formattedValue={formatCurrency(cpa)}
+          formattedValue={formatMoney(cpa)}
           icon={Target}
           iconClassName="text-orange-500"
           isLoading={isLoading}

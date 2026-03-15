@@ -84,12 +84,20 @@ function loadSavedCurrency(): CurrencyCode {
 }
 
 async function fetchRates(): Promise<Record<string, number>> {
-  // open.er-api.com is free, no API key required, returns rates with ARS as base
-  const res = await fetch("https://open.er-api.com/v6/latest/ARS");
+  // fawazahmed0/currency-api: free, no API key, mid-market rates (same as Google)
+  const res = await fetch(
+    "https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/ars.json"
+  );
   if (!res.ok) throw new Error("Exchange rate fetch failed");
   const data = await res.json();
-  if (data.result !== "success") throw new Error("Exchange rate API error");
-  return data.rates as Record<string, number>;
+  if (!data.ars) throw new Error("Exchange rate API error");
+  // data.ars contains rates like { usd: 0.00071, eur: 0.00062, ... }
+  // Convert keys to uppercase to match our CurrencyCode type
+  const rates: Record<string, number> = { ARS: 1 };
+  for (const [key, value] of Object.entries(data.ars)) {
+    rates[key.toUpperCase()] = value as number;
+  }
+  return rates;
 }
 
 function formatWithCurrency(amount: number, config: CurrencyConfig): string {

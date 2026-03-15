@@ -20,6 +20,7 @@ interface KPICardProps extends KPIData {
   breakdown?: ProfileBreakdownItem[];
   breakdownLoading?: boolean;
   featured?: boolean;
+  compact?: boolean;
   subtitle?: string;
 }
 
@@ -33,6 +34,7 @@ export function KPICard({
   breakdownLoading,
   trend,
   featured,
+  compact,
   subtitle,
 }: KPICardProps) {
   const [expanded, setExpanded] = useState(false);
@@ -42,12 +44,12 @@ export function KPICard({
   if (isLoading) {
     return (
       <Card className="overflow-hidden">
-        <CardContent className={cn("px-3 flex flex-col justify-center h-full", featured ? "py-4" : "py-2.5")}>
+        <CardContent className={cn("px-3 flex flex-col justify-center h-full", featured && !compact ? "py-3" : featured && compact ? "py-2" : "py-2")}>
           <div className="flex items-center justify-between mb-1">
             <Skeleton className="h-3 w-20" />
-            <Skeleton className={cn("rounded-md", featured ? "h-7 w-7" : "h-6 w-6")} />
+            <Skeleton className="rounded-md h-6 w-6" />
           </div>
-          <Skeleton className={cn("w-28", featured ? "h-9" : "h-6")} />
+          <Skeleton className={cn("w-28", featured && !compact ? "h-7" : "h-5")} />
           <Skeleton className="h-3 w-20 mt-1" />
         </CardContent>
       </Card>
@@ -70,10 +72,10 @@ export function KPICard({
       )}
       onClick={() => hasBreakdown && setExpanded(!expanded)}
     >
-      <CardContent className={cn("px-3 flex flex-col justify-center h-full", featured ? "py-4" : "py-2.5")}>
+      <CardContent className={cn("px-3 flex flex-col justify-center h-full", featured && !compact ? "py-3" : featured && compact ? "py-2" : "py-2")}>
         {/* Top row: title + icon */}
         <div className="flex items-center justify-between mb-1">
-          <span className={cn("font-semibold uppercase tracking-wider text-muted-foreground", featured ? "text-[11px]" : "text-[10px]")}>
+          <span className={cn("font-semibold uppercase tracking-wider text-muted-foreground", featured ? "text-xs" : "text-[10px]")}>
             {title}
           </span>
           <div className="flex items-center gap-1">
@@ -88,7 +90,7 @@ export function KPICard({
             {Icon && (
               <div className={cn(
                 "flex items-center justify-center rounded-md",
-                featured ? "h-7 w-7" : "h-6 w-6",
+                featured && !compact ? "h-8 w-8" : "h-6 w-6",
                 iconClassName?.includes("emerald") ? "bg-emerald-500/15" :
                 iconClassName?.includes("blue") ? "bg-blue-500/15" :
                 iconClassName?.includes("red") ? "bg-red-500/15" :
@@ -98,14 +100,14 @@ export function KPICard({
                 iconClassName?.includes("amber") ? "bg-amber-500/15" :
                 "bg-muted"
               )}>
-                <Icon className={cn(featured ? "h-4 w-4" : "h-3.5 w-3.5", iconClassName || "text-muted-foreground")} />
+                <Icon className={cn(featured && !compact ? "h-4.5 w-4.5" : "h-3.5 w-3.5", iconClassName || "text-muted-foreground")} />
               </div>
             )}
           </div>
         </div>
 
         {/* Value */}
-        <div className={cn("font-bold tracking-tight", featured ? "text-[2.25rem] leading-none" : "text-xl", valueColorClass)}>
+        <div className={cn("font-bold tracking-tight", featured && !compact ? "text-[3rem] leading-none" : featured && compact ? "text-[2rem] leading-none" : "text-xl", valueColorClass)}>
           {formattedValue}
         </div>
 

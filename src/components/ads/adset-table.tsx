@@ -3,7 +3,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { formatCurrency, formatNumber, cn } from "@/lib/utils";
+import { formatNumber, cn } from "@/lib/utils";
+import { useCurrency } from "@/providers/currency-provider";
 import type { MetaAdsetInsight } from "@/types/meta";
 
 interface AdsetTableProps {
@@ -18,6 +19,8 @@ function getRoasBadge(roas: number) {
 }
 
 export function AdsetTable({ adsets, isLoading }: AdsetTableProps) {
+  const { formatMoney } = useCurrency();
+
   if (isLoading) {
     return (
       <Card>
@@ -69,10 +72,10 @@ export function AdsetTable({ adsets, isLoading }: AdsetTableProps) {
                       <td className="py-3 pr-4 text-muted-foreground text-[13px] max-w-[160px] truncate" title={adset.campaignName}>
                         {adset.campaignName || "-"}
                       </td>
-                      <td className="py-3 text-right text-muted-foreground text-[13px]">{formatCurrency(adset.spend)}</td>
+                      <td className="py-3 text-right text-muted-foreground text-[13px]">{formatMoney(adset.spend)}</td>
                       <td className="py-3 text-right text-muted-foreground text-[13px]">{formatNumber(adset.impressions)}</td>
                       <td className="py-3 text-right text-muted-foreground text-[13px]">{formatNumber(adset.clicks)}</td>
-                      <td className="py-3 text-right text-muted-foreground text-[13px]">{formatCurrency(adset.cpc)}</td>
+                      <td className="py-3 text-right text-muted-foreground text-[13px]">{formatMoney(adset.cpc)}</td>
                       <td className="py-3 text-right text-muted-foreground text-[13px]">{adset.ctr.toFixed(2)}%</td>
                       <td className="py-3 text-right">
                         <Badge variant="outline" className={cn("text-[10px] font-semibold border", roasBadge.className)}>

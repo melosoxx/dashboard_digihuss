@@ -3,7 +3,7 @@
 import { CreditCard } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatCurrency } from "@/lib/utils";
+import { useCurrency } from "@/providers/currency-provider";
 import type { MercadoPagoSummary } from "@/types/finance";
 
 interface MpFeesCardProps {
@@ -13,6 +13,8 @@ interface MpFeesCardProps {
 }
 
 export function MpFeesCard({ data, isLoading, serviceStatus }: MpFeesCardProps) {
+  const { formatMoney } = useCurrency();
+
   if (isLoading) {
     return (
       <Card>
@@ -66,7 +68,7 @@ export function MpFeesCard({ data, isLoading, serviceStatus }: MpFeesCardProps) 
               Total comisiones
             </p>
             <p className="text-lg font-bold text-amber-500">
-              {formatCurrency(data.totalFees)}
+              {formatMoney(data.totalFees)}
             </p>
           </div>
           <div>
@@ -112,7 +114,7 @@ export function MpFeesCard({ data, isLoading, serviceStatus }: MpFeesCardProps) 
                     </div>
                     <div className="flex items-center gap-3 shrink-0">
                       <span className="text-amber-500 font-medium">
-                        {formatCurrency(pt.fees)}
+                        {formatMoney(pt.fees)}
                       </span>
                       <span className="text-muted-foreground w-12 text-right">
                         {feeRate.toFixed(1)}%

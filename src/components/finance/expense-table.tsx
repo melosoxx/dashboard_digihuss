@@ -18,7 +18,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { formatCurrency } from "@/lib/utils";
+import { useCurrency } from "@/providers/currency-provider";
 import type { Expense } from "@/types/finance";
 
 interface ExpenseTableProps {
@@ -35,6 +35,7 @@ export function ExpenseTable({
   onDelete,
 }: ExpenseTableProps) {
   // Only show non-recurring expenses in this table
+  const { formatMoney } = useCurrency();
   const nonRecurring = expenses.filter((e) => !e.isRecurring);
 
   if (isLoading) {
@@ -130,15 +131,15 @@ export function ExpenseTable({
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <span className="cursor-help border-b border-dashed border-muted-foreground/40">
-                            {formatCurrency(expense.amount / expense.splitAmong)}
+                            {formatMoney(expense.amount / expense.splitAmong)}
                           </span>
                         </TooltipTrigger>
                         <TooltipContent>
-                          Total: {formatCurrency(expense.amount)} / {expense.splitAmong} negocios
+                          Total: {formatMoney(expense.amount)} / {expense.splitAmong} negocios
                         </TooltipContent>
                       </Tooltip>
                     ) : (
-                      formatCurrency(expense.amount)
+                      formatMoney(expense.amount)
                     )}
                   </TableCell>
                   <TableCell className="text-right">

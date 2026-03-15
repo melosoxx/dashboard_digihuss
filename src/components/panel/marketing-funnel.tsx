@@ -29,6 +29,7 @@ interface MarketingFunnelProps {
   orders: number;
   isLoading: boolean;
   profileBreakdown?: FunnelProfileBreakdown[];
+  fillHeight?: boolean;
 }
 
 const STAGES = [
@@ -66,22 +67,31 @@ export function MarketingFunnel({
   orders,
   isLoading,
   profileBreakdown,
+  fillHeight = false,
 }: MarketingFunnelProps) {
   if (isLoading) {
     return (
-      <Card>
+      <Card className={fillHeight ? "h-full flex flex-col py-4 gap-3" : ""}>
         <CardHeader>
           <Skeleton className="h-5 w-48" />
         </CardHeader>
-        <CardContent>
-          <Skeleton className="h-[400px] w-full" />
+        <CardContent className={fillHeight ? "flex-1 min-h-0" : ""}>
+          <Skeleton className="h-[300px] w-full" />
         </CardContent>
       </Card>
     );
   }
 
   const values = [impressions, clicks, landingSessions, checkouts, orders];
-  const logMax = Math.log10(Math.max(...values, 1));
+  // Impressions = 100%, Clicks = 90% (fixed anchors).
+  // Landing/Checkouts/Orders scale proportionally among themselves (max → 85%, min → 14%).
+  const subMax = Math.max(landingSessions, checkouts, orders, 1);
+  const FIXED_WIDTHS = [100, 90] as const;
+  function getWidthPct(i: number): number {
+    if (i < 2) return FIXED_WIDTHS[i];
+    const val = values[i];
+    return Math.max((val / subMax) * 85, 14);
+  }
   const showTooltip = profileBreakdown && profileBreakdown.length > 1;
 
   const rates = [
@@ -91,25 +101,28 @@ export function MarketingFunnel({
     { label: "Checkout → Pedido", value: getConversionRate(checkouts, orders), raw: checkouts > 0 ? (orders / checkouts) * 100 : 0 },
   ];
 
+  const barH = fillHeight ? "h-7" : "h-9";
+  const arrowPy = fillHeight ? "py-0.5" : "py-1";
+
   return (
-    <Card>
+    <Card className={fillHeight ? "h-full flex flex-col py-4 gap-3" : ""}>
       <CardHeader>
         <CardTitle className="text-sm font-semibold">Embudo de Conversion</CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className={fillHeight ? "flex-1 min-h-0 overflow-hidden" : ""}>
         <TooltipProvider>
-          <div className="flex flex-col items-center gap-1">
+          <div className={cn("flex flex-col items-center", fillHeight ? "h-full justify-around" : "gap-1")}>
             {STAGES.map((stage, i) => {
               const val = values[i];
-              const logVal = val > 0 ? Math.log10(val) : 0;
-              const widthPct = logMax > 0 ? Math.max((logVal / logMax) * 100, 12) : 12;
+              const widthPct = getWidthPct(i);
               const rate = i < rates.length ? rates[i] : null;
               const field = STAGE_FIELD[stage.key];
 
               const bar = (
                 <div
                   className={cn(
-                    "h-9 rounded-lg border bg-gradient-to-r transition-all duration-500 flex items-center justify-center gap-1.5",
+                    barH,
+                    "rounded-lg border bg-gradient-to-r transition-all duration-500 flex items-center justify-center gap-1.5",
                     showTooltip && "cursor-pointer",
                     stage.color,
                     stage.border,
@@ -159,7 +172,7 @@ export function MarketingFunnel({
 
                   {/* Conversion arrow between stages */}
                   {rate && (
-                    <div className="flex items-center gap-1.5 py-1">
+                    <div className={cn("flex items-center gap-1.5", arrowPy)}>
                       <ArrowDown className="h-3 w-3 text-muted-foreground/40" />
                       <span className={cn("text-[11px] font-medium", getDropoffColor(rate.raw))}>
                         {rate.value}

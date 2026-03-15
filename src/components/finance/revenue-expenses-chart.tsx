@@ -12,7 +12,7 @@ import {
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatCurrency } from "@/lib/utils";
+import { useCurrency } from "@/providers/currency-provider";
 
 interface DailyFinancePoint {
   date: string;
@@ -40,28 +40,30 @@ export function RevenueExpensesChart({
   data,
   isLoading,
 }: RevenueExpensesChartProps) {
+  const { formatMoney, convert, currencySymbol } = useCurrency();
+
   if (isLoading) {
     return (
-      <Card>
-        <CardHeader>
+      <Card className="h-full flex flex-col">
+        <CardHeader className="flex-shrink-0 py-3">
           <Skeleton className="h-5 w-48" />
         </CardHeader>
-        <CardContent>
-          <Skeleton className="h-[350px] w-full" />
+        <CardContent className="flex-1 min-h-0">
+          <Skeleton className="h-full w-full" />
         </CardContent>
       </Card>
     );
   }
 
   return (
-    <Card>
-      <CardHeader>
+    <Card className="h-full flex flex-col">
+      <CardHeader className="flex-shrink-0 py-3">
         <CardTitle className="text-sm font-semibold">
           Ingresos vs Egresos
         </CardTitle>
       </CardHeader>
-      <CardContent>
-        <ResponsiveContainer width="100%" height={350}>
+      <CardContent className="flex-1 min-h-0 pb-3">
+        <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} barGap={2}>
             <CartesianGrid
               strokeDasharray="3 3"
@@ -84,10 +86,10 @@ export function RevenueExpensesChart({
               tick={{ fontSize: 11, fill: "rgba(150, 165, 200, 0.6)" }}
               tickLine={false}
               axisLine={false}
-              tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`}
+              tickFormatter={(v) => `${currencySymbol}${(convert(v) / 1000).toFixed(0)}k`}
             />
             <Tooltip
-              formatter={(value, name) => [formatCurrency(Number(value)), name]}
+              formatter={(value, name) => [formatMoney(Number(value)), name]}
               contentStyle={TOOLTIP_STYLE}
               itemStyle={{ color: "rgba(220, 230, 255, 0.9)" }}
               labelStyle={{

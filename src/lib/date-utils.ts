@@ -8,7 +8,7 @@ export function formatDateForApi(date: Date): string {
 export function getDefaultDateRange(): DateRange {
   const today = new Date();
   return {
-    startDate: formatDateForApi(today),
+    startDate: formatDateForApi(subDays(today, 30)),
     endDate: formatDateForApi(today),
   };
 }

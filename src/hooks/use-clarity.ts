@@ -20,6 +20,7 @@ export function useClarity() {
   const query = useQuery<{
     data: ClarityInsights | null;
     daysAvailable: number;
+    availableDates: string[];
     dateRange: { start: string; end: string } | null;
     lastFetchedAt: string | null;
   }>({
@@ -73,6 +74,7 @@ export function useClarity() {
     isFetching: query.isFetching,
     error: query.error,
     daysAvailable: query.data?.daysAvailable ?? 0,
+    availableDates: query.data?.availableDates ?? [],
     lastFetchedAt: query.data?.lastFetchedAt ?? null,
     fetchToday,
     isManualFetching,

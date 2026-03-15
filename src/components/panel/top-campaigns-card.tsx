@@ -12,7 +12,8 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Image as ImageIcon, Video, Loader2 } from "lucide-react";
-import { formatCurrency, cn } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import { useCurrency } from "@/providers/currency-provider";
 import { useBusinessProfile } from "@/providers/business-profile-provider";
 import type { MetaActiveAd } from "@/types/meta";
 
@@ -47,6 +48,7 @@ function formatShortDate(iso: string): string {
 }
 
 export function ActiveAdsCard({ ads, isLoading }: ActiveAdsCardProps) {
+  const { formatMoney } = useCurrency();
   const [previewAd, setPreviewAd] = useState<MetaActiveAd | null>(null);
   const [videoSource, setVideoSource] = useState<string | null>(null);
   const [loadingVideo, setLoadingVideo] = useState(false);
@@ -170,7 +172,7 @@ export function ActiveAdsCard({ ads, isLoading }: ActiveAdsCardProps) {
                         {ad.impressions.toLocaleString("es-AR")}
                       </td>
                       <td className="py-3 text-right text-muted-foreground text-[13px]">
-                        {formatCurrency(ad.spend)}
+                        {formatMoney(ad.spend)}
                       </td>
                       <td className="py-3 text-right text-muted-foreground text-[13px]">
                         {formatShortDate(ad.createdAt)}

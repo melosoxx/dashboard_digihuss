@@ -22,9 +22,9 @@ export function CampaignPerformanceCard({ campaigns, isLoading }: CampaignPerfor
   const { formatMoney } = useCurrency();
   if (isLoading) {
     return (
-      <Card>
+      <Card className="h-full flex flex-col">
         <CardHeader><Skeleton className="h-5 w-48" /></CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="flex-1 space-y-3">
           {Array.from({ length: 4 }).map((_, i) => (
             <Skeleton key={i} className="h-10 w-full" />
           ))}
@@ -36,11 +36,11 @@ export function CampaignPerformanceCard({ campaigns, isLoading }: CampaignPerfor
   const sorted = [...campaigns].sort((a, b) => b.spend - a.spend);
 
   return (
-    <Card>
+    <Card className="h-full flex flex-col">
       <CardHeader>
         <CardTitle className="text-sm font-semibold">Performance por Campaña</CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="flex-1 min-h-0 overflow-y-auto">
         {sorted.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-4">
             No hay campañas activas en este momento

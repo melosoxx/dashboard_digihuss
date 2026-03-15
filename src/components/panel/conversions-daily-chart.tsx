@@ -28,6 +28,8 @@ interface ConversionsDailyChartProps {
   isLoading: boolean;
   /** Target cost per conversion in raw currency (ARS) */
   costTarget?: number;
+  chartHeight?: number;
+  fillHeight?: boolean;
 }
 
 const TOOLTIP_STYLE = {
@@ -38,14 +40,14 @@ const TOOLTIP_STYLE = {
   boxShadow: "0 4px 20px rgba(0, 0, 0, 0.3)",
 };
 
-export function ConversionsDailyChart({ data, isLoading, costTarget = 2000 }: ConversionsDailyChartProps) {
+export function ConversionsDailyChart({ data, isLoading, costTarget = 2000, chartHeight = 280, fillHeight = false }: ConversionsDailyChartProps) {
   const { convert, currencySymbol, formatMoney } = useCurrency();
 
   if (isLoading) {
     return (
-      <Card>
+      <Card className={fillHeight ? "h-full flex flex-col" : ""}>
         <CardHeader><Skeleton className="h-5 w-48" /></CardHeader>
-        <CardContent><Skeleton className="h-[280px] w-full" /></CardContent>
+        <CardContent className={fillHeight ? "flex-1 min-h-0" : ""}><Skeleton className="w-full" style={{ height: fillHeight ? "100%" : chartHeight }} /></CardContent>
       </Card>
     );
   }
@@ -65,7 +67,7 @@ export function ConversionsDailyChart({ data, isLoading, costTarget = 2000 }: Co
   }
 
   return (
-    <Card>
+    <Card className={fillHeight ? "h-full flex flex-col" : ""}>
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <CardTitle className="text-sm font-semibold">Conversiones diarias</CardTitle>
@@ -74,8 +76,8 @@ export function ConversionsDailyChart({ data, isLoading, costTarget = 2000 }: Co
           </span>
         </div>
       </CardHeader>
-      <CardContent>
-        <ResponsiveContainer width="100%" height={280}>
+      <CardContent className={fillHeight ? "flex-1 min-h-0" : ""}>
+        <ResponsiveContainer width="100%" height={fillHeight ? "100%" : chartHeight}>
           <ComposedChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(100, 120, 180, 0.08)" vertical={false} />
             <XAxis

@@ -3,7 +3,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { formatCurrency, formatNumber, cn } from "@/lib/utils";
+import { formatNumber, cn } from "@/lib/utils";
+import { useCurrency } from "@/providers/currency-provider";
 import type { MetaCampaignInsight } from "@/types/meta";
 
 interface CampaignTableProps {
@@ -18,6 +19,8 @@ function getRoasBadge(roas: number) {
 }
 
 export function CampaignTable({ campaigns, isLoading }: CampaignTableProps) {
+  const { formatMoney } = useCurrency();
+
   if (isLoading) {
     return (
       <Card>
@@ -65,10 +68,10 @@ export function CampaignTable({ campaigns, isLoading }: CampaignTableProps) {
                       <td className="py-3 pr-4 font-medium text-[13px] max-w-[200px] truncate">
                         {campaign.campaignName}
                       </td>
-                      <td className="py-3 text-right text-muted-foreground text-[13px]">{formatCurrency(campaign.spend)}</td>
+                      <td className="py-3 text-right text-muted-foreground text-[13px]">{formatMoney(campaign.spend)}</td>
                       <td className="py-3 text-right text-muted-foreground text-[13px]">{formatNumber(campaign.impressions)}</td>
                       <td className="py-3 text-right text-muted-foreground text-[13px]">{formatNumber(campaign.clicks)}</td>
-                      <td className="py-3 text-right text-muted-foreground text-[13px]">{formatCurrency(campaign.cpc)}</td>
+                      <td className="py-3 text-right text-muted-foreground text-[13px]">{formatMoney(campaign.cpc)}</td>
                       <td className="py-3 text-right text-muted-foreground text-[13px]">{campaign.ctr.toFixed(2)}%</td>
                       <td className="py-3 text-right">
                         <Badge variant="outline" className={cn("text-[10px] font-semibold border", roasBadge.className)}>

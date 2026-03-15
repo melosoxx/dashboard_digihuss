@@ -11,7 +11,7 @@ import {
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatCurrency } from "@/lib/utils";
+import { useCurrency } from "@/providers/currency-provider";
 
 interface CPADataPoint {
   date: string;
@@ -31,6 +31,8 @@ const TOOLTIP_STYLE = {
 };
 
 export function CPAChart({ data, isLoading }: CPAChartProps) {
+  const { formatMoney, convert, currencySymbol } = useCurrency();
+
   if (isLoading) {
     return (
       <Card>
@@ -60,10 +62,10 @@ export function CPAChart({ data, isLoading }: CPAChartProps) {
               tick={{ fontSize: 11, fill: "rgba(150, 165, 200, 0.6)" }}
               tickLine={false}
               axisLine={false}
-              tickFormatter={(v) => `$${v}`}
+              tickFormatter={(v) => `${currencySymbol}${convert(v).toFixed(0)}`}
             />
             <Tooltip
-              formatter={(value) => [formatCurrency(Number(value)), "CPA"]}
+              formatter={(value) => [formatMoney(Number(value)), "CPA"]}
               contentStyle={TOOLTIP_STYLE}
               itemStyle={{ color: "rgba(220, 230, 255, 0.9)" }}
               labelStyle={{ color: "rgba(150, 165, 200, 0.7)", marginBottom: 4 }}

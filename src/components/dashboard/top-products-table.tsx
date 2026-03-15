@@ -2,7 +2,8 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatCurrency, formatNumber } from "@/lib/utils";
+import { formatNumber } from "@/lib/utils";
+import { useCurrency } from "@/providers/currency-provider";
 import type { TopProduct } from "@/types/shopify";
 
 interface TopProductsTableProps {
@@ -10,7 +11,9 @@ interface TopProductsTableProps {
   isLoading: boolean;
 }
 
+function _unused(){}
 export function TopProductsTable({ products, isLoading }: TopProductsTableProps) {
+  const { formatMoney } = useCurrency();
   if (isLoading) {
     return (
       <Card>
@@ -58,7 +61,7 @@ export function TopProductsTable({ products, isLoading }: TopProductsTableProps)
                     </td>
                     <td className="py-3 font-medium text-[13px]">{product.title}</td>
                     <td className="py-3 text-right text-[13px]">
-                      {formatCurrency(product.totalRevenue)}
+                      {formatMoney(product.totalRevenue)}
                     </td>
                     <td className="py-3 text-right text-muted-foreground text-[13px]">
                       {formatNumber(product.totalQuantitySold)}

@@ -1,15 +1,20 @@
 "use client";
 
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { formatCurrency } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { useCurrency } from "@/providers/currency-provider";
 import type { MpTransaction } from "@/types/finance";
 
 interface MpTransactionsTableProps {
   transactions: MpTransaction[];
   isLoading: boolean;
   aggregateMode?: boolean;
+  page?: number;
+  pageSize?: number;
+  onPageChange?: (page: number) => void;
 }
 
 function formatTxDate(iso: string): string {
@@ -26,10 +31,15 @@ export function MpTransactionsTable({
   transactions,
   isLoading,
   aggregateMode,
+  page = 0,
+  pageSize = 15,
+  onPageChange,
 }: MpTransactionsTableProps) {
+  const { formatMoney } = useCurrency();
+
   if (isLoading) {
     return (
-      <Card>
+      <Card className="h-full">
         <CardContent className="p-0">
           <div className="p-4 space-y-3">
             {Array.from({ length: 5 }).map((_, i) => (
@@ -43,7 +53,7 @@ export function MpTransactionsTable({
 
   if (transactions.length === 0) {
     return (
-      <Card>
+      <Card className="h-full">
         <CardContent className="py-8">
           <p className="text-sm text-muted-foreground text-center">
             No se encontraron transacciones de MercadoPago en este periodo.
@@ -62,12 +72,18 @@ export function MpTransactionsTable({
     { gross: 0, fees: 0, net: 0 }
   );
 
+  const totalPages = Math.ceil(transactions.length / pageSize);
+  const usePagination = onPageChange && transactions.length > pageSize;
+  const displayed = usePagination
+    ? transactions.slice(page * pageSize, (page + 1) * pageSize)
+    : transactions;
+
   return (
-    <Card>
-      <CardContent className="p-0">
-        <div className="overflow-x-auto">
+    <Card className="h-full flex flex-col">
+      <CardContent className="p-0 flex-1 min-h-0 flex flex-col">
+        <div className="overflow-x-auto flex-1 min-h-0 overflow-y-auto">
           <table className="w-full">
-            <thead>
+            <thead className="sticky top-0 bg-card z-10">
               <tr className="border-b border-border/30">
                 {aggregateMode && (
                   <th className="text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground px-4 py-2.5">
@@ -95,7 +111,7 @@ export function MpTransactionsTable({
               </tr>
             </thead>
             <tbody>
-              {transactions.map((tx) => (
+              {displayed.map((tx) => (
                 <tr
                   key={tx.id}
                   className="border-b border-border/20 last:border-0 hover:bg-white/[0.03] transition-colors"
@@ -133,13 +149,13 @@ export function MpTransactionsTable({
                     )}
                   </td>
                   <td className="text-[13px] text-right px-4 py-3 text-emerald-500 font-medium whitespace-nowrap">
-                    {formatCurrency(tx.grossAmount)}
+                    {formatMoney(tx.grossAmount)}
                   </td>
                   <td className="text-[13px] text-right px-4 py-3 text-amber-500 whitespace-nowrap">
-                    -{formatCurrency(tx.fees)}
+                    -{formatMoney(tx.fees)}
                   </td>
                   <td className="text-[13px] text-right px-4 py-3 font-medium whitespace-nowrap">
-                    {formatCurrency(tx.netAmount)}
+                    {formatMoney(tx.netAmount)}
                   </td>
                 </tr>
               ))}
@@ -153,18 +169,47 @@ export function MpTransactionsTable({
                   Total ({transactions.length} transacciones)
                 </td>
                 <td className="text-[13px] text-right px-4 py-2.5 text-emerald-500 font-bold whitespace-nowrap">
-                  {formatCurrency(totals.gross)}
+                  {formatMoney(totals.gross)}
                 </td>
                 <td className="text-[13px] text-right px-4 py-2.5 text-amber-500 font-bold whitespace-nowrap">
-                  -{formatCurrency(totals.fees)}
+                  -{formatMoney(totals.fees)}
                 </td>
                 <td className="text-[13px] text-right px-4 py-2.5 font-bold whitespace-nowrap">
-                  {formatCurrency(totals.net)}
+                  {formatMoney(totals.net)}
                 </td>
               </tr>
             </tfoot>
           </table>
         </div>
+
+        {/* Pagination */}
+        {usePagination && (
+          <div className="flex items-center justify-between border-t border-border/30 px-4 py-2 flex-shrink-0">
+            <span className="text-xs text-muted-foreground">
+              Página {page + 1} de {totalPages}
+            </span>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0"
+                disabled={page === 0}
+                onClick={() => onPageChange(page - 1)}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0"
+                disabled={page >= totalPages - 1}
+                onClick={() => onPageChange(page + 1)}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

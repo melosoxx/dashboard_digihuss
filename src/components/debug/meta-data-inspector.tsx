@@ -3,9 +3,10 @@
 import { useMetaAccount } from "@/hooks/use-meta-account";
 import { useDateRange } from "@/providers/date-range-provider";
 import { Card } from "@/components/ui/card";
-import { formatCurrency } from "@/lib/utils";
+import { useCurrency } from "@/providers/currency-provider";
 
 export function MetaDataInspector() {
+  const { formatMoney } = useCurrency();
   const { dateRange } = useDateRange();
   const meta = useMetaAccount();
 
@@ -66,7 +67,7 @@ export function MetaDataInspector() {
           <div className="flex justify-between pt-2 border-t border-slate-700">
             <span className="text-slate-400">Último día con gasto:</span>
             <span className="text-blue-400 font-mono">
-              {lastDayWithSpend.date} ({formatCurrency(lastDayWithSpend.spend)})
+              {lastDayWithSpend.date} ({formatMoney(lastDayWithSpend.spend)})
             </span>
           </div>
         )}
@@ -88,7 +89,7 @@ export function MetaDataInspector() {
                       day.spend > 0 ? "text-emerald-400" : "text-slate-600"
                     }
                   >
-                    {day.spend > 0 ? formatCurrency(day.spend) : "Sin gasto"}
+                    {day.spend > 0 ? formatMoney(day.spend) : "Sin gasto"}
                   </span>
                 </div>
               ))}

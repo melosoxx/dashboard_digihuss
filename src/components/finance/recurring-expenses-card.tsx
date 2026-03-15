@@ -10,7 +10,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { formatCurrency } from "@/lib/utils";
+import { useCurrency } from "@/providers/currency-provider";
 import type { Expense } from "@/types/finance";
 
 interface RecurringExpensesCardProps {
@@ -26,6 +26,7 @@ export function RecurringExpensesCard({
   onEdit,
   onDelete,
 }: RecurringExpensesCardProps) {
+  const { formatMoney } = useCurrency();
   const recurring = expenses.filter((e) => e.isRecurring);
   const effectiveAmount = (e: Expense) =>
     e.isGeneral && e.splitAmong && e.splitAmong > 1
@@ -74,7 +75,7 @@ export function RecurringExpensesCard({
             Gastos Fijos Mensuales
           </span>
           <span className="text-xs font-normal text-muted-foreground">
-            Total: {formatCurrency(monthlyTotal)}/mes
+            Total: {formatMoney(monthlyTotal)}/mes
           </span>
         </CardTitle>
       </CardHeader>
@@ -109,15 +110,15 @@ export function RecurringExpensesCard({
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <span className="cursor-help border-b border-dashed border-muted-foreground/40">
-                          {formatCurrency(effectiveAmount(expense))}
+                          {formatMoney(effectiveAmount(expense))}
                         </span>
                       </TooltipTrigger>
                       <TooltipContent>
-                        Total: {formatCurrency(expense.amount)} / {expense.splitAmong} negocios
+                        Total: {formatMoney(expense.amount)} / {expense.splitAmong} negocios
                       </TooltipContent>
                     </Tooltip>
                   ) : (
-                    formatCurrency(expense.amount)
+                    formatMoney(expense.amount)
                   )}
                 </span>
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">

@@ -3,6 +3,7 @@
 import { useBusinessProfile } from "@/providers/business-profile-provider";
 import { ProfileList } from "@/components/settings/profile-list";
 import { ProfileEditor } from "@/components/settings/profile-editor";
+
 import { CreateFirstProfileFlow } from "@/components/onboarding/create-first-profile";
 import { Settings } from "lucide-react";
 
@@ -33,7 +34,9 @@ export default function ConfiguracionPage() {
 
       <div className="grid gap-6 lg:grid-cols-[300px_1fr]">
         <ProfileList />
-        <ProfileEditor />
+        <div className="space-y-6">
+          <ProfileEditor />
+        </div>
       </div>
     </div>
   );

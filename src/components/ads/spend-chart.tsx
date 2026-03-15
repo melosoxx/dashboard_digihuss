@@ -11,7 +11,7 @@ import {
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatCurrency } from "@/lib/utils";
+import { useCurrency } from "@/providers/currency-provider";
 import type { MetaDailyMetric } from "@/types/meta";
 
 interface SpendChartProps {
@@ -27,6 +27,8 @@ const TOOLTIP_STYLE = {
 };
 
 export function SpendChart({ data, isLoading }: SpendChartProps) {
+  const { formatMoney, convert, currencySymbol } = useCurrency();
+
   if (isLoading) {
     return (
       <Card>
@@ -62,10 +64,10 @@ export function SpendChart({ data, isLoading }: SpendChartProps) {
               tick={{ fontSize: 11, fill: "rgba(150, 165, 200, 0.6)" }}
               tickLine={false}
               axisLine={false}
-              tickFormatter={(v) => `$${v}`}
+              tickFormatter={(v) => `${currencySymbol}${convert(v).toFixed(0)}`}
             />
             <Tooltip
-              formatter={(value) => [formatCurrency(Number(value)), "Gasto"]}
+              formatter={(value) => [formatMoney(Number(value)), "Gasto"]}
               labelFormatter={(label) => new Date(label + "T00:00:00").toLocaleDateString("es-AR", { weekday: "short", month: "short", day: "numeric" })}
               contentStyle={TOOLTIP_STYLE}
               itemStyle={{ color: "rgba(220, 230, 255, 0.9)" }}

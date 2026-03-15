@@ -3,7 +3,7 @@
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatCurrency } from "@/lib/utils";
+import { useCurrency } from "@/providers/currency-provider";
 
 interface CategoryBreakdown {
   categoryName: string;
@@ -29,14 +29,16 @@ export function ExpenseBreakdownChart({
   data,
   isLoading,
 }: ExpenseBreakdownChartProps) {
+  const { formatMoney } = useCurrency();
+
   if (isLoading) {
     return (
-      <Card>
-        <CardHeader>
+      <Card className="h-full flex flex-col">
+        <CardHeader className="flex-shrink-0 py-3">
           <Skeleton className="h-5 w-44" />
         </CardHeader>
-        <CardContent>
-          <Skeleton className="h-[350px] w-full" />
+        <CardContent className="flex-1 min-h-0">
+          <Skeleton className="h-full w-full" />
         </CardContent>
       </Card>
     );
@@ -44,54 +46,56 @@ export function ExpenseBreakdownChart({
 
   if (data.length === 0) {
     return (
-      <Card>
-        <CardHeader>
+      <Card className="h-full flex flex-col">
+        <CardHeader className="flex-shrink-0 py-3">
           <CardTitle className="text-sm font-semibold">
             Desglose de Egresos
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-center h-[350px] text-sm text-muted-foreground">
+        <CardContent className="flex-1 flex items-center justify-center">
+          <p className="text-sm text-muted-foreground">
             Sin egresos en este periodo
-          </div>
+          </p>
         </CardContent>
       </Card>
     );
   }
 
   return (
-    <Card>
-      <CardHeader>
+    <Card className="h-full flex flex-col">
+      <CardHeader className="flex-shrink-0 py-3">
         <CardTitle className="text-sm font-semibold">
           Desglose de Egresos
         </CardTitle>
       </CardHeader>
-      <CardContent>
-        <ResponsiveContainer width="100%" height={240}>
-          <PieChart>
-            <Pie
-              data={data}
-              dataKey="total"
-              nameKey="categoryName"
-              cx="50%"
-              cy="50%"
-              innerRadius={50}
-              outerRadius={90}
-              paddingAngle={2}
-            >
-              {data.map((entry, index) => (
-                <Cell key={index} fill={entry.categoryColor} fillOpacity={0.85} />
-              ))}
-            </Pie>
-            <Tooltip
-              formatter={(value) => formatCurrency(Number(value))}
-              contentStyle={TOOLTIP_STYLE}
-              itemStyle={{ color: "rgba(220, 230, 255, 0.9)" }}
-            />
-          </PieChart>
-        </ResponsiveContainer>
+      <CardContent className="flex-1 min-h-0 flex flex-col pb-3">
+        <div className="flex-1 min-h-0">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={data}
+                dataKey="total"
+                nameKey="categoryName"
+                cx="50%"
+                cy="50%"
+                innerRadius="35%"
+                outerRadius="65%"
+                paddingAngle={2}
+              >
+                {data.map((entry, index) => (
+                  <Cell key={index} fill={entry.categoryColor} fillOpacity={0.85} />
+                ))}
+              </Pie>
+              <Tooltip
+                formatter={(value) => formatMoney(Number(value))}
+                contentStyle={TOOLTIP_STYLE}
+                itemStyle={{ color: "rgba(220, 230, 255, 0.9)" }}
+              />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
         {/* Legend */}
-        <div className="space-y-1.5 mt-2">
+        <div className="space-y-1.5 mt-2 flex-shrink-0">
           {data.map((entry) => (
             <div
               key={entry.categoryName}
@@ -108,7 +112,7 @@ export function ExpenseBreakdownChart({
               </div>
               <div className="flex items-center gap-2">
                 <span className="font-medium">
-                  {formatCurrency(entry.total)}
+                  {formatMoney(entry.total)}
                 </span>
                 <span className="text-muted-foreground w-10 text-right">
                   {entry.percentage.toFixed(0)}%

@@ -46,6 +46,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       data: aggregated,
       daysAvailable: rows.length,
+      availableDates: rows.map((r) => r.date),
       dateRange: { start: rows[0].date, end: rows[rows.length - 1].date },
       lastFetchedAt: rows[rows.length - 1].fetched_at,
     });

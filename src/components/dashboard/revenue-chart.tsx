@@ -11,7 +11,7 @@ import {
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatCurrency } from "@/lib/utils";
+import { useCurrency } from "@/providers/currency-provider";
 import type { DailyRevenue } from "@/types/shopify";
 
 interface RevenueChartProps {
@@ -27,6 +27,8 @@ const TOOLTIP_STYLE = {
 };
 
 export function RevenueChart({ data, isLoading }: RevenueChartProps) {
+  const { formatMoney, convert, currencySymbol } = useCurrency();
+
   if (isLoading) {
     return (
       <Card>
@@ -66,10 +68,10 @@ export function RevenueChart({ data, isLoading }: RevenueChartProps) {
               tick={{ fontSize: 11, fill: "rgba(150, 165, 200, 0.6)" }}
               tickLine={false}
               axisLine={false}
-              tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`}
+              tickFormatter={(v) => `${currencySymbol}${(convert(v) / 1000).toFixed(0)}k`}
             />
             <Tooltip
-              formatter={(value) => [formatCurrency(Number(value)), "Ingresos"]}
+              formatter={(value) => [formatMoney(Number(value)), "Ingresos"]}
               labelFormatter={(label) => new Date(label + "T00:00:00").toLocaleDateString("es-AR", { weekday: "short", month: "short", day: "numeric" })}
               contentStyle={TOOLTIP_STYLE}
               itemStyle={{ color: "rgba(220, 230, 255, 0.9)" }}

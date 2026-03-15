@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/select";
 import { Loader2, Save, Settings2, Users } from "lucide-react";
 import { CategoryManagerDialog } from "./category-manager-dialog";
-import { formatCurrency } from "@/lib/utils";
+import { useCurrency } from "@/providers/currency-provider";
 import type { Expense, ExpenseCategory } from "@/types/finance";
 import type { BusinessProfile } from "@/types/business";
 
@@ -61,6 +61,7 @@ export function ExpenseFormDialog({
   onUpdateCategory,
   onDeleteCategory,
 }: ExpenseFormDialogProps) {
+  const { formatMoney } = useCurrency();
   const [managerOpen, setManagerOpen] = useState(false);
 
   const GENERAL_VALUE = "__general__";
@@ -168,7 +169,7 @@ export function ExpenseFormDialog({
                 <p className="text-xs text-muted-foreground">
                   Se dividira entre {activeCount} negocios activos
                   {amount && parseFloat(amount) > 0 && (
-                    <> ({formatCurrency(parseFloat(amount) / activeCount)} c/u)</>
+                    <> ({formatMoney(parseFloat(amount) / activeCount)} c/u)</>
                   )}
                 </p>
               )}

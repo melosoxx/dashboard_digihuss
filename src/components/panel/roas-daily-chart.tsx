@@ -26,6 +26,8 @@ interface RoasDailyChartProps {
   data: DailyDataPoint[];
   isLoading: boolean;
   roasTarget?: number;
+  chartHeight?: number;
+  fillHeight?: boolean;
 }
 
 const TOOLTIP_STYLE = {
@@ -36,14 +38,14 @@ const TOOLTIP_STYLE = {
   boxShadow: "0 4px 20px rgba(0, 0, 0, 0.3)",
 };
 
-export function RoasDailyChart({ data, isLoading, roasTarget = 4 }: RoasDailyChartProps) {
+export function RoasDailyChart({ data, isLoading, roasTarget = 4, chartHeight = 280, fillHeight = false }: RoasDailyChartProps) {
   const { formatMoney } = useCurrency();
 
   if (isLoading) {
     return (
-      <Card>
+      <Card className={fillHeight ? "h-full flex flex-col" : ""}>
         <CardHeader><Skeleton className="h-5 w-40" /></CardHeader>
-        <CardContent><Skeleton className="h-[280px] w-full" /></CardContent>
+        <CardContent className={fillHeight ? "flex-1 min-h-0" : ""}><Skeleton className="w-full" style={{ height: fillHeight ? "100%" : chartHeight }} /></CardContent>
       </Card>
     );
   }
@@ -60,7 +62,7 @@ export function RoasDailyChart({ data, isLoading, roasTarget = 4 }: RoasDailyCha
   const maxRoas = Math.max(...chartData.map((d) => d.roas ?? 0), roasTarget * 1.5);
 
   return (
-    <Card>
+    <Card className={fillHeight ? "h-full flex flex-col" : ""}>
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <CardTitle className="text-sm font-semibold">ROAS diario</CardTitle>
@@ -69,8 +71,8 @@ export function RoasDailyChart({ data, isLoading, roasTarget = 4 }: RoasDailyCha
           </span>
         </div>
       </CardHeader>
-      <CardContent>
-        <ResponsiveContainer width="100%" height={280}>
+      <CardContent className={fillHeight ? "flex-1 min-h-0" : ""}>
+        <ResponsiveContainer width="100%" height={fillHeight ? "100%" : chartHeight}>
           <AreaChart data={chartData}>
             <defs>
               <linearGradient id="roasGradient" x1="0" y1="0" x2="0" y2="1">
