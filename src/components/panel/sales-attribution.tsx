@@ -29,7 +29,7 @@ export function SalesAttribution({
 
   if (isLoading) {
     return (
-      <Card className="h-full">
+      <Card className="h-full py-0 gap-0">
         <CardContent className="px-3 py-2 h-full flex flex-col gap-2">
           <Skeleton className="h-3 w-full" />
           <Skeleton className="h-full w-full" />
@@ -39,22 +39,24 @@ export function SalesAttribution({
   }
 
   return (
-    <Card className="h-full">
+    <Card className="h-full py-0 gap-0">
       <CardContent className="px-3 py-2 h-full flex flex-col gap-2">
-        {/* Title + bar + legend in one compact row */}
-        <div className="flex items-center gap-3 flex-shrink-0">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground whitespace-nowrap">
-            Atribucion de Ventas
-          </span>
-          <div className="flex-1 flex h-1.5 rounded-full overflow-hidden bg-muted/50">
-            <div
-              className="bg-blue-500 transition-all duration-500"
-              style={{ width: `${metaPct}%` }}
-            />
-            <div
-              className="bg-emerald-500 transition-all duration-500"
-              style={{ width: `${organicPct}%` }}
-            />
+        {/* Title + bar + legend — stacks on mobile */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3 flex-shrink-0">
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground whitespace-nowrap">
+              Atribucion de Ventas
+            </span>
+            <div className="flex-1 flex h-1.5 rounded-full overflow-hidden bg-muted/50">
+              <div
+                className="bg-blue-500 transition-all duration-500"
+                style={{ width: `${metaPct}%` }}
+              />
+              <div
+                className="bg-emerald-500 transition-all duration-500"
+                style={{ width: `${organicPct}%` }}
+              />
+            </div>
           </div>
           <div className="flex items-center gap-3 text-[10px] text-muted-foreground flex-shrink-0">
             <span className="flex items-center gap-1">

@@ -13,6 +13,10 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { useState } from "react";
+import { DateRangePicker } from "@/components/shared/date-range-picker";
+import { RefreshButton } from "@/components/shared/refresh-button";
+import { ThemeToggle } from "@/components/shared/theme-toggle";
+import { IntegrationStatus } from "./integration-status";
 
 export function MobileNav() {
   const pathname = usePathname();
@@ -26,7 +30,7 @@ export function MobileNav() {
           <span className="sr-only">Abrir navegacion</span>
         </Button>
       </SheetTrigger>
-      <SheetContent side="left" className="w-56 p-0 bg-sidebar border-sidebar-border">
+      <SheetContent side="left" className="w-72 p-0 bg-sidebar border-sidebar-border">
         <SheetTitle className="flex h-14 items-center gap-2.5 border-b border-sidebar-border px-5">
           <div className="logo-glow flex items-center justify-center">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -58,6 +62,23 @@ export function MobileNav() {
             );
           })}
         </nav>
+
+        {/* Herramientas — visibles solo en mobile */}
+        <div className="border-t border-sidebar-border p-3 space-y-3">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-3">
+            Herramientas
+          </p>
+          <div className="px-1">
+            <DateRangePicker />
+          </div>
+          <div className="flex items-center gap-2 px-1">
+            <IntegrationStatus />
+          </div>
+          <div className="flex items-center gap-2 px-1">
+            <RefreshButton />
+            <ThemeToggle />
+          </div>
+        </div>
       </SheetContent>
     </Sheet>
   );

@@ -77,7 +77,7 @@ export function ProfileSwitcher() {
 
   return (
     <Select value={currentValue} onValueChange={handleChange}>
-      <SelectTrigger className="w-[180px] h-9">
+      <SelectTrigger className="w-[120px] sm:w-[180px] h-9">
         <SelectValue>
           <span className="flex items-center gap-2">
             <span
@@ -203,7 +203,7 @@ function MultiSelectSwitcher({
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="w-[200px] h-9 justify-between"
+          className="w-[130px] sm:w-[200px] h-9 justify-between"
         >
           {triggerContent}
           <ChevronDown className="ml-1 h-3.5 w-3.5 shrink-0 opacity-50" />

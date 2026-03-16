@@ -63,9 +63,11 @@ import { useBusinessProfile } from "@/providers/business-profile-provider";
 import { useClarity } from "@/hooks/use-clarity";
 import { useClarityAllProfiles, type ProfileClarityData } from "@/hooks/use-clarity-all-profiles";
 import { useDateRange } from "@/providers/date-range-provider";
-import { formatNumber } from "@/lib/utils";
+import { formatNumber, cn } from "@/lib/utils";
 import { useCurrency } from "@/providers/currency-provider";
 import type { ClarityInsights } from "@/types/clarity";
+import { useIsMobile } from "@/hooks/use-is-mobile";
+import { useSwipeNavigation } from "@/hooks/use-swipe-navigation";
 
 function formatDateDisplay(iso: string): string {
   return new Date(iso + "T00:00:00").toLocaleDateString("es-AR", {
@@ -204,7 +206,38 @@ export default function PanelGeneralPage() {
   const ads = useMetaAds();
   const adsets = useMetaAdsets();
   const promotions = useMetaPromotions();
+  const isMobile = useIsMobile();
+  const [resumenView, setResumenView] = useState<"kpis" | "alertas" | "atribucion">("kpis");
+  const [rendimientoTab, setRendimientoTab] = useState("embudo");
+  const [anunciosTab, setAnunciosTab] = useState("meta-ads");
+  const [clarityTab, setClarityTab] = useState("cl-resumen");
   const isLoadingMain = shopify.isLoading || meta.isLoading;
+
+  // ── Swipe navigation for sub-tabs (mobile only) ──
+  const resumenSwipe = useSwipeNavigation({
+    items: ["kpis", "alertas", "atribucion"],
+    active: resumenView,
+    onChangeAction: (v) => setResumenView(v as typeof resumenView),
+    enabled: isMobile,
+  });
+  const rendimientoSwipe = useSwipeNavigation({
+    items: ["embudo", "gasto", "conversiones", "roas"],
+    active: rendimientoTab,
+    onChangeAction: setRendimientoTab,
+    enabled: isMobile,
+  });
+  const anunciosSwipe = useSwipeNavigation({
+    items: ["meta-ads", "campanas-table", "conjuntos-table", "promociones-ig"],
+    active: anunciosTab,
+    onChangeAction: setAnunciosTab,
+    enabled: isMobile,
+  });
+  const claritySwipe = useSwipeNavigation({
+    items: ["cl-resumen", "cl-trafico", "cl-frustracion", "cl-datos"],
+    active: clarityTab,
+    onChangeAction: setClarityTab,
+    enabled: isMobile,
+  });
 
   // Clarity multi-profile data
   const {
@@ -600,14 +633,14 @@ export default function PanelGeneralPage() {
       <Tabs defaultValue="resumen" className="flex-1 flex flex-col min-h-0">
         <TabsList
           variant="default"
-          className="flex-shrink-0 w-full h-9"
+          className="flex-shrink-0 w-full h-9 overflow-x-auto scrollbar-none justify-start sm:justify-center"
         >
-          <TabsTrigger value="resumen">Resumen</TabsTrigger>
-          <TabsTrigger value="campanas">Campañas</TabsTrigger>
-          <TabsTrigger value="anuncios">Anuncios</TabsTrigger>
-          <TabsTrigger value="pedidos">Pedidos</TabsTrigger>
-          <TabsTrigger value="clarity">Clarity</TabsTrigger>
-          <TabsTrigger value="explorar">Explorar</TabsTrigger>
+          <TabsTrigger value="resumen" className="flex-none sm:flex-1 px-3">Resumen</TabsTrigger>
+          <TabsTrigger value="campanas" className="flex-none sm:flex-1 px-3">Rendimiento</TabsTrigger>
+          <TabsTrigger value="anuncios" className="flex-none sm:flex-1 px-3">Anuncios</TabsTrigger>
+          <TabsTrigger value="pedidos" className="flex-none sm:flex-1 px-3">Pedidos</TabsTrigger>
+          <TabsTrigger value="clarity" className="flex-none sm:flex-1 px-3">Clarity</TabsTrigger>
+          <TabsTrigger value="explorar" className="flex-none sm:flex-1 px-3">Explorar</TabsTrigger>
         </TabsList>
 
         {/* ── Tab: Resumen ──────────────────────────────────────────────── */}
@@ -615,155 +648,154 @@ export default function PanelGeneralPage() {
           value="resumen"
           className="flex-1 min-h-0 overflow-hidden mt-2 animate-in fade-in-0 duration-200"
         >
-          <div className="h-full flex flex-col gap-2 overflow-hidden">
-            {/* KPI row — flat single row, 7 cols on desktop */}
-            <div className="grid gap-2 grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 flex-shrink-0">
-              <KPICard
-                title="Ingresos Totales"
-                value={revenue}
-                formattedValue={formatMoney(revenue)}
-                icon={DollarSign}
-                iconClassName="text-emerald-500"
-                isLoading={shopify.isLoading}
-                trend={revenueTrendProp}
-              />
-              <KPICard
-                title="Ganancia Neta"
-                value={netProfit}
-                formattedValue={formatMoney(netProfit)}
-                icon={Percent}
-                iconClassName={netProfit >= 0 ? "text-emerald-500" : "text-red-500"}
-                isLoading={isLoadingMain}
-                trend={revenueTrendProp}
-              />
-              <KPICard
-                title="ROAS"
-                value={roas}
-                formattedValue={`${roas.toFixed(2)}x`}
-                icon={TrendingUp}
-                iconClassName="text-teal-500"
-                isLoading={meta.isLoading}
-              />
-              <KPICard
-                title="Pedidos"
-                value={orderCount}
-                formattedValue={formatNumber(orderCount)}
-                icon={ShoppingCart}
-                iconClassName="text-blue-500"
-                isLoading={shopify.isLoading}
-                subtitle={`~${(orderCount / dayCount).toFixed(1)} por día`}
-              />
-              <KPICard
-                title="Ticket Promedio"
-                value={aov}
-                formattedValue={formatMoney(aov)}
-                icon={Receipt}
-                iconClassName="text-emerald-500"
-                isLoading={shopify.isLoading}
-              />
-              <KPICard
-                title="Gasto en Ads"
-                value={adSpend}
-                formattedValue={formatMoney(adSpend)}
-                icon={Megaphone}
-                iconClassName="text-red-500"
-                isLoading={meta.isLoading}
-              />
-              <KPICard
-                title="Costo x Resultado"
-                value={costPerResult}
-                formattedValue={formatMoney(costPerResult)}
-                icon={Target}
-                iconClassName="text-orange-500"
-                isLoading={isLoadingMain}
-                subtitle={metaConversions > 0 ? `${formatNumber(metaConversions)} conv.` : undefined}
-              />
-            </div>
+          {isMobile ? (
+            /* ── Mobile: sub-vistas con segmented control ── */
+            <div className="h-full flex flex-col">
+              <div className="flex gap-1 p-0.5 bg-muted/50 rounded-lg mb-2 flex-shrink-0">
+                {(["kpis", "alertas", "atribucion"] as const).map((v) => (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => setResumenView(v)}
+                    className={cn(
+                      "flex-1 text-[11px] font-medium py-1.5 rounded-md transition-colors",
+                      resumenView === v
+                        ? "bg-background text-foreground shadow-sm"
+                        : "text-muted-foreground"
+                    )}
+                  >
+                    {v === "kpis" ? "KPIs" : v === "alertas" ? "Alertas" : "Atribución"}
+                  </button>
+                ))}
+              </div>
 
-            {/* Alertas + Attribution */}
-            <div className="grid gap-2 lg:grid-cols-2 flex-1 min-h-0">
-              <Card className="h-full overflow-hidden flex flex-col">
-                <CardContent className="px-4 py-3 flex-1 overflow-y-auto">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-                    Alertas & Insights
-                  </p>
-                  {isLoadingMain ? (
-                    <div className="space-y-2.5">
-                      {[1, 2, 3, 4, 5, 6].map((i) => (
-                        <div key={i} className="h-4 bg-muted/40 rounded animate-pulse" />
-                      ))}
-                    </div>
-                  ) : insights.length > 0 ? (
-                    <div className="space-y-2.5">
-                      {insights.map((insight, i) => (
-                        <div key={i} className="flex items-start gap-2.5">
-                          {insight.type === "warning" && <AlertTriangle className="h-[15px] w-[15px] text-amber-400 flex-shrink-0 mt-0.5" />}
-                          {insight.type === "success" && <CheckCircle2 className="h-[15px] w-[15px] text-emerald-400 flex-shrink-0 mt-0.5" />}
-                          {insight.type === "info" && <Info className="h-[15px] w-[15px] text-blue-400 flex-shrink-0 mt-0.5" />}
-                          <span className="text-[13px] leading-snug text-foreground/90">{insight.message}</span>
+              <div className="flex-1 overflow-y-auto" onTouchStart={resumenSwipe.onTouchStart} onTouchEnd={resumenSwipe.onTouchEnd}>
+                {resumenView === "kpis" && (
+                  <div className="grid gap-2 grid-cols-2">
+                    <KPICard title="Ingresos Totales" value={revenue} formattedValue={formatMoney(revenue)} icon={DollarSign} iconClassName="text-emerald-500" isLoading={shopify.isLoading} trend={revenueTrendProp} />
+                    <KPICard title="Ganancia Neta" value={netProfit} formattedValue={formatMoney(netProfit)} icon={Percent} iconClassName={netProfit >= 0 ? "text-emerald-500" : "text-red-500"} isLoading={isLoadingMain} trend={revenueTrendProp} />
+                    <KPICard title="ROAS" value={roas} formattedValue={`${roas.toFixed(2)}x`} icon={TrendingUp} iconClassName="text-teal-500" isLoading={meta.isLoading} />
+                    <KPICard title="Pedidos" value={orderCount} formattedValue={formatNumber(orderCount)} icon={ShoppingCart} iconClassName="text-blue-500" isLoading={shopify.isLoading} subtitle={`~${(orderCount / dayCount).toFixed(1)} por día`} />
+                    <KPICard title="Gasto en Ads" value={adSpend} formattedValue={formatMoney(adSpend)} icon={Megaphone} iconClassName="text-red-500" isLoading={meta.isLoading} />
+                    <KPICard title="Costo x Resultado" value={costPerResult} formattedValue={formatMoney(costPerResult)} icon={Target} iconClassName="text-orange-500" isLoading={isLoadingMain} subtitle={metaConversions > 0 ? `${formatNumber(metaConversions)} conv.` : undefined} />
+                  </div>
+                )}
+
+                {resumenView === "alertas" && (
+                  <Card className="py-0 gap-0">
+                    <CardContent className="px-4 py-3">
+                      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+                        Alertas & Insights
+                      </p>
+                      {isLoadingMain ? (
+                        <div className="space-y-2.5">
+                          {[1, 2, 3, 4, 5, 6].map((i) => (
+                            <div key={i} className="h-4 bg-muted/40 rounded animate-pulse" />
+                          ))}
                         </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-[13px] text-muted-foreground">Sin alertas para este periodo.</p>
-                  )}
-                </CardContent>
-              </Card>
+                      ) : insights.length > 0 ? (
+                        <div className="space-y-2.5">
+                          {insights.map((insight, i) => (
+                            <div key={i} className="flex items-start gap-2.5">
+                              {insight.type === "warning" && <AlertTriangle className="h-[15px] w-[15px] text-amber-400 flex-shrink-0 mt-0.5" />}
+                              {insight.type === "success" && <CheckCircle2 className="h-[15px] w-[15px] text-emerald-400 flex-shrink-0 mt-0.5" />}
+                              {insight.type === "info" && <Info className="h-[15px] w-[15px] text-blue-400 flex-shrink-0 mt-0.5" />}
+                              <span className="text-[13px] leading-snug text-foreground/90">{insight.message}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-[13px] text-muted-foreground">Sin alertas para este periodo.</p>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
 
-              <SalesAttribution
-                totalRevenue={revenue}
-                totalOrders={orderCount}
-                metaRevenue={metaRevenue}
-                metaConversions={metaConversions}
-                isLoading={isLoadingMain}
-              />
+                {resumenView === "atribucion" && (
+                  <SalesAttribution
+                    totalRevenue={revenue}
+                    totalOrders={orderCount}
+                    metaRevenue={metaRevenue}
+                    metaConversions={metaConversions}
+                    isLoading={isLoadingMain}
+                  />
+                )}
+              </div>
             </div>
-          </div>
+          ) : (
+            /* ── Desktop: layout original sin cambios ── */
+            <div className="h-full flex flex-col gap-2 overflow-hidden">
+              {/* KPI row — flat single row, 7 cols on desktop */}
+              <div className="grid gap-1.5 sm:gap-2 grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 flex-shrink-0">
+                <KPICard title="Ingresos Totales" value={revenue} formattedValue={formatMoney(revenue)} icon={DollarSign} iconClassName="text-emerald-500" isLoading={shopify.isLoading} trend={revenueTrendProp} />
+                <KPICard title="Ganancia Neta" value={netProfit} formattedValue={formatMoney(netProfit)} icon={Percent} iconClassName={netProfit >= 0 ? "text-emerald-500" : "text-red-500"} isLoading={isLoadingMain} trend={revenueTrendProp} />
+                <KPICard title="ROAS" value={roas} formattedValue={`${roas.toFixed(2)}x`} icon={TrendingUp} iconClassName="text-teal-500" isLoading={meta.isLoading} />
+                <KPICard title="Pedidos" value={orderCount} formattedValue={formatNumber(orderCount)} icon={ShoppingCart} iconClassName="text-blue-500" isLoading={shopify.isLoading} subtitle={`~${(orderCount / dayCount).toFixed(1)} por día`} />
+                <KPICard title="Ticket Promedio" value={aov} formattedValue={formatMoney(aov)} icon={Receipt} iconClassName="text-emerald-500" isLoading={shopify.isLoading} />
+                <KPICard title="Gasto en Ads" value={adSpend} formattedValue={formatMoney(adSpend)} icon={Megaphone} iconClassName="text-red-500" isLoading={meta.isLoading} />
+                <KPICard title="Costo x Resultado" value={costPerResult} formattedValue={formatMoney(costPerResult)} icon={Target} iconClassName="text-orange-500" isLoading={isLoadingMain} subtitle={metaConversions > 0 ? `${formatNumber(metaConversions)} conv.` : undefined} />
+              </div>
+
+              {/* Alertas + Attribution */}
+              <div className="grid gap-2 lg:grid-cols-2 flex-1 min-h-0">
+                <Card className="h-full overflow-hidden flex flex-col">
+                  <CardContent className="px-4 py-3 flex-1 overflow-y-auto">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+                      Alertas & Insights
+                    </p>
+                    {isLoadingMain ? (
+                      <div className="space-y-2.5">
+                        {[1, 2, 3, 4, 5, 6].map((i) => (
+                          <div key={i} className="h-4 bg-muted/40 rounded animate-pulse" />
+                        ))}
+                      </div>
+                    ) : insights.length > 0 ? (
+                      <div className="space-y-2.5">
+                        {insights.map((insight, i) => (
+                          <div key={i} className="flex items-start gap-2.5">
+                            {insight.type === "warning" && <AlertTriangle className="h-[15px] w-[15px] text-amber-400 flex-shrink-0 mt-0.5" />}
+                            {insight.type === "success" && <CheckCircle2 className="h-[15px] w-[15px] text-emerald-400 flex-shrink-0 mt-0.5" />}
+                            {insight.type === "info" && <Info className="h-[15px] w-[15px] text-blue-400 flex-shrink-0 mt-0.5" />}
+                            <span className="text-[13px] leading-snug text-foreground/90">{insight.message}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-[13px] text-muted-foreground">Sin alertas para este periodo.</p>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <SalesAttribution
+                  totalRevenue={revenue}
+                  totalOrders={orderCount}
+                  metaRevenue={metaRevenue}
+                  metaConversions={metaConversions}
+                  isLoading={isLoadingMain}
+                />
+              </div>
+            </div>
+          )}
         </TabsContent>
 
-        {/* ── Tab: Campañas ─────────────────────────────────────────────── */}
+        {/* ── Tab: Rendimiento ─────────────────────────────────────────── */}
         <TabsContent
           value="campanas"
           className="flex-1 min-h-0 overflow-hidden mt-2 flex flex-col animate-in fade-in-0 duration-200"
         >
-          <Tabs defaultValue="rendimiento" className="flex-1 flex flex-col min-h-0">
+          <Tabs value={rendimientoTab} onValueChange={setRendimientoTab} className="flex-1 flex flex-col min-h-0">
             <TabsList
               variant="line"
-              className="flex-shrink-0 w-full h-8 border-b border-border/20 rounded-none bg-transparent gap-0"
+              className="flex-shrink-0 w-full h-8 border-b border-border/20 rounded-none bg-transparent gap-0 overflow-x-auto scrollbar-none"
             >
-              <TabsTrigger value="rendimiento" className="text-xs flex-1 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-foreground text-muted-foreground/60 hover:text-muted-foreground">Rendimiento</TabsTrigger>
-              <TabsTrigger value="gasto" className="text-xs flex-1 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-foreground text-muted-foreground/60 hover:text-muted-foreground">Gasto</TabsTrigger>
-              <TabsTrigger value="conversiones" className="text-xs flex-1 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-foreground text-muted-foreground/60 hover:text-muted-foreground">Conversiones</TabsTrigger>
-              <TabsTrigger value="embudo" className="text-xs flex-1 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-foreground text-muted-foreground/60 hover:text-muted-foreground">Embudo</TabsTrigger>
-              <TabsTrigger value="conjuntos" className="text-xs flex-1 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-foreground text-muted-foreground/60 hover:text-muted-foreground">Conjuntos</TabsTrigger>
+              <TabsTrigger value="embudo" className="text-xs flex-none sm:flex-1 px-3 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-foreground text-muted-foreground/60 hover:text-muted-foreground">Embudo</TabsTrigger>
+              <TabsTrigger value="gasto" className="text-xs flex-none sm:flex-1 px-3 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-foreground text-muted-foreground/60 hover:text-muted-foreground">Gasto</TabsTrigger>
+              <TabsTrigger value="conversiones" className="text-xs flex-none sm:flex-1 px-3 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-foreground text-muted-foreground/60 hover:text-muted-foreground">Conversiones</TabsTrigger>
+              <TabsTrigger value="roas" className="text-xs flex-none sm:flex-1 px-3 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-foreground text-muted-foreground/60 hover:text-muted-foreground">ROAS Diario</TabsTrigger>
             </TabsList>
 
-            {/* Sub-tab: Rendimiento — ROAS chart (left) + detailed campaign table (right) */}
-            <TabsContent value="rendimiento" className="flex-1 min-h-0 overflow-hidden grid grid-cols-2 gap-2 pt-2 animate-in fade-in-0 duration-150">
-              <RoasDailyChart data={combinedData} isLoading={isLoadingMain} fillHeight />
-              <div className="overflow-y-auto">
-                <CampaignTable
-                  campaigns={campaignsQuery.data?.campaigns ?? []}
-                  isLoading={campaignsQuery.isLoading}
-                />
-              </div>
-            </TabsContent>
-
-            {/* Sub-tab: Gasto — daily spend chart */}
-            <TabsContent value="gasto" className="flex-1 min-h-0 overflow-hidden pt-2 animate-in fade-in-0 duration-150">
-              <SpendChart
-                data={meta.data?.dailyMetrics ?? []}
-                isLoading={meta.isLoading}
-              />
-            </TabsContent>
-
-            {/* Sub-tab: Conversiones — fills full height */}
-            <TabsContent value="conversiones" className="flex-1 min-h-0 overflow-hidden pt-2 animate-in fade-in-0 duration-150">
-              <ConversionsDailyChart data={combinedData} isLoading={isLoadingMain} fillHeight />
-            </TabsContent>
-
             {/* Sub-tab: Embudo — marketing funnel */}
-            <TabsContent value="embudo" className="flex-1 min-h-0 overflow-hidden pt-2 animate-in fade-in-0 duration-150">
+            <TabsContent value="embudo" className="flex-1 min-h-0 overflow-hidden pt-2 animate-in fade-in-0 duration-150" onTouchStart={rendimientoSwipe.onTouchStart} onTouchEnd={rendimientoSwipe.onTouchEnd}>
               <MarketingFunnel
                 impressions={meta.data?.impressions ?? 0}
                 clicks={meta.data?.clicks ?? 0}
@@ -776,12 +808,22 @@ export default function PanelGeneralPage() {
               />
             </TabsContent>
 
-            {/* Sub-tab: Conjuntos — adset performance */}
-            <TabsContent value="conjuntos" className="flex-1 min-h-0 overflow-y-auto pt-2 animate-in fade-in-0 duration-150">
-              <AdsetTable
-                adsets={adsets.data?.adsets ?? []}
-                isLoading={adsets.isLoading}
+            {/* Sub-tab: Gasto — daily spend chart */}
+            <TabsContent value="gasto" className="flex-1 min-h-0 overflow-hidden pt-2 animate-in fade-in-0 duration-150" onTouchStart={rendimientoSwipe.onTouchStart} onTouchEnd={rendimientoSwipe.onTouchEnd}>
+              <SpendChart
+                data={meta.data?.dailyMetrics ?? []}
+                isLoading={meta.isLoading}
               />
+            </TabsContent>
+
+            {/* Sub-tab: Conversiones — fills full height */}
+            <TabsContent value="conversiones" className="flex-1 min-h-0 overflow-hidden pt-2 animate-in fade-in-0 duration-150" onTouchStart={rendimientoSwipe.onTouchStart} onTouchEnd={rendimientoSwipe.onTouchEnd}>
+              <ConversionsDailyChart data={combinedData} isLoading={isLoadingMain} fillHeight />
+            </TabsContent>
+
+            {/* Sub-tab: ROAS Diario — daily ROAS chart */}
+            <TabsContent value="roas" className="flex-1 min-h-0 overflow-hidden pt-2 animate-in fade-in-0 duration-150" onTouchStart={rendimientoSwipe.onTouchStart} onTouchEnd={rendimientoSwipe.onTouchEnd}>
+              <RoasDailyChart data={combinedData} isLoading={isLoadingMain} fillHeight />
             </TabsContent>
 
           </Tabs>
@@ -807,25 +849,43 @@ export default function PanelGeneralPage() {
           value="anuncios"
           className="flex-1 min-h-0 overflow-hidden mt-2 flex flex-col animate-in fade-in-0 duration-200"
         >
-          <Tabs defaultValue="meta-ads" className="flex-1 flex flex-col min-h-0">
+          <Tabs value={anunciosTab} onValueChange={setAnunciosTab} className="flex-1 flex flex-col min-h-0">
             <TabsList
               variant="line"
-              className="flex-shrink-0 w-full h-8 border-b border-border/20 rounded-none bg-transparent gap-0"
+              className="flex-shrink-0 w-full h-8 border-b border-border/20 rounded-none bg-transparent gap-0 overflow-x-auto scrollbar-none"
             >
-              <TabsTrigger value="meta-ads" className="text-xs flex-1 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-foreground text-muted-foreground/60 hover:text-muted-foreground">Meta Ads</TabsTrigger>
-              <TabsTrigger value="promociones-ig" className="text-xs flex-1 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-foreground text-muted-foreground/60 hover:text-muted-foreground">Promociones IG</TabsTrigger>
+              <TabsTrigger value="meta-ads" className="text-xs flex-none sm:flex-1 px-3 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-foreground text-muted-foreground/60 hover:text-muted-foreground">Meta Ads</TabsTrigger>
+              <TabsTrigger value="campanas-table" className="text-xs flex-none sm:flex-1 px-3 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-foreground text-muted-foreground/60 hover:text-muted-foreground">Campañas</TabsTrigger>
+              <TabsTrigger value="conjuntos-table" className="text-xs flex-none sm:flex-1 px-3 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-foreground text-muted-foreground/60 hover:text-muted-foreground">Conjuntos</TabsTrigger>
+              <TabsTrigger value="promociones-ig" className="text-xs flex-none sm:flex-1 px-3 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-foreground text-muted-foreground/60 hover:text-muted-foreground">Promociones IG</TabsTrigger>
             </TabsList>
 
             {/* Sub-tab: Meta Ads — active ads with preview */}
-            <TabsContent value="meta-ads" className="flex-1 min-h-0 overflow-y-auto pt-2 animate-in fade-in-0 duration-150">
+            <TabsContent value="meta-ads" className="flex-1 min-h-0 overflow-y-auto pt-2 animate-in fade-in-0 duration-150" onTouchStart={anunciosSwipe.onTouchStart} onTouchEnd={anunciosSwipe.onTouchEnd}>
               <ActiveAdsCard
                 ads={ads.data?.ads ?? []}
                 isLoading={ads.isLoading}
               />
             </TabsContent>
 
+            {/* Sub-tab: Campañas — campaign performance table */}
+            <TabsContent value="campanas-table" className="flex-1 min-h-0 overflow-y-auto pt-2 animate-in fade-in-0 duration-150" onTouchStart={anunciosSwipe.onTouchStart} onTouchEnd={anunciosSwipe.onTouchEnd}>
+              <CampaignTable
+                campaigns={campaignsQuery.data?.campaigns ?? []}
+                isLoading={campaignsQuery.isLoading}
+              />
+            </TabsContent>
+
+            {/* Sub-tab: Conjuntos — adset performance table */}
+            <TabsContent value="conjuntos-table" className="flex-1 min-h-0 overflow-y-auto pt-2 animate-in fade-in-0 duration-150" onTouchStart={anunciosSwipe.onTouchStart} onTouchEnd={anunciosSwipe.onTouchEnd}>
+              <AdsetTable
+                adsets={adsets.data?.adsets ?? []}
+                isLoading={adsets.isLoading}
+              />
+            </TabsContent>
+
             {/* Sub-tab: Promociones IG — Instagram promotions */}
-            <TabsContent value="promociones-ig" className="flex-1 min-h-0 overflow-hidden pt-2 animate-in fade-in-0 duration-150">
+            <TabsContent value="promociones-ig" className="flex-1 min-h-0 overflow-hidden pt-2 animate-in fade-in-0 duration-150" onTouchStart={anunciosSwipe.onTouchStart} onTouchEnd={anunciosSwipe.onTouchEnd}>
               {(promotions.configured || promotions.isLoading) ? (
                 <div className="h-full flex flex-col gap-2 overflow-hidden">
                   <div className="grid gap-2 grid-cols-2 sm:grid-cols-4 flex-shrink-0">
@@ -942,19 +1002,19 @@ export default function PanelGeneralPage() {
               Error al cargar datos de Clarity. Verificá tus credenciales.
             </div>
           )}
-          <Tabs defaultValue="cl-resumen" className="flex-1 flex flex-col min-h-0">
+          <Tabs value={clarityTab} onValueChange={setClarityTab} className="flex-1 flex flex-col min-h-0">
             <TabsList
               variant="line"
-              className="flex-shrink-0 w-full h-8 border-b border-border/20 rounded-none bg-transparent gap-0"
+              className="flex-shrink-0 w-full h-8 border-b border-border/20 rounded-none bg-transparent gap-0 overflow-x-auto scrollbar-none"
             >
-              <TabsTrigger value="cl-resumen" className="text-xs flex-1 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-foreground text-muted-foreground/60 hover:text-muted-foreground">Resumen</TabsTrigger>
-              <TabsTrigger value="cl-trafico" className="text-xs flex-1 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-foreground text-muted-foreground/60 hover:text-muted-foreground">Tráfico</TabsTrigger>
-              <TabsTrigger value="cl-frustracion" className="text-xs flex-1 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-foreground text-muted-foreground/60 hover:text-muted-foreground">Frustración</TabsTrigger>
-              <TabsTrigger value="cl-datos" className="text-xs flex-1 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-foreground text-muted-foreground/60 hover:text-muted-foreground">Datos</TabsTrigger>
+              <TabsTrigger value="cl-resumen" className="text-xs flex-none sm:flex-1 px-3 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-foreground text-muted-foreground/60 hover:text-muted-foreground">Resumen</TabsTrigger>
+              <TabsTrigger value="cl-trafico" className="text-xs flex-none sm:flex-1 px-3 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-foreground text-muted-foreground/60 hover:text-muted-foreground">Tráfico</TabsTrigger>
+              <TabsTrigger value="cl-frustracion" className="text-xs flex-none sm:flex-1 px-3 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-foreground text-muted-foreground/60 hover:text-muted-foreground">Frustración</TabsTrigger>
+              <TabsTrigger value="cl-datos" className="text-xs flex-none sm:flex-1 px-3 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-foreground text-muted-foreground/60 hover:text-muted-foreground">Datos</TabsTrigger>
             </TabsList>
 
             {/* Sub-tab: Resumen */}
-            <TabsContent value="cl-resumen" className="flex-1 min-h-0 overflow-hidden pt-2 animate-in fade-in-0 duration-150">
+            <TabsContent value="cl-resumen" className="flex-1 min-h-0 overflow-hidden pt-2 animate-in fade-in-0 duration-150" onTouchStart={claritySwipe.onTouchStart} onTouchEnd={claritySwipe.onTouchEnd}>
               <div className="h-full flex flex-col gap-2 overflow-hidden">
                 <div className="flex items-center gap-2 flex-shrink-0">
                   <div className="grid gap-2 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 flex-1">
@@ -1030,7 +1090,7 @@ export default function PanelGeneralPage() {
             </TabsContent>
 
             {/* Sub-tab: Tráfico */}
-            <TabsContent value="cl-trafico" className="flex-1 min-h-0 overflow-hidden pt-2 animate-in fade-in-0 duration-150">
+            <TabsContent value="cl-trafico" className="flex-1 min-h-0 overflow-hidden pt-2 animate-in fade-in-0 duration-150" onTouchStart={claritySwipe.onTouchStart} onTouchEnd={claritySwipe.onTouchEnd}>
               <div className="h-full grid gap-2 lg:grid-cols-3">
                 <ClarityBreakdownCard title="Dispositivos" icon={Monitor} items={clarity.data?.devices ?? []} isLoading={clarity.isLoading} />
                 <ClarityBreakdownCard title="Navegadores" icon={Globe} items={clarity.data?.browsers ?? []} isLoading={clarity.isLoading} />
@@ -1039,7 +1099,7 @@ export default function PanelGeneralPage() {
             </TabsContent>
 
             {/* Sub-tab: Frustración */}
-            <TabsContent value="cl-frustracion" className="flex-1 min-h-0 overflow-hidden pt-2 animate-in fade-in-0 duration-150">
+            <TabsContent value="cl-frustracion" className="flex-1 min-h-0 overflow-hidden pt-2 animate-in fade-in-0 duration-150" onTouchStart={claritySwipe.onTouchStart} onTouchEnd={claritySwipe.onTouchEnd}>
               <div className="h-full grid gap-2 grid-cols-2 lg:grid-cols-3">
                 {[
                   { title: "Clics Muertos", value: clarity.data?.frustration.deadClicks ?? 0, icon: CircleDot, iconColor: "text-muted-foreground", valueColor: "text-red-500", desc: "Clics en elementos no interactivos" },
@@ -1073,7 +1133,7 @@ export default function PanelGeneralPage() {
             </TabsContent>
 
             {/* Sub-tab: Datos */}
-            <TabsContent value="cl-datos" className="flex-1 min-h-0 overflow-hidden pt-2 animate-in fade-in-0 duration-150">
+            <TabsContent value="cl-datos" className="flex-1 min-h-0 overflow-hidden pt-2 animate-in fade-in-0 duration-150" onTouchStart={claritySwipe.onTouchStart} onTouchEnd={claritySwipe.onTouchEnd}>
               <div className="h-full flex flex-col gap-4 overflow-hidden">
                 <div className="flex items-center justify-between flex-shrink-0">
                   <div>

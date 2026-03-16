@@ -110,11 +110,11 @@ export function AIAssistantBar({
         }
       `}</style>
 
-      <div ref={containerRef} className="relative flex flex-col items-center w-full flex-shrink-0 py-1">
-        <div className="relative w-full max-w-[74%]">
+      <div ref={containerRef} className="relative flex flex-col items-center w-full flex-shrink-0 py-0.5 sm:py-1">
+        <div className="relative w-full max-w-full sm:max-w-[74%]">
 
-          {/* Label */}
-          <div className="flex items-center justify-center gap-2 mb-2">
+          {/* Label — hidden on mobile */}
+          <div className="hidden sm:flex items-center justify-center gap-2 mb-2">
             <Sparkles className="h-3.5 w-3.5 text-primary" />
             <span className="text-xs font-semibold text-primary tracking-widest uppercase">Asistente IA</span>
             <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-primary/10 text-primary/70 border border-primary/20">
@@ -126,11 +126,11 @@ export function AIAssistantBar({
           <div className={isOpen ? "ai-glow-wrap-active" : "ai-glow-wrap"}>
             <form onSubmit={handleSubmit}>
               <div
-                className="flex items-center gap-3 px-5 py-3.5"
+                className="flex items-center gap-2 sm:gap-3 px-3 sm:px-5 py-2.5 sm:py-3.5"
                 style={{ borderRadius: "12px", background: "hsl(222, 47%, 7%)" }}
               >
                 <Sparkles
-                  className={`h-5 w-5 flex-shrink-0 transition-colors duration-200 ${
+                  className={`h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0 transition-colors duration-200 ${
                     isOpen ? "text-cyan-400" : "text-cyan-500/80"
                   }`}
                 />
@@ -142,7 +142,7 @@ export function AIAssistantBar({
                   onFocus={() => response && setIsOpen(true)}
                   placeholder={placeholder}
                   disabled={disabled}
-                  className="flex-1 bg-transparent text-[15px] font-light text-white placeholder:text-slate-400 outline-none border-none disabled:opacity-50"
+                  className="flex-1 bg-transparent text-sm sm:text-[15px] font-light text-white placeholder:text-slate-400 outline-none border-none disabled:opacity-50"
                 />
                 {query.trim() ? (
                   <button
@@ -162,9 +162,9 @@ export function AIAssistantBar({
             </form>
           </div>
 
-          {/* Suggestion chips */}
+          {/* Suggestion chips — hidden on mobile */}
           {!isOpen && !query && (
-            <div className="relative z-10 flex items-center justify-center gap-2 mt-2.5 flex-wrap">
+            <div className="hidden sm:flex relative z-10 items-center justify-center gap-2 mt-2.5 flex-wrap">
               {SUGGESTIONS.map((s) => (
                 <button
                   key={s}

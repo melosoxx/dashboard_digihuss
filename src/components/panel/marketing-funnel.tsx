@@ -137,7 +137,11 @@ export function MarketingFunnel({
               );
 
               return (
-                <div key={stage.key} className="w-full flex flex-col items-center">
+                <div
+                  key={stage.key}
+                  className="w-full flex flex-col items-center funnel-stage"
+                  style={{ animationDelay: `${i * 90}ms` }}
+                >
                   {showTooltip ? (
                     <Tooltip>
                       <TooltipTrigger asChild>{bar}</TooltipTrigger>

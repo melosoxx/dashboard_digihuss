@@ -43,14 +43,14 @@ export function KPICard({
 
   if (isLoading) {
     return (
-      <Card className="overflow-hidden">
-        <CardContent className={cn("px-3 flex flex-col justify-center h-full", featured && !compact ? "py-3" : featured && compact ? "py-2" : "py-2")}>
-          <div className="flex items-center justify-between mb-1">
-            <Skeleton className="h-3 w-20" />
-            <Skeleton className="rounded-md h-6 w-6" />
+      <Card className="overflow-hidden py-0 gap-0">
+        <CardContent className={cn("px-3 flex flex-col justify-center h-full", featured && !compact ? "py-3" : featured && compact ? "py-2" : "py-2.5 sm:py-2")}>
+          <div className="flex items-center justify-between mb-0.5 sm:mb-1">
+            <Skeleton className="h-3 w-16 sm:w-20" />
+            <Skeleton className="rounded-md h-5 w-5 sm:h-6 sm:w-6" />
           </div>
-          <Skeleton className={cn("w-28", featured && !compact ? "h-7" : "h-5")} />
-          <Skeleton className="h-3 w-20 mt-1" />
+          <Skeleton className={cn("w-24 sm:w-28", featured && !compact ? "h-7" : "h-5")} />
+          <Skeleton className="h-3 w-16 sm:w-20 mt-0.5 sm:mt-1" />
         </CardContent>
       </Card>
     );
@@ -67,15 +67,15 @@ export function KPICard({
   return (
     <Card
       className={cn(
-        "overflow-hidden transition-all duration-200",
+        "overflow-hidden transition-all duration-200 py-0 gap-0",
         hasBreakdown && "cursor-pointer hover:shadow-md"
       )}
       onClick={() => hasBreakdown && setExpanded(!expanded)}
     >
-      <CardContent className={cn("px-3 flex flex-col justify-center h-full", featured && !compact ? "py-3" : featured && compact ? "py-2" : "py-2")}>
+      <CardContent className={cn("px-3 flex flex-col justify-center h-full", featured && !compact ? "py-3" : featured && compact ? "py-2" : "py-2.5 sm:py-2")}>
         {/* Top row: title + icon */}
-        <div className="flex items-center justify-between mb-1">
-          <span className={cn("font-semibold uppercase tracking-wider text-muted-foreground", featured ? "text-xs" : "text-[10px]")}>
+        <div className="flex items-center justify-between mb-0.5 sm:mb-1">
+          <span className={cn("font-semibold uppercase tracking-wider text-muted-foreground", featured ? "text-xs" : "text-[9px] sm:text-[10px]")}>
             {title}
           </span>
           <div className="flex items-center gap-1">
@@ -90,7 +90,7 @@ export function KPICard({
             {Icon && (
               <div className={cn(
                 "flex items-center justify-center rounded-md",
-                featured && !compact ? "h-8 w-8" : "h-6 w-6",
+                featured && !compact ? "h-8 w-8" : "h-5 w-5 sm:h-6 sm:w-6",
                 iconClassName?.includes("emerald") ? "bg-emerald-500/15" :
                 iconClassName?.includes("blue") ? "bg-blue-500/15" :
                 iconClassName?.includes("red") ? "bg-red-500/15" :
@@ -100,30 +100,30 @@ export function KPICard({
                 iconClassName?.includes("amber") ? "bg-amber-500/15" :
                 "bg-muted"
               )}>
-                <Icon className={cn(featured && !compact ? "h-4.5 w-4.5" : "h-3.5 w-3.5", iconClassName || "text-muted-foreground")} />
+                <Icon className={cn(featured && !compact ? "h-4.5 w-4.5" : "h-3 w-3 sm:h-3.5 sm:w-3.5", iconClassName || "text-muted-foreground")} />
               </div>
             )}
           </div>
         </div>
 
         {/* Value */}
-        <div className={cn("font-bold tracking-tight", featured && !compact ? "text-[3rem] leading-none" : featured && compact ? "text-[2rem] leading-none" : "text-xl", valueColorClass)}>
+        <div className={cn("font-bold tracking-tight", featured && !compact ? "text-[3rem] leading-none" : featured && compact ? "text-[2rem] leading-none" : "text-xl sm:text-xl", valueColorClass)}>
           {formattedValue}
         </div>
 
         {/* Subtitle */}
         {subtitle && (
-          <p className={cn("text-muted-foreground mt-1", featured ? "text-xs" : "text-[11px]")}>{subtitle}</p>
+          <p className={cn("mt-0.5 sm:mt-1 font-medium", featured ? "text-xs text-muted-foreground" : "text-[10px] sm:text-[11px] text-sky-400/80")}>{subtitle}</p>
         )}
 
         {/* Trend */}
         {trend && (
-          <div className={cn("inline-flex items-center gap-1 mt-2 px-1.5 py-0.5 rounded-md", trendBg)}>
-            <TrendIcon className={cn("h-3.5 w-3.5", trendColor)} />
-            <span className={cn("text-xs font-semibold", trendColor)}>
+          <div className={cn("inline-flex items-center gap-1 mt-1 sm:mt-2 px-1.5 py-0.5 rounded-md", trendBg)}>
+            <TrendIcon className={cn("h-3 w-3 sm:h-3.5 sm:w-3.5", trendColor)} />
+            <span className={cn("text-[10px] sm:text-xs font-semibold", trendColor)}>
               {trend.direction !== "neutral" ? `${trend.direction === "up" ? "+" : ""}${trend.value.toFixed(1)}%` : "—"}
             </span>
-            <span className="text-[11px] text-muted-foreground">vs ant.</span>
+            <span className="text-[10px] sm:text-[11px] text-muted-foreground">vs ant.</span>
           </div>
         )}
 

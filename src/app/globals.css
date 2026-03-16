@@ -199,6 +199,25 @@
     color: oklch(0.82 0.14 185);
   }
 
+  /* Funnel stage cascade animation */
+  @keyframes funnel-slide-in {
+    from {
+      opacity: 0;
+      transform: translateY(-18px) scaleX(0.92);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scaleX(1);
+    }
+  }
+  .funnel-stage {
+    animation: funnel-slide-in 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  /* Hide scrollbar utility */
+  .scrollbar-none::-webkit-scrollbar { display: none; }
+  .scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
+
   /* Custom scrollbar */
   .dark ::-webkit-scrollbar {
     width: 6px;

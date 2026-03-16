@@ -10,10 +10,12 @@ import { useDateRange } from "@/providers/date-range-provider";
 import { datePresets, formatDateForApi } from "@/lib/date-utils";
 import { useState, useEffect } from "react";
 import type { DateRange as DayPickerRange } from "react-day-picker";
+import { useIsMobile } from "@/hooks/use-is-mobile";
 
 export function DateRangePicker() {
   const { dateRange, setDateRange } = useDateRange();
   const [open, setOpen] = useState(false);
+  const isMobile = useIsMobile();
 
   // Pending selection (not yet applied)
   const [pending, setPending] = useState<DayPickerRange | undefined>(undefined);
@@ -55,7 +57,7 @@ export function DateRangePicker() {
         <Button
           variant="outline"
           className={cn(
-            "justify-start text-left font-normal w-[260px]",
+            "justify-start text-left font-normal w-full sm:w-[260px]",
             !dateRange && "text-muted-foreground"
           )}
         >
@@ -63,15 +65,31 @@ export function DateRangePicker() {
           {format(applied.from!, "d MMM")} - {format(applied.to!, "d MMM yyyy")}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="end">
-        <div className="flex">
-          <div className="border-r p-3 space-y-1">
+      <PopoverContent
+        className="w-auto p-0"
+        align={isMobile ? "center" : "end"}
+      >
+        <div className={cn(
+          "flex",
+          isMobile ? "flex-col max-h-[70vh] overflow-y-auto" : "flex-row"
+        )}>
+          {/* Presets: fila horizontal scrollable en mobile, sidebar vertical en desktop */}
+          <div className={cn(
+            isMobile
+              ? "flex overflow-x-auto gap-1.5 p-3 border-b scrollbar-none"
+              : "border-r p-3 space-y-1"
+          )}>
             {datePresets.map((preset) => (
               <Button
                 key={preset.label}
                 variant="ghost"
                 size="sm"
-                className="w-full justify-start text-xs"
+                className={cn(
+                  "text-xs",
+                  isMobile
+                    ? "whitespace-nowrap flex-shrink-0"
+                    : "w-full justify-start"
+                )}
                 onClick={() => {
                   setDateRange(preset.getValue());
                   setOpen(false);
@@ -86,7 +104,7 @@ export function DateRangePicker() {
               mode="range"
               selected={pending}
               onSelect={setPending}
-              numberOfMonths={2}
+              numberOfMonths={isMobile ? 1 : 2}
               disabled={{ after: new Date() }}
             />
             <div className="border-t px-4 py-2 flex justify-end">
