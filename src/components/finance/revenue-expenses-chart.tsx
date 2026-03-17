@@ -29,11 +29,12 @@ interface RevenueExpensesChartProps {
 }
 
 const TOOLTIP_STYLE = {
-  backgroundColor: "rgba(15, 20, 35, 0.95)",
-  border: "1px solid rgba(100, 120, 180, 0.2)",
+  backgroundColor: "var(--tooltip-bg)",
+  border: "var(--tooltip-border)",
   borderRadius: "10px",
   backdropFilter: "blur(8px)",
-  boxShadow: "0 4px 20px rgba(0, 0, 0, 0.3)",
+  boxShadow: "var(--tooltip-shadow)",
+  color: "var(--tooltip-color)",
 };
 
 export function RevenueExpensesChart({
@@ -67,14 +68,14 @@ export function RevenueExpensesChart({
           <BarChart data={data} barGap={2}>
             <CartesianGrid
               strokeDasharray="3 3"
-              stroke="rgba(100, 120, 180, 0.08)"
+              stroke="var(--chart-grid)"
               vertical={false}
             />
             <XAxis
               dataKey="date"
-              tick={{ fontSize: 11, fill: "rgba(150, 165, 200, 0.6)" }}
+              tick={{ fontSize: 11, fill: "var(--chart-tick)" }}
               tickLine={false}
-              axisLine={{ stroke: "rgba(100, 120, 180, 0.1)" }}
+              axisLine={{ stroke: "var(--chart-axis)" }}
               tickFormatter={(v) =>
                 new Date(v + "T00:00:00").toLocaleDateString("es-AR", {
                   month: "short",
@@ -83,7 +84,7 @@ export function RevenueExpensesChart({
               }
             />
             <YAxis
-              tick={{ fontSize: 11, fill: "rgba(150, 165, 200, 0.6)" }}
+              tick={{ fontSize: 11, fill: "var(--chart-tick)" }}
               tickLine={false}
               axisLine={false}
               tickFormatter={(v) => `${currencySymbol}${(convert(v) / 1000).toFixed(0)}k`}
@@ -91,9 +92,9 @@ export function RevenueExpensesChart({
             <Tooltip
               formatter={(value, name) => [formatMoney(Number(value)), name]}
               contentStyle={TOOLTIP_STYLE}
-              itemStyle={{ color: "rgba(220, 230, 255, 0.9)" }}
+              itemStyle={{ color: "var(--chart-item-style)" }}
               labelStyle={{
-                color: "rgba(150, 165, 200, 0.7)",
+                color: "var(--chart-label-style)",
                 marginBottom: 4,
               }}
               cursor={{ fill: "rgba(100, 120, 180, 0.06)" }}
@@ -101,7 +102,7 @@ export function RevenueExpensesChart({
             <Legend
               wrapperStyle={{
                 fontSize: 12,
-                color: "rgba(150, 165, 200, 0.7)",
+                color: "rgba(100, 116, 139, 0.7)",
               }}
             />
             <Bar

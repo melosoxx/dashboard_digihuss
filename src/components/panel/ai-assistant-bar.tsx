@@ -97,7 +97,7 @@ export function AIAssistantBar({
           background: linear-gradient(90deg, #0ea5e9, #14b8a6, #818cf8, #0ea5e9);
           background-size: 300% 100%;
           animation: ai-border-shift 4s ease infinite;
-          box-shadow: 0 0 18px 2px rgba(14,165,233,0.35), 0 0 40px 4px rgba(20,184,166,0.18);
+          box-shadow: 0 0 14px 2px rgba(14,165,233,0.20), 0 0 30px 4px rgba(20,184,166,0.10);
         }
         .ai-glow-wrap-active {
           position: relative;
@@ -106,7 +106,7 @@ export function AIAssistantBar({
           background: linear-gradient(90deg, #0ea5e9, #14b8a6, #818cf8, #0ea5e9);
           background-size: 300% 100%;
           animation: ai-border-shift 2s ease infinite;
-          box-shadow: 0 0 24px 4px rgba(14,165,233,0.5), 0 0 50px 8px rgba(20,184,166,0.25);
+          box-shadow: 0 0 18px 3px rgba(14,165,233,0.30), 0 0 40px 6px rgba(20,184,166,0.15);
         }
       `}</style>
 
@@ -127,11 +127,11 @@ export function AIAssistantBar({
             <form onSubmit={handleSubmit}>
               <div
                 className="flex items-center gap-2 sm:gap-3 px-3 sm:px-5 py-2.5 sm:py-3.5"
-                style={{ borderRadius: "12px", background: "hsl(222, 47%, 7%)" }}
+                style={{ borderRadius: "12px", background: "var(--ai-bar-bg)" }}
               >
                 <Sparkles
                   className={`h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0 transition-colors duration-200 ${
-                    isOpen ? "text-cyan-400" : "text-cyan-500/80"
+                    isOpen ? "text-cyan-600" : "text-cyan-500"
                   }`}
                 />
                 <input
@@ -142,19 +142,19 @@ export function AIAssistantBar({
                   onFocus={() => response && setIsOpen(true)}
                   placeholder={placeholder}
                   disabled={disabled}
-                  className="flex-1 bg-transparent text-sm sm:text-[15px] font-light text-white placeholder:text-slate-400 outline-none border-none disabled:opacity-50"
+                  className="flex-1 bg-transparent text-sm sm:text-[15px] font-light text-slate-800 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none border-none disabled:opacity-50"
                 />
                 {query.trim() ? (
                   <button
                     type="submit"
                     disabled={isLoading}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400 text-sm font-medium transition-all disabled:opacity-50 border border-cyan-500/30 flex-shrink-0"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 text-sm font-medium transition-all disabled:opacity-50 border border-cyan-500/20 flex-shrink-0"
                   >
                     <Send className="h-3.5 w-3.5" />
                     Enviar
                   </button>
                 ) : (
-                  <kbd className="hidden md:inline-flex items-center px-2 py-0.5 rounded border border-slate-600/50 text-[10px] text-slate-500 font-mono flex-shrink-0">
+                  <kbd className="hidden md:inline-flex items-center px-2 py-0.5 rounded border border-slate-300 dark:border-slate-600/50 text-[10px] text-slate-400 font-mono flex-shrink-0">
                     Enter
                   </kbd>
                 )}
@@ -169,7 +169,7 @@ export function AIAssistantBar({
                 <button
                   key={s}
                   onClick={() => handleSuggestion(s)}
-                  className="flex items-center gap-1.5 text-[11px] text-slate-400 hover:text-cyan-400 bg-white/[0.04] hover:bg-cyan-500/10 border border-white/10 hover:border-cyan-500/30 rounded-full px-3 py-1 transition-all"
+                  className="flex items-center gap-1.5 text-[11px] text-slate-500 hover:text-cyan-600 bg-slate-100 dark:bg-white/[0.04] hover:bg-cyan-50 dark:hover:bg-cyan-500/10 border border-slate-200 dark:border-white/10 hover:border-cyan-300 dark:hover:border-cyan-500/30 rounded-full px-3 py-1 transition-all"
                 >
                   <Sparkles className="h-2.5 w-2.5 opacity-60" />
                   {s}
@@ -181,17 +181,17 @@ export function AIAssistantBar({
           {/* Response overlay */}
           {isOpen && (response || isLoading) && (
             <div className="absolute top-full left-0 right-0 mt-2 z-50">
-              <div className="rounded-xl border border-cyan-500/20 bg-card shadow-xl shadow-black/40 p-4">
+              <div className="rounded-xl border border-cyan-500/15 bg-card shadow-lg shadow-black/10 dark:shadow-black/40 p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-start gap-2.5 flex-1">
                     <div className="flex-shrink-0 h-6 w-6 rounded-lg bg-cyan-500/15 flex items-center justify-center">
-                      <Sparkles className="h-3.5 w-3.5 text-cyan-400" />
+                      <Sparkles className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-400" />
                     </div>
                     {isLoading ? (
                       <div className="flex items-center gap-1.5 pt-1.5">
-                        <span className="h-1.5 w-1.5 rounded-full bg-cyan-400/60 animate-bounce [animation-delay:0ms]" />
-                        <span className="h-1.5 w-1.5 rounded-full bg-cyan-400/60 animate-bounce [animation-delay:150ms]" />
-                        <span className="h-1.5 w-1.5 rounded-full bg-cyan-400/60 animate-bounce [animation-delay:300ms]" />
+                        <span className="h-1.5 w-1.5 rounded-full bg-cyan-600/60 dark:bg-cyan-400/60 animate-bounce [animation-delay:0ms]" />
+                        <span className="h-1.5 w-1.5 rounded-full bg-cyan-600/60 dark:bg-cyan-400/60 animate-bounce [animation-delay:150ms]" />
+                        <span className="h-1.5 w-1.5 rounded-full bg-cyan-600/60 dark:bg-cyan-400/60 animate-bounce [animation-delay:300ms]" />
                       </div>
                     ) : (
                       <p className="text-sm text-foreground/90 leading-relaxed pt-0.5">{response}</p>

@@ -147,7 +147,7 @@ export function CategoryManagerDialog({
                   </div>
                 </div>
               ) : (
-                <div className="flex items-center justify-between rounded-md px-2 py-1.5 hover:bg-white/[0.03]">
+                <div className="flex items-center justify-between rounded-md px-2 py-1.5 hover:bg-slate-50 dark:hover:bg-white/[0.03]">
                   <div className="flex items-center gap-2.5 min-w-0">
                     <div
                       className="h-3 w-3 rounded-full shrink-0"

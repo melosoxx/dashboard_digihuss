@@ -18,11 +18,12 @@ interface ExpenseBreakdownChartProps {
 }
 
 const TOOLTIP_STYLE = {
-  backgroundColor: "rgba(15, 20, 35, 0.95)",
-  border: "1px solid rgba(100, 120, 180, 0.2)",
+  backgroundColor: "var(--tooltip-bg)",
+  border: "var(--tooltip-border)",
   borderRadius: "10px",
   backdropFilter: "blur(8px)",
-  boxShadow: "0 4px 20px rgba(0, 0, 0, 0.3)",
+  boxShadow: "var(--tooltip-shadow)",
+  color: "var(--tooltip-color)",
 };
 
 export function ExpenseBreakdownChart({
@@ -89,7 +90,7 @@ export function ExpenseBreakdownChart({
               <Tooltip
                 formatter={(value) => formatMoney(Number(value))}
                 contentStyle={TOOLTIP_STYLE}
-                itemStyle={{ color: "rgba(220, 230, 255, 0.9)" }}
+                itemStyle={{ color: "var(--chart-item-style)" }}
               />
             </PieChart>
           </ResponsiveContainer>

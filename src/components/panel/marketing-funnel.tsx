@@ -33,11 +33,11 @@ interface MarketingFunnelProps {
 }
 
 const STAGES = [
-  { key: "impressions", label: "Impresiones", color: "from-violet-500/20 to-violet-500/5", border: "border-violet-500/30", text: "text-violet-400", bg: "bg-violet-500" },
-  { key: "clicks", label: "Clics", color: "from-blue-500/20 to-blue-500/5", border: "border-blue-500/30", text: "text-blue-400", bg: "bg-blue-500" },
-  { key: "landing", label: "Ses. Landing", color: "from-teal-500/20 to-teal-500/5", border: "border-teal-500/30", text: "text-teal-400", bg: "bg-teal-500" },
-  { key: "checkouts", label: "Checkouts", color: "from-amber-500/20 to-amber-500/5", border: "border-amber-500/30", text: "text-amber-400", bg: "bg-amber-500" },
-  { key: "orders", label: "Pedidos", color: "from-emerald-500/20 to-emerald-500/5", border: "border-emerald-500/30", text: "text-emerald-400", bg: "bg-emerald-500" },
+  { key: "impressions", label: "Impresiones", color: "from-violet-500/20 to-violet-500/5", border: "border-violet-500/30", text: "text-violet-600 dark:text-violet-400", bg: "bg-violet-500" },
+  { key: "clicks", label: "Clics", color: "from-blue-500/20 to-blue-500/5", border: "border-blue-500/30", text: "text-blue-600 dark:text-blue-400", bg: "bg-blue-500" },
+  { key: "landing", label: "Ses. Landing", color: "from-teal-500/20 to-teal-500/5", border: "border-teal-500/30", text: "text-teal-600 dark:text-teal-400", bg: "bg-teal-500" },
+  { key: "checkouts", label: "Checkouts", color: "from-amber-500/20 to-amber-500/5", border: "border-amber-500/30", text: "text-amber-600 dark:text-amber-400", bg: "bg-amber-500" },
+  { key: "orders", label: "Pedidos", color: "from-emerald-500/20 to-emerald-500/5", border: "border-emerald-500/30", text: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-500" },
 ] as const;
 
 const STAGE_FIELD: Record<string, keyof FunnelProfileBreakdown> = {
@@ -54,9 +54,9 @@ function getConversionRate(from: number, to: number): string {
 }
 
 function getDropoffColor(rate: number): string {
-  if (rate >= 30) return "text-emerald-400";
-  if (rate >= 10) return "text-amber-400";
-  return "text-red-400";
+  if (rate >= 30) return "text-emerald-600 dark:text-emerald-400";
+  if (rate >= 10) return "text-amber-600 dark:text-amber-400";
+  return "text-red-600 dark:text-red-400";
 }
 
 export function MarketingFunnel({

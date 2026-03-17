@@ -31,11 +31,12 @@ interface RoasDailyChartProps {
 }
 
 const TOOLTIP_STYLE = {
-  backgroundColor: "rgba(15, 20, 35, 0.95)",
-  border: "1px solid rgba(100, 120, 180, 0.2)",
+  backgroundColor: "var(--tooltip-bg)",
+  border: "var(--tooltip-border)",
   borderRadius: "10px",
   backdropFilter: "blur(8px)",
-  boxShadow: "0 4px 20px rgba(0, 0, 0, 0.3)",
+  boxShadow: "var(--tooltip-shadow)",
+  color: "var(--tooltip-color)",
 };
 
 export function RoasDailyChart({ data, isLoading, roasTarget = 4, chartHeight = 280, fillHeight = false }: RoasDailyChartProps) {
@@ -67,7 +68,7 @@ export function RoasDailyChart({ data, isLoading, roasTarget = 4, chartHeight = 
         <div className="flex items-center justify-between">
           <CardTitle className="text-sm font-semibold">ROAS diario</CardTitle>
           <span className="text-[11px] text-muted-foreground">
-            Target: <span className="text-amber-400 font-semibold">{roasTarget}x</span>
+            Target: <span className="text-amber-600 font-semibold">{roasTarget}x</span>
           </span>
         </div>
       </CardHeader>
@@ -80,12 +81,12 @@ export function RoasDailyChart({ data, isLoading, roasTarget = 4, chartHeight = 
                 <stop offset="95%" stopColor="#a78bfa" stopOpacity={0.03} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(100, 120, 180, 0.08)" vertical={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" vertical={false} />
             <XAxis
               dataKey="date"
-              tick={{ fontSize: 11, fill: "rgba(150, 165, 200, 0.6)" }}
+              tick={{ fontSize: 11, fill: "var(--chart-tick)" }}
               tickLine={false}
-              axisLine={{ stroke: "rgba(100, 120, 180, 0.1)" }}
+              axisLine={{ stroke: "var(--chart-axis)" }}
               tickFormatter={(v) =>
                 new Date(v + "T00:00:00").toLocaleDateString("es-AR", {
                   month: "short",
@@ -94,7 +95,7 @@ export function RoasDailyChart({ data, isLoading, roasTarget = 4, chartHeight = 
               }
             />
             <YAxis
-              tick={{ fontSize: 11, fill: "rgba(150, 165, 200, 0.6)" }}
+              tick={{ fontSize: 11, fill: "var(--chart-tick)" }}
               tickLine={false}
               axisLine={false}
               tickFormatter={(v) => `${v}x`}
@@ -113,10 +114,10 @@ export function RoasDailyChart({ data, isLoading, roasTarget = 4, chartHeight = 
                 return (
                   <div style={TOOLTIP_STYLE} className="px-3 py-2 text-xs space-y-1">
                     <p className="text-muted-foreground font-medium mb-1">{date}</p>
-                    <p className="text-violet-300">ROAS: <span className="font-semibold text-white">{raw?.roas != null ? `${Number(raw.roas).toFixed(2)}x` : "—"}</span></p>
-                    <p className="text-amber-400">Target: <span className="font-semibold">{roasTarget}x</span></p>
-                    <p className="text-emerald-400">Ingresos: <span className="font-semibold text-white">{formatMoney(raw?.revenue ?? 0)}</span></p>
-                    <p className="text-rose-400">Gasto Ads: <span className="font-semibold text-white">{formatMoney(raw?.adSpend ?? 0)}</span></p>
+                    <p className="text-violet-600 dark:text-violet-300">ROAS: <span className="font-semibold text-slate-800 dark:text-white">{raw?.roas != null ? `${Number(raw.roas).toFixed(2)}x` : "—"}</span></p>
+                    <p className="text-amber-600 dark:text-amber-300">Target: <span className="font-semibold">{roasTarget}x</span></p>
+                    <p className="text-emerald-600 dark:text-emerald-300">Ingresos: <span className="font-semibold text-slate-800 dark:text-white">{formatMoney(raw?.revenue ?? 0)}</span></p>
+                    <p className="text-rose-600 dark:text-rose-300">Gasto Ads: <span className="font-semibold text-slate-800 dark:text-white">{formatMoney(raw?.adSpend ?? 0)}</span></p>
                   </div>
                 );
               }}
@@ -127,8 +128,8 @@ export function RoasDailyChart({ data, isLoading, roasTarget = 4, chartHeight = 
                 })
               }
               contentStyle={TOOLTIP_STYLE}
-              itemStyle={{ color: "rgba(220, 230, 255, 0.9)" }}
-              labelStyle={{ color: "rgba(150, 165, 200, 0.7)", marginBottom: 4 }}
+              itemStyle={{ color: "var(--chart-item-style)" }}
+              labelStyle={{ color: "var(--chart-label-style)", marginBottom: 4 }}
             />
 
             {/* Red zone below target */}

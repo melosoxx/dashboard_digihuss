@@ -114,7 +114,7 @@ export function MpTransactionsTable({
               {displayed.map((tx) => (
                 <tr
                   key={tx.id}
-                  className="border-b border-border/20 last:border-0 hover:bg-white/[0.03] transition-colors"
+                  className="border-b border-border/20 last:border-0 hover:bg-slate-50 dark:hover:bg-white/[0.03] transition-colors"
                 >
                   {aggregateMode && (
                     <td className="px-4 py-3">

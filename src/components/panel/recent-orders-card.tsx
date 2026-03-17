@@ -8,8 +8,12 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { useBusinessProfile } from "@/providers/business-profile-provider";
 import { useCurrency } from "@/providers/currency-provider";
 import { useEmailSendStatus } from "@/hooks/use-email-send-status";
+import { useIsMobile } from "@/hooks/use-is-mobile";
 import { SendButton } from "@/components/comprobantes/send-button";
 import type { OrderListItem } from "@/types/shopify";
+import type { EmailSendStatusMap } from "@/types/email";
+
+type SendStatus = EmailSendStatusMap[string];
 
 interface RecentOrdersCardProps {
   orders: OrderListItem[];
@@ -40,6 +44,7 @@ export function RecentOrdersCard({
 }: RecentOrdersCardProps) {
   const { activeProfileId } = useBusinessProfile();
   const { formatMoney } = useCurrency();
+  const isMobile = useIsMobile();
 
   const isPaginated = !!onPageChange;
   const totalPages = Math.max(1, Math.ceil(orders.length / pageSize));
@@ -80,81 +85,98 @@ export function RecentOrdersCard({
           </p>
         ) : (
           <>
-            <div className="flex-1 min-h-0 overflow-y-auto">
-              <table className="w-full text-sm">
-                <thead className="sticky top-0 bg-card z-10">
-                  <tr className="border-b border-border/30">
-                    {aggregateMode && (
-                      <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-left pb-3">Perfil</th>
-                    )}
-                    <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-left pb-3">Pedido</th>
-                    <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-left pb-3">Fecha</th>
-                    <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-left pb-3">Cliente</th>
-                    <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right pb-3">Total</th>
-                    <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-center pb-3 w-12"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {displayedOrders.map((order, idx) => (
-                    <tr key={`${order.name}-${idx}`} className="border-b border-border/10 last:border-0 hover:bg-white/[0.03] transition-colors duration-150">
+            {isMobile ? (
+              // Mobile: Card-based layout
+              <div className="flex-1 min-h-0 overflow-y-auto space-y-2 px-1">
+                {displayedOrders.map((order, idx) => (
+                  <MobileOrderCard
+                    key={`${order.name}-${idx}`}
+                    order={order}
+                    aggregateMode={!!aggregateMode}
+                    sendStatus={sendStatusMap?.[order.name]}
+                    activeProfileId={activeProfileId}
+                    formatMoney={formatMoney}
+                  />
+                ))}
+              </div>
+            ) : (
+              // Desktop: Table layout
+              <div className="flex-1 min-h-0 overflow-y-auto">
+                <table className="w-full text-sm">
+                  <thead className="sticky top-0 bg-card z-10">
+                    <tr className="border-b border-border/30">
                       {aggregateMode && (
-                        <td className="py-3 pr-4">
-                          <span className="flex items-center gap-1.5">
-                            <span
-                              className="h-2.5 w-2.5 rounded-full shrink-0"
-                              style={{ backgroundColor: order.profileColor ?? "#3b82f6" }}
-                            />
-                            <span className="text-[12px] text-muted-foreground truncate max-w-[100px]">
-                              {order.profileName ?? ""}
+                        <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-left pb-3">Perfil</th>
+                      )}
+                      <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-left pb-3">Pedido</th>
+                      <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-left pb-3">Fecha</th>
+                      <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-left pb-3">Cliente</th>
+                      <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right pb-3">Total</th>
+                      <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-center pb-3 w-12"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {displayedOrders.map((order, idx) => (
+                      <tr key={`${order.name}-${idx}`} className="border-b border-border/50 dark:border-border/10 last:border-0 hover:bg-slate-50 dark:hover:bg-white/[0.03] transition-colors duration-150">
+                        {aggregateMode && (
+                          <td className="py-3 pr-4">
+                            <span className="flex items-center gap-1.5">
+                              <span
+                                className="h-2.5 w-2.5 rounded-full shrink-0"
+                                style={{ backgroundColor: order.profileColor ?? "#3b82f6" }}
+                              />
+                              <span className="text-[12px] text-muted-foreground truncate max-w-[100px]">
+                                {order.profileName ?? ""}
+                              </span>
                             </span>
+                          </td>
+                        )}
+                        <td className="py-3 pr-4">
+                          <span className="text-[13px] font-medium">{order.name}</span>
+                        </td>
+                        <td className="py-3 pr-4">
+                          <span className="text-[13px] text-muted-foreground">
+                            {formatOrderDate(order.createdAt)}
                           </span>
                         </td>
-                      )}
-                      <td className="py-3 pr-4">
-                        <span className="text-[13px] font-medium">{order.name}</span>
-                      </td>
-                      <td className="py-3 pr-4">
-                        <span className="text-[13px] text-muted-foreground">
-                          {formatOrderDate(order.createdAt)}
-                        </span>
-                      </td>
-                      <td className="py-3 pr-4">
-                        {order.customerEmail ? (
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <span className="text-[13px] text-muted-foreground truncate block max-w-[200px] cursor-default">
-                                  {order.customerName}
-                                </span>
-                              </TooltipTrigger>
-                              <TooltipContent side="top">
-                                {order.customerEmail}
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        ) : (
-                          <span className="text-[13px] text-muted-foreground truncate block max-w-[200px]" title={order.customerName}>
-                            {order.customerName}
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-3 text-right text-[13px] font-medium">
-                        {formatMoney(order.total)}
-                      </td>
-                      <td className="py-3 text-center">
-                        <SendButton
-                          profileId={order.profileId ?? activeProfileId}
-                          orderName={order.name}
-                          customerEmail={order.customerEmail}
-                          customerName={order.customerName}
-                          sendStatus={sendStatusMap?.[order.name]}
-                        />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                        <td className="py-3 pr-4">
+                          {order.customerEmail ? (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="text-[13px] text-muted-foreground truncate block max-w-[200px] cursor-default">
+                                    {order.customerName}
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent side="top">
+                                  {order.customerEmail}
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          ) : (
+                            <span className="text-[13px] text-muted-foreground truncate block max-w-[200px]" title={order.customerName}>
+                              {order.customerName}
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3 text-right text-[13px] font-medium">
+                          {formatMoney(order.total)}
+                        </td>
+                        <td className="py-3 text-center">
+                          <SendButton
+                            profileId={order.profileId ?? activeProfileId}
+                            orderName={order.name}
+                            customerEmail={order.customerEmail}
+                            customerName={order.customerName}
+                            sendStatus={sendStatusMap?.[order.name]}
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
 
             {/* Pagination controls */}
             {isPaginated && totalPages > 1 && (
@@ -206,5 +228,89 @@ export function RecentOrdersCard({
         )}
       </CardContent>
     </Card>
+  );
+}
+
+interface MobileOrderCardProps {
+  order: OrderListItem;
+  aggregateMode: boolean;
+  sendStatus: SendStatus | undefined;
+  activeProfileId: string;
+  formatMoney: (amount: number) => string;
+}
+
+function MobileOrderCard({
+  order,
+  aggregateMode,
+  sendStatus,
+  activeProfileId,
+  formatMoney,
+}: MobileOrderCardProps) {
+  return (
+    <div className="rounded-lg border border-border/20 bg-card overflow-hidden hover:bg-slate-50 dark:hover:bg-white/[0.03] transition-colors duration-150">
+      {/* Profile Header (conditional) */}
+      {aggregateMode && (
+        <div className="flex items-center gap-1.5 px-3 py-2 border-b border-border/50 dark:border-border/10 bg-slate-50 dark:bg-white/[0.02]">
+          <span
+            className="h-2.5 w-2.5 rounded-full shrink-0"
+            style={{ backgroundColor: order.profileColor ?? "#3b82f6" }}
+          />
+          <span className="text-[12px] text-muted-foreground truncate max-w-[200px]">
+            {order.profileName ?? ""}
+          </span>
+        </div>
+      )}
+
+      {/* Order Info Section */}
+      <div className="px-3 py-2.5 border-b border-border/50 dark:border-border/10 space-y-0.5">
+        <div className="text-[13px] font-semibold">{order.name}</div>
+        <div className="text-[12px] text-muted-foreground">
+          {formatOrderDate(order.createdAt)}
+        </div>
+      </div>
+
+      {/* Customer Section */}
+      <div className="px-3 py-2 border-b border-border/50 dark:border-border/10">
+        {order.customerEmail ? (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="text-[13px] text-muted-foreground truncate cursor-default">
+                  {order.customerName}
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                {order.customerEmail}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        ) : (
+          <div className="text-[13px] text-muted-foreground truncate" title={order.customerName}>
+            {order.customerName}
+          </div>
+        )}
+      </div>
+
+      {/* Total Section */}
+      <div className="flex items-center justify-between px-3 py-2 border-b border-border/50 dark:border-border/10">
+        <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">
+          Total
+        </span>
+        <span className="text-[14px] font-semibold">
+          {formatMoney(order.total)}
+        </span>
+      </div>
+
+      {/* Send Button Section */}
+      <div className="flex justify-center px-3 py-2.5">
+        <SendButton
+          profileId={order.profileId ?? activeProfileId}
+          orderName={order.name}
+          customerEmail={order.customerEmail}
+          customerName={order.customerName}
+          sendStatus={sendStatus}
+        />
+      </div>
+    </div>
   );
 }

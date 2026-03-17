@@ -15,10 +15,17 @@ export interface ProfileBreakdownItem {
   rawValue: number;
 }
 
+export interface KPIDetailItem {
+  label: string;
+  value: string;
+  highlighted?: boolean;
+}
+
 interface KPICardProps extends KPIData {
   isLoading?: boolean;
   breakdown?: ProfileBreakdownItem[];
   breakdownLoading?: boolean;
+  detailItems?: KPIDetailItem[];
   featured?: boolean;
   compact?: boolean;
   subtitle?: string;
@@ -32,6 +39,7 @@ export function KPICard({
   isLoading,
   breakdown,
   breakdownLoading,
+  detailItems,
   trend,
   featured,
   compact,
@@ -40,6 +48,8 @@ export function KPICard({
   const [expanded, setExpanded] = useState(false);
 
   const hasBreakdown = breakdown && breakdown.length > 0;
+  const hasDetails = detailItems && detailItems.length > 0;
+  const isExpandable = hasBreakdown || hasDetails;
 
   if (isLoading) {
     return (
@@ -57,20 +67,20 @@ export function KPICard({
   }
 
   const TrendIcon = trend?.direction === "up" ? TrendingUp : trend?.direction === "down" ? TrendingDown : Minus;
-  const trendColor = trend?.isPositive ? "text-emerald-400" : "text-red-400";
-  const trendBg = trend?.isPositive ? "bg-emerald-500/10" : "bg-red-500/10";
+  const trendColor = trend?.isPositive ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400";
+  const trendBg = trend?.isPositive ? "bg-emerald-50 dark:bg-emerald-900/10" : "bg-red-50 dark:bg-red-900/10";
 
   const valueColorClass = featured
-    ? (iconClassName?.includes("emerald") || iconClassName?.includes("teal") ? "text-emerald-400" : "text-foreground")
+    ? (iconClassName?.includes("emerald") || iconClassName?.includes("teal") ? "text-emerald-600 dark:text-emerald-400" : "text-foreground")
     : "";
 
   return (
     <Card
       className={cn(
         "overflow-hidden transition-all duration-200 py-0 gap-0",
-        hasBreakdown && "cursor-pointer hover:shadow-md"
+        isExpandable && "cursor-pointer hover:shadow-md"
       )}
-      onClick={() => hasBreakdown && setExpanded(!expanded)}
+      onClick={() => isExpandable && setExpanded(!expanded)}
     >
       <CardContent className={cn("px-3 flex flex-col justify-center h-full", featured && !compact ? "py-3" : featured && compact ? "py-2" : "py-2.5 sm:py-2")}>
         {/* Top row: title + icon */}
@@ -79,7 +89,7 @@ export function KPICard({
             {title}
           </span>
           <div className="flex items-center gap-1">
-            {hasBreakdown && (
+            {isExpandable && (
               <ChevronDown
                 className={cn(
                   "h-3 w-3 text-muted-foreground transition-transform duration-200",
@@ -91,13 +101,13 @@ export function KPICard({
               <div className={cn(
                 "flex items-center justify-center rounded-md",
                 featured && !compact ? "h-8 w-8" : "h-5 w-5 sm:h-6 sm:w-6",
-                iconClassName?.includes("emerald") ? "bg-emerald-500/15" :
-                iconClassName?.includes("blue") ? "bg-blue-500/15" :
-                iconClassName?.includes("red") ? "bg-red-500/15" :
-                iconClassName?.includes("teal") ? "bg-teal-500/15" :
-                iconClassName?.includes("orange") ? "bg-orange-500/15" :
-                iconClassName?.includes("violet") ? "bg-violet-500/15" :
-                iconClassName?.includes("amber") ? "bg-amber-500/15" :
+                iconClassName?.includes("emerald") ? "bg-emerald-500/10" :
+                iconClassName?.includes("blue") ? "bg-blue-500/10" :
+                iconClassName?.includes("red") ? "bg-red-500/10" :
+                iconClassName?.includes("teal") ? "bg-teal-500/10" :
+                iconClassName?.includes("orange") ? "bg-orange-500/10" :
+                iconClassName?.includes("violet") ? "bg-violet-500/10" :
+                iconClassName?.includes("amber") ? "bg-amber-500/10" :
                 "bg-muted"
               )}>
                 <Icon className={cn(featured && !compact ? "h-4.5 w-4.5" : "h-3 w-3 sm:h-3.5 sm:w-3.5", iconClassName || "text-muted-foreground")} />
@@ -113,7 +123,7 @@ export function KPICard({
 
         {/* Subtitle */}
         {subtitle && (
-          <p className={cn("mt-0.5 sm:mt-1 font-medium", featured ? "text-xs text-muted-foreground" : "text-[10px] sm:text-[11px] text-sky-400/80")}>{subtitle}</p>
+          <p className={cn("mt-0.5 sm:mt-1 font-medium", featured ? "text-xs text-muted-foreground" : "text-[10px] sm:text-[11px] text-sky-600 dark:text-sky-400/80")}>{subtitle}</p>
         )}
 
         {/* Trend */}
@@ -127,36 +137,58 @@ export function KPICard({
           </div>
         )}
 
-        {/* Collapsible breakdown */}
+        {/* Collapsible detail / breakdown */}
         <div
           className={cn(
             "overflow-hidden transition-all duration-200 ease-in-out",
             expanded ? "max-h-96 opacity-100 mt-2" : "max-h-0 opacity-0"
           )}
         >
-          <div className="border-t border-border/50 pt-2 space-y-1.5">
-            {breakdownLoading ? (
-              Array.from({ length: 2 }).map((_, i) => (
-                <Skeleton key={i} className="h-4 w-full" />
-              ))
-            ) : (
-              breakdown?.map((item) => (
-                <div
-                  key={item.profileName}
-                  className="flex items-center justify-between text-xs"
-                >
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <span
-                      className="h-2 w-2 rounded-full flex-shrink-0"
-                      style={{ backgroundColor: item.profileColor }}
-                    />
-                    <span className="truncate">{item.profileName}</span>
-                  </div>
-                  <span className="font-medium ml-2 whitespace-nowrap">
-                    {item.formattedValue}
-                  </span>
-                </div>
-              ))
+          <div className="border-t border-border/50 dark:border-border/10 pt-2 space-y-1.5">
+            {/* Detail items (composition) */}
+            {hasDetails && detailItems.map((item) => (
+              <div
+                key={item.label}
+                className="flex items-center justify-between text-xs"
+              >
+                <span className="text-muted-foreground truncate">{item.label}</span>
+                <span className={cn(
+                  "font-medium ml-2 whitespace-nowrap",
+                  item.highlighted ? (iconClassName?.includes("emerald") || iconClassName?.includes("teal") ? "text-emerald-600 dark:text-emerald-400" : iconClassName?.includes("red") ? "text-red-600 dark:text-red-400" : iconClassName?.includes("blue") ? "text-blue-600 dark:text-blue-400" : iconClassName?.includes("orange") ? "text-orange-600 dark:text-orange-400" : "text-foreground") : "text-foreground"
+                )}>
+                  {item.value}
+                </span>
+              </div>
+            ))}
+
+            {/* Profile breakdown (multi-profile) */}
+            {hasBreakdown && (
+              <>
+                {hasDetails && <div className="border-t border-border/30 my-1.5" />}
+                {breakdownLoading ? (
+                  Array.from({ length: 2 }).map((_, i) => (
+                    <Skeleton key={i} className="h-4 w-full" />
+                  ))
+                ) : (
+                  breakdown?.map((item) => (
+                    <div
+                      key={item.profileName}
+                      className="flex items-center justify-between text-xs"
+                    >
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span
+                          className="h-2 w-2 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: item.profileColor }}
+                        />
+                        <span className="truncate">{item.profileName}</span>
+                      </div>
+                      <span className="font-medium ml-2 whitespace-nowrap">
+                        {item.formattedValue}
+                      </span>
+                    </div>
+                  ))
+                )}
+              </>
             )}
           </div>
         </div>

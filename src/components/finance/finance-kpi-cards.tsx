@@ -49,11 +49,11 @@ function KPIWithPopover({
   }
 
   const bgColor = iconClassName?.includes("emerald")
-    ? "bg-emerald-500/15"
+    ? "bg-emerald-500/10"
     : iconClassName?.includes("red")
-    ? "bg-red-500/15"
+    ? "bg-red-500/10"
     : iconClassName?.includes("teal")
-    ? "bg-teal-500/15"
+    ? "bg-teal-500/10"
     : "bg-muted";
 
   return (
@@ -120,7 +120,7 @@ function LineItem({
             className={cn(
               "font-mono shrink-0",
               prefix === "+" && "text-emerald-500",
-              prefix === "-" && "text-red-400",
+              prefix === "-" && "text-red-600",
               prefix === "=" && "text-muted-foreground"
             )}
           >
@@ -273,7 +273,7 @@ export function FinanceKPICards({ data, isLoading }: FinanceKPICardsProps) {
             <span className="font-mono text-muted-foreground">=</span>
             Ganancia Neta
           </span>
-          <span className={netProfit >= 0 ? "text-emerald-500" : "text-red-400"}>
+          <span className={netProfit >= 0 ? "text-emerald-500" : "text-red-600 dark:text-red-400"}>
             {formatMoney(netProfit)}
           </span>
         </div>

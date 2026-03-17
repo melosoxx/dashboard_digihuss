@@ -142,7 +142,7 @@ export function ClarityWeekStrip({
                       ? "w-16 h-16 text-sm gap-0.5"
                       : "w-9 h-9 text-[10px]",
                     hasData
-                      ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                      ? "bg-emerald-50 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30"
                       : "bg-muted/20 text-muted-foreground/40 border border-border/10",
                     isToday && "ring-1 ring-cyan-500/60"
                   )}
@@ -230,9 +230,9 @@ export function ClarityFetchControl({
 
           {/* Rate limit warning */}
           {rateLimited && (
-            <div className="flex items-center gap-2 rounded-md bg-red-500/10 border border-red-500/20 px-3 py-2">
-              <AlertTriangle className="h-3.5 w-3.5 text-red-400 shrink-0" />
-              <p className="text-[11px] text-red-400">
+            <div className="flex items-center gap-2 rounded-md bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 px-3 py-2">
+              <AlertTriangle className="h-3.5 w-3.5 text-red-600 dark:text-red-400 shrink-0" />
+              <p className="text-[11px] text-red-600 dark:text-red-400">
                 Limite diario alcanzado. Se reinicia a medianoche UTC.
               </p>
             </div>

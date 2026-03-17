@@ -33,11 +33,12 @@ interface ConversionsDailyChartProps {
 }
 
 const TOOLTIP_STYLE = {
-  backgroundColor: "rgba(15, 20, 35, 0.95)",
-  border: "1px solid rgba(100, 120, 180, 0.2)",
+  backgroundColor: "var(--tooltip-bg)",
+  border: "var(--tooltip-border)",
   borderRadius: "10px",
   backdropFilter: "blur(8px)",
-  boxShadow: "0 4px 20px rgba(0, 0, 0, 0.3)",
+  boxShadow: "var(--tooltip-shadow)",
+  color: "var(--tooltip-color)",
 };
 
 export function ConversionsDailyChart({ data, isLoading, costTarget = 2000, chartHeight = 280, fillHeight = false }: ConversionsDailyChartProps) {
@@ -72,19 +73,19 @@ export function ConversionsDailyChart({ data, isLoading, costTarget = 2000, char
         <div className="flex items-center justify-between">
           <CardTitle className="text-sm font-semibold">Conversiones diarias</CardTitle>
           <span className="text-[11px] text-muted-foreground">
-            Target CPC: <span className="text-amber-400 font-semibold">{formatMoney(costTarget)}</span>
+            Target CPC: <span className="text-amber-600 font-semibold">{formatMoney(costTarget)}</span>
           </span>
         </div>
       </CardHeader>
       <CardContent className={fillHeight ? "flex-1 min-h-0" : ""}>
         <ResponsiveContainer width="100%" height={fillHeight ? "100%" : chartHeight}>
           <ComposedChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(100, 120, 180, 0.08)" vertical={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" vertical={false} />
             <XAxis
               dataKey="date"
-              tick={{ fontSize: 11, fill: "rgba(150, 165, 200, 0.6)" }}
+              tick={{ fontSize: 11, fill: "var(--chart-tick)" }}
               tickLine={false}
-              axisLine={{ stroke: "rgba(100, 120, 180, 0.1)" }}
+              axisLine={{ stroke: "var(--chart-axis)" }}
               tickFormatter={(v) =>
                 new Date(v + "T00:00:00").toLocaleDateString("es-AR", {
                   month: "short",
@@ -94,7 +95,7 @@ export function ConversionsDailyChart({ data, isLoading, costTarget = 2000, char
             />
             <YAxis
               yAxisId="left"
-              tick={{ fontSize: 11, fill: "rgba(150, 165, 200, 0.6)" }}
+              tick={{ fontSize: 11, fill: "var(--chart-tick)" }}
               tickLine={false}
               axisLine={false}
               allowDecimals={false}
@@ -117,16 +118,16 @@ export function ConversionsDailyChart({ data, isLoading, costTarget = 2000, char
                 return (
                   <div style={TOOLTIP_STYLE} className="px-3 py-2 text-xs space-y-1">
                     <p className="text-muted-foreground font-medium mb-1">{date}</p>
-                    <p className="text-emerald-400">Pedidos: <span className="font-semibold text-white">{raw?.orders ?? 0}</span></p>
-                    <p className="text-amber-300">Costo/conv.: <span className="font-semibold text-white">{cpc}</span></p>
-                    <p className="text-amber-400">Target CPC: <span className="font-semibold">{formatMoney(costTarget)}</span></p>
-                    <p className="text-rose-400">Gasto Ads: <span className="font-semibold text-white">{formatMoney(raw?.adSpend ?? 0)}</span></p>
+                    <p className="text-emerald-600 dark:text-emerald-300">Pedidos: <span className="font-semibold text-slate-800 dark:text-white">{raw?.orders ?? 0}</span></p>
+                    <p className="text-amber-600 dark:text-amber-300">Costo/conv.: <span className="font-semibold text-slate-800 dark:text-white">{cpc}</span></p>
+                    <p className="text-amber-600 dark:text-amber-300">Target CPC: <span className="font-semibold">{formatMoney(costTarget)}</span></p>
+                    <p className="text-rose-600 dark:text-rose-300">Gasto Ads: <span className="font-semibold text-slate-800 dark:text-white">{formatMoney(raw?.adSpend ?? 0)}</span></p>
                   </div>
                 );
               }}
             />
             <Legend
-              wrapperStyle={{ fontSize: 12, color: "rgba(150, 165, 200, 0.7)" }}
+              wrapperStyle={{ fontSize: 12, color: "rgba(100, 116, 139, 0.7)" }}
             />
 
             {/* Target cost per conversion */}

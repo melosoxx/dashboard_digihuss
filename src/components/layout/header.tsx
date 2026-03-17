@@ -11,13 +11,13 @@ import { CurrencyToggle } from "./currency-toggle";
 
 export function Header() {
   return (
-    <header className="flex h-14 items-center gap-2 sm:gap-4 border-b bg-card px-3 sm:px-4 lg:px-6">
+    <header className="flex h-14 items-center gap-2 sm:gap-4 border-b border-slate-200 dark:border-border bg-white/70 dark:bg-card/70 backdrop-blur-md px-3 sm:px-4 lg:px-6">
       <MobileNav />
-      <div className="flex-1" />
       <CurrencyToggle />
       <div className="hidden sm:flex">
         <IntegrationStatus />
       </div>
+      <div className="flex-1" />
       <ProfileSwitcher />
       <div className="hidden md:flex">
         <DateRangePicker />

@@ -252,7 +252,7 @@ export function ExploreDataTable({ datasets, isLoading }: ExploreDataTableProps)
                 </TableRow>
               ) : (
                 pagedData.map((row, i) => (
-                  <TableRow key={i} className="border-border/10 hover:bg-white/[0.03] transition-colors">
+                  <TableRow key={i} className="border-border/10 hover:bg-slate-50 dark:hover:bg-white/[0.03] transition-colors">
                     {dataset?.columns.map((col) => (
                       <TableCell
                         key={col.key}

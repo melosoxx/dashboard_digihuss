@@ -91,7 +91,7 @@ export function ExpenseTable({
               nonRecurring.map((expense) => (
                 <TableRow
                   key={expense.id}
-                  className="hover:bg-white/[0.03]"
+                  className="hover:bg-slate-50 dark:hover:bg-white/[0.03]"
                 >
                   <TableCell className="text-[13px]">
                     {new Date(expense.expenseDate + "T00:00:00").toLocaleDateString(

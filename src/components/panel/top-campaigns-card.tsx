@@ -23,9 +23,9 @@ interface ActiveAdsCardProps {
 }
 
 function getCtrBadge(ctr: number) {
-  if (ctr >= 2) return { className: "bg-emerald-500/15 text-emerald-400 border-emerald-500/25" };
-  if (ctr >= 1) return { className: "bg-amber-500/15 text-amber-400 border-amber-500/25" };
-  return { className: "bg-red-500/15 text-red-400 border-red-500/25" };
+  if (ctr >= 2) return { className: "bg-emerald-50 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/25" };
+  if (ctr >= 1) return { className: "bg-amber-50 dark:bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-500/25" };
+  return { className: "bg-red-50 dark:bg-red-500/15 text-red-600 dark:text-red-400 border-red-200 dark:border-red-500/25" };
 }
 
 function formatDaysActive(createdAt: string): string {
@@ -123,7 +123,7 @@ export function ActiveAdsCard({ ads, isLoading }: ActiveAdsCardProps) {
                 {sorted.map((ad) => {
                   const ctrBadge = getCtrBadge(ad.ctr);
                   return (
-                    <tr key={ad.adId} className="border-b border-border/10 last:border-0 hover:bg-white/[0.03] transition-colors duration-150">
+                    <tr key={ad.adId} className="border-b border-border/10 last:border-0 hover:bg-slate-50 dark:hover:bg-white/[0.03] transition-colors duration-150">
                       <td className="py-3 pr-4">
                         <div className="flex items-center gap-1.5">
                           {ad.thumbnailUrl && (
@@ -161,7 +161,7 @@ export function ActiveAdsCard({ ads, isLoading }: ActiveAdsCardProps) {
                       </td>
                       <td className="py-3 text-right">
                         {ad.conversions > 0 ? (
-                          <Badge variant="outline" className="text-[10px] font-semibold border bg-emerald-500/15 text-emerald-400 border-emerald-500/25">
+                          <Badge variant="outline" className="text-[10px] font-semibold border bg-emerald-50 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/25">
                             {ad.conversions}
                           </Badge>
                         ) : (

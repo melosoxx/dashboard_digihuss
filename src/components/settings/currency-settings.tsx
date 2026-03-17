@@ -133,7 +133,7 @@ export function CurrencySettings() {
 
         {/* Error banner */}
         {ratesError && (
-          <div className="flex items-center gap-2 rounded-lg bg-amber-500/10 border border-amber-500/20 px-3 py-2 text-xs text-amber-400">
+          <div className="flex items-center gap-2 rounded-lg bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 px-3 py-2 text-xs text-amber-600 dark:text-amber-400">
             <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
             No se pudieron actualizar las cotizaciones. Usando última cotización disponible.
           </div>

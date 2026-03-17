@@ -13,9 +13,9 @@ interface CampaignPerformanceCardProps {
 }
 
 function getRoasBadge(roas: number) {
-  if (roas >= 4) return "bg-emerald-500/15 text-emerald-400 border-emerald-500/25";
-  if (roas >= 2) return "bg-amber-500/15 text-amber-400 border-amber-500/25";
-  return "bg-red-500/15 text-red-400 border-red-500/25";
+  if (roas >= 4) return "bg-emerald-50 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/25";
+  if (roas >= 2) return "bg-amber-50 dark:bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-500/25";
+  return "bg-red-50 dark:bg-red-500/15 text-red-600 dark:text-red-400 border-red-200 dark:border-red-500/25";
 }
 
 export function CampaignPerformanceCard({ campaigns, isLoading }: CampaignPerformanceCardProps) {
@@ -61,11 +61,11 @@ export function CampaignPerformanceCard({ campaigns, isLoading }: CampaignPerfor
                 {sorted.map((c) => {
                   const revenue = c.roas * c.spend;
                   return (
-                    <tr key={c.campaignId} className="border-b border-border/10 last:border-0 hover:bg-white/[0.03] transition-colors duration-150">
+                    <tr key={c.campaignId} className="border-b border-border/10 last:border-0 hover:bg-slate-50 dark:hover:bg-white/[0.03] transition-colors duration-150">
                       <td className="py-3 pr-4">
                         <span className="text-[13px] font-medium">{c.campaignName}</span>
                       </td>
-                      <td className="py-3 text-right text-[13px] text-emerald-400 font-medium">
+                      <td className="py-3 text-right text-[13px] text-emerald-600 font-medium">
                         {formatMoney(c.spend)}
                       </td>
                       <td className="py-3 text-right text-[13px] text-muted-foreground">

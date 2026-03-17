@@ -20,10 +20,11 @@ interface SpendChartProps {
 }
 
 const TOOLTIP_STYLE = {
-  backgroundColor: "rgba(15, 20, 35, 0.95)",
-  border: "1px solid rgba(100, 120, 180, 0.2)",
+  backgroundColor: "var(--tooltip-bg)",
+  border: "var(--tooltip-border)",
   borderRadius: "10px",
-  boxShadow: "0 4px 20px rgba(0, 0, 0, 0.3)",
+  boxShadow: "var(--tooltip-shadow)",
+  color: "var(--tooltip-color)",
 };
 
 export function SpendChart({ data, isLoading }: SpendChartProps) {
@@ -52,16 +53,16 @@ export function SpendChart({ data, isLoading }: SpendChartProps) {
                 <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(100, 120, 180, 0.08)" />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
             <XAxis
               dataKey="date"
-              tick={{ fontSize: 11, fill: "rgba(150, 165, 200, 0.6)" }}
+              tick={{ fontSize: 11, fill: "var(--chart-tick)" }}
               tickLine={false}
-              axisLine={{ stroke: "rgba(100, 120, 180, 0.1)" }}
+              axisLine={{ stroke: "var(--chart-axis)" }}
               tickFormatter={(v) => new Date(v + "T00:00:00").toLocaleDateString("es-AR", { month: "short", day: "numeric" })}
             />
             <YAxis
-              tick={{ fontSize: 11, fill: "rgba(150, 165, 200, 0.6)" }}
+              tick={{ fontSize: 11, fill: "var(--chart-tick)" }}
               tickLine={false}
               axisLine={false}
               tickFormatter={(v) => `${currencySymbol}${convert(v).toFixed(0)}`}
@@ -70,8 +71,8 @@ export function SpendChart({ data, isLoading }: SpendChartProps) {
               formatter={(value) => [formatMoney(Number(value)), "Gasto"]}
               labelFormatter={(label) => new Date(label + "T00:00:00").toLocaleDateString("es-AR", { weekday: "short", month: "short", day: "numeric" })}
               contentStyle={TOOLTIP_STYLE}
-              itemStyle={{ color: "rgba(220, 230, 255, 0.9)" }}
-              labelStyle={{ color: "rgba(150, 165, 200, 0.7)", marginBottom: 4 }}
+              itemStyle={{ color: "var(--chart-item-style)" }}
+              labelStyle={{ color: "var(--chart-label-style)", marginBottom: 4 }}
             />
             <Area
               type="monotone"

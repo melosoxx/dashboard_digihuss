@@ -73,17 +73,17 @@ export function IntegrationLogos({
   return (
     <div className="flex items-center gap-1.5">
       <IntegrationBadge
-        icon={<ShoppingBag className="h-4 w-4 shrink-0 text-emerald-400" />}
+        icon={<ShoppingBag className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />}
         label="Shopify"
         status={shopifyStatus}
       />
       <IntegrationBadge
-        icon={<Megaphone className="h-4 w-4 shrink-0 text-blue-400" />}
+        icon={<Megaphone className="h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />}
         label="Meta"
         status={metaStatus}
       />
       <IntegrationBadge
-        icon={<MousePointerClick className="h-4 w-4 shrink-0 text-amber-400" />}
+        icon={<MousePointerClick className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />}
         label="Clarity"
         status={clarityStatus}
       />
