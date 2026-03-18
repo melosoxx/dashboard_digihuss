@@ -7,6 +7,11 @@ import { QUERY_STALE_TIME, QUERY_REFETCH_INTERVAL } from "@/lib/constants";
 import type { MetaActiveAd, MetaCampaignInsight, MetaAdsetInsight } from "@/types/meta";
 import { getEnabledProfileIds } from "@/lib/aggregate-utils";
 
+interface MetaAdsResponse {
+  activeAds: MetaActiveAd[];
+  inactiveAds: MetaActiveAd[];
+}
+
 export function useMetaAds() {
   const { dateRange } = useDateRange();
   const { activeProfileId, aggregateMode, selectedProfileIds, profiles } =
@@ -14,7 +19,7 @@ export function useMetaAds() {
   const enabledIds = getEnabledProfileIds(profiles, "meta", selectedProfileIds);
 
   // --- Individual mode ---
-  const singleResult = useQuery<{ ads: MetaActiveAd[] }>({
+  const singleResult = useQuery<MetaAdsResponse>({
     queryKey: ["meta", "ads", dateRange.startDate, dateRange.endDate, activeProfileId],
     queryFn: async () => {
       const params = new URLSearchParams({
@@ -43,7 +48,7 @@ export function useMetaAds() {
         });
         const res = await fetch(`/api/meta/ads?${params}`);
         if (!res.ok) throw new Error(`Failed to fetch Meta ads: ${res.status}`);
-        return res.json() as Promise<{ ads: MetaActiveAd[] }>;
+        return res.json() as Promise<MetaAdsResponse>;
       },
       staleTime: QUERY_STALE_TIME,
       refetchInterval: QUERY_REFETCH_INTERVAL,
@@ -57,12 +62,18 @@ export function useMetaAds() {
   const isFetching = multiResults.some((r) => r.isFetching);
   const error = multiResults.find((r) => r.error)?.error ?? null;
 
-  const allAds = multiResults
+  const allActiveAds = multiResults
     .filter((r) => r.data)
-    .flatMap((r) => r.data!.ads);
+    .flatMap((r) => r.data!.activeAds);
 
-  const data: { ads: MetaActiveAd[] } | undefined =
-    allAds.length > 0 ? { ads: allAds } : undefined;
+  const allInactiveAds = multiResults
+    .filter((r) => r.data)
+    .flatMap((r) => r.data!.inactiveAds);
+
+  const data: MetaAdsResponse | undefined =
+    (allActiveAds.length > 0 || allInactiveAds.length > 0)
+      ? { activeAds: allActiveAds, inactiveAds: allInactiveAds }
+      : undefined;
 
   return { data, isLoading, isFetching, error, isError: !!error };
 }

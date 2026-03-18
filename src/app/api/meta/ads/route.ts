@@ -7,6 +7,11 @@ const querySchema = z.object({
   endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
 });
 
+function isInstagramPromotion(campaignName: string): boolean {
+  const lower = campaignName.toLowerCase();
+  return lower.startsWith("publicación") || lower.startsWith("instagram post:");
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = request.nextUrl;
@@ -31,12 +36,18 @@ export async function GET(request: NextRequest) {
     }
     const client = await resolveMetaClientByProfile(profileId);
 
-    const ads = await client.getActiveAds(
+    const allAds = await client.getAllAds(
       parsed.data.startDate,
       parsed.data.endDate
     );
 
-    return NextResponse.json({ ads });
+    // Exclude Instagram promotions (boosted posts) — they appear in Promociones IG tab
+    const filteredAds = allAds.filter((ad) => !isInstagramPromotion(ad.campaignName));
+
+    const activeAds = filteredAds.filter((ad) => ad.effectiveStatus === "ACTIVE");
+    const inactiveAds = filteredAds.filter((ad) => ad.effectiveStatus !== "ACTIVE");
+
+    return NextResponse.json({ activeAds, inactiveAds });
   } catch (error: any) {
     console.error("Meta ads error:", error);
     return NextResponse.json(

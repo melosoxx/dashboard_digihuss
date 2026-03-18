@@ -15,6 +15,12 @@ interface PromotionsResponse {
   ads: MetaActiveAd[];
 }
 
+export interface ProfilePromotionData {
+  profileName: string;
+  profileColor: string;
+  insights: MetaAccountInsights;
+}
+
 export function useMetaPromotions() {
   const { dateRange } = useDateRange();
   const { activeProfileId, aggregateMode, selectedProfileIds, profiles } =
@@ -80,22 +86,26 @@ export function useMetaPromotions() {
   const deduplicatedData = useMemo(() => {
     if (!aggregateMode) return undefined;
     const seen = new Set<string>();
-    const unique: PromotionsResponse[] = [];
-    for (const r of multiResults) {
+    const unique: { data: PromotionsResponse; profileId: string }[] = [];
+    for (let i = 0; i < multiResults.length; i++) {
+      const r = multiResults[i];
       if (!r.data || !r.data.configured) continue;
       const acctId = r.data.promotionsAdAccountId;
       if (acctId && seen.has(acctId)) continue;
       if (acctId) seen.add(acctId);
-      unique.push(r.data);
+      unique.push({ data: r.data, profileId: enabledIds[i] });
     }
     return unique;
-  }, [aggregateMode, multiResults]);
+  }, [aggregateMode, multiResults, enabledIds]);
 
   if (!aggregateMode) {
     const configured = singleResult.data?.configured ?? false;
+    const allAds = configured ? (singleResult.data?.ads ?? []) : [];
     return {
       data: configured ? singleResult.data?.insights : undefined,
-      ads: configured ? (singleResult.data?.ads ?? []) : [],
+      ads: allAds,
+      activeAds: allAds.filter((ad) => ad.effectiveStatus === "ACTIVE"),
+      inactiveAds: allAds.filter((ad) => ad.effectiveStatus !== "ACTIVE"),
       configured,
       isLoading: singleResult.isLoading,
       isFetching: singleResult.isFetching,
@@ -113,22 +123,24 @@ export function useMetaPromotions() {
   let data: MetaAccountInsights | undefined;
   let ads: MetaActiveAd[] = [];
 
+  let perProfile: ProfilePromotionData[] | undefined;
+
   if (deduplicatedData && deduplicatedData.length > 0) {
-    const spend = deduplicatedData.reduce((s, d) => s + d.insights.spend, 0);
+    const spend = deduplicatedData.reduce((s, d) => s + d.data.insights.spend, 0);
     const impressions = deduplicatedData.reduce(
-      (s, d) => s + d.insights.impressions,
+      (s, d) => s + d.data.insights.impressions,
       0
     );
     const clicks = deduplicatedData.reduce(
-      (s, d) => s + d.insights.clicks,
+      (s, d) => s + d.data.insights.clicks,
       0
     );
     const conversions = deduplicatedData.reduce(
-      (s, d) => s + d.insights.conversions,
+      (s, d) => s + d.data.insights.conversions,
       0
     );
     const purchaseRevenue = deduplicatedData.reduce(
-      (s, d) => s + d.insights.purchaseRevenue,
+      (s, d) => s + d.data.insights.purchaseRevenue,
       0
     );
 
@@ -146,8 +158,21 @@ export function useMetaPromotions() {
     };
 
     // Merge all ads from deduplicated results
-    ads = deduplicatedData.flatMap((d) => d.ads);
+    ads = deduplicatedData.flatMap((d) => d.data.ads);
+
+    // Build per-profile breakdown
+    perProfile = deduplicatedData.map((d) => {
+      const profile = profiles.find((p) => p.id === d.profileId);
+      return {
+        profileName: profile?.name ?? "Desconocido",
+        profileColor: profile?.color ?? "#888888",
+        insights: d.data.insights,
+      };
+    });
   }
 
-  return { data, ads, configured, isLoading, isFetching, error, isError: !!error };
+  const activeAds = ads.filter((ad) => ad.effectiveStatus === "ACTIVE");
+  const inactiveAds = ads.filter((ad) => ad.effectiveStatus !== "ACTIVE");
+
+  return { data, ads, activeAds, inactiveAds, perProfile, configured, isLoading, isFetching, error, isError: !!error };
 }

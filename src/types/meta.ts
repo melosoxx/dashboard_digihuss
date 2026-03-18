@@ -80,6 +80,7 @@ export interface MetaActiveAd {
   objectType?: string;
   videoId?: string;
   linkUrl?: string;
+  effectiveStatus?: string;
 }
 
 export interface MetaAdsetInsight {

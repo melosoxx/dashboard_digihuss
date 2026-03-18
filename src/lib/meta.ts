@@ -318,6 +318,114 @@ class MetaAdsClient {
     return result;
   }
 
+  async getAllAds(startDate: string, endDate: string): Promise<MetaActiveAd[]> {
+    let adsMap = new Map<string, { id: string; name: string; created_time: string; effective_status: string; campaign?: { name: string }; adset?: { name: string }; creative?: { thumbnail_url?: string; object_type?: string; video_id?: string; link_url?: string } }>();
+
+    try {
+      const adsParams = new URLSearchParams({
+        fields: "id,name,created_time,effective_status,campaign{name},adset{name},creative{thumbnail_url,object_type,video_id,link_url}",
+        limit: "200",
+        access_token: this.accessToken,
+      });
+
+      const adsUrl = `${this.baseUrl}/act_${this.adAccountId}/ads?${adsParams}`;
+      const adsResponse = await fetch(adsUrl);
+
+      if (adsResponse.ok) {
+        const adsJson = await adsResponse.json();
+        adsMap = new Map(
+          (adsJson.data || []).map((ad: any) => [ad.id, ad])
+        );
+      }
+    } catch (error) {
+      console.warn("Failed to fetch all ads metadata:", error);
+    }
+
+    const insightsParams = new URLSearchParams({
+      fields: "ad_id,ad_name,campaign_name,adset_name,spend,impressions,clicks,ctr,actions",
+      time_range: JSON.stringify({ since: startDate, until: endDate }),
+      level: "ad",
+      limit: "200",
+      access_token: this.accessToken,
+    });
+
+    const insightsUrl = `${this.baseUrl}/act_${this.adAccountId}/insights?${insightsParams}`;
+    const insightsResponse = await fetch(insightsUrl);
+
+    if (!insightsResponse.ok) {
+      let errorDetail = "";
+      try {
+        const errorBody = await insightsResponse.json();
+        errorDetail = errorBody.error?.message || JSON.stringify(errorBody);
+      } catch {
+        errorDetail = insightsResponse.statusText;
+      }
+      const error = new Error(`Meta API error (all ad insights): ${insightsResponse.status} - ${errorDetail}`);
+      if (insightsResponse.status === 403 && errorDetail.includes("NOT grant")) {
+        (error as any).isPermissionError = true;
+      }
+      throw error;
+    }
+
+    const insightsJson: MetaInsightsResponse = await insightsResponse.json();
+
+    const result: MetaActiveAd[] = [];
+
+    for (const row of insightsJson.data || []) {
+      const adId = row.ad_id ?? "";
+      const adMeta = adsMap.get(adId);
+      const impressions = parseInt(row.impressions || "0");
+      const linkClicks = parseInt(
+        row.actions?.find((a) => a.action_type === "link_click")?.value || "0"
+      );
+      const linkCtr = impressions > 0 ? (linkClicks / impressions) * 100 : 0;
+
+      result.push({
+        adId,
+        adName: row.ad_name ?? adMeta?.name ?? "Unknown",
+        adsetName: row.adset_name ?? adMeta?.adset?.name ?? "",
+        campaignName: row.campaign_name ?? adMeta?.campaign?.name ?? "",
+        spend: parseFloat(row.spend || "0"),
+        impressions,
+        clicks: linkClicks,
+        ctr: linkCtr,
+        conversions: this.extractConversions(row),
+        createdAt: adMeta?.created_time ?? new Date().toISOString(),
+        thumbnailUrl: adMeta?.creative?.thumbnail_url,
+        objectType: adMeta?.creative?.object_type,
+        videoId: adMeta?.creative?.video_id,
+        linkUrl: adMeta?.creative?.link_url,
+        effectiveStatus: adMeta?.effective_status ?? "UNKNOWN",
+      });
+    }
+
+    if (adsMap.size > 0) {
+      for (const [adId, ad] of adsMap) {
+        if (!result.some((r) => r.adId === adId)) {
+          result.push({
+            adId,
+            adName: ad.name,
+            adsetName: ad.adset?.name ?? "",
+            campaignName: ad.campaign?.name ?? "",
+            spend: 0,
+            impressions: 0,
+            clicks: 0,
+            ctr: 0,
+            conversions: 0,
+            createdAt: ad.created_time,
+            thumbnailUrl: ad.creative?.thumbnail_url,
+            objectType: ad.creative?.object_type,
+            videoId: ad.creative?.video_id,
+            linkUrl: ad.creative?.link_url,
+            effectiveStatus: ad.effective_status ?? "UNKNOWN",
+          });
+        }
+      }
+    }
+
+    return result;
+  }
+
   async getVideoSource(videoId: string): Promise<string | null> {
     const url = `${this.baseUrl}/${videoId}?fields=source&access_token=${this.accessToken}`;
     const response = await fetch(url);

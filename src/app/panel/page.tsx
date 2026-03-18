@@ -212,6 +212,7 @@ export default function PanelGeneralPage() {
   const [resumenView, setResumenView] = useState<"kpis" | "alertas" | "atribucion">("kpis");
   const [rendimientoTab, setRendimientoTab] = useState("embudo");
   const [anunciosTab, setAnunciosTab] = useState("meta-ads");
+  const [promoStatusTab, setPromoStatusTab] = useState("promo-activas");
   const [clarityTab, setClarityTab] = useState("cl-resumen");
   const isLoadingMain = shopify.isLoading || meta.isLoading || promotions.isLoading || mp.isLoading;
 
@@ -498,15 +499,15 @@ export default function PanelGeneralPage() {
   ], [revenue, orderCount, formatMoney]);
 
   const gastoDetails: KPIDetailItem[] = useMemo(() => {
-    const cpc = meta.data?.cpc ?? 0;
-    const ctr = meta.data?.ctr ?? 0;
     const items: KPIDetailItem[] = [
-      { label: "Promedio diario", value: formatMoney(adSpend / dayCount) },
+      { label: "Publicidad", value: formatMoney(adSpend), highlighted: true },
     ];
-    if (cpc > 0) items.push({ label: "CPC", value: formatMoney(cpc) });
-    if (ctr > 0) items.push({ label: "CTR", value: `${ctr.toFixed(2)}%` });
+    if (igPromoSpend > 0) {
+      items.push({ label: "Promos Instagram", value: formatMoney(igPromoSpend) });
+    }
+    items.push({ label: "Promedio diario", value: formatMoney(totalAdSpend / dayCount) });
     return items;
-  }, [adSpend, dayCount, meta.data, formatMoney]);
+  }, [adSpend, igPromoSpend, totalAdSpend, dayCount, formatMoney]);
 
   const costoResultadoDetails: KPIDetailItem[] = useMemo(() => {
     const items: KPIDetailItem[] = [
@@ -522,6 +523,160 @@ export default function PanelGeneralPage() {
     }
     return items;
   }, [totalAdSpend, adSpend, igPromoSpend, orderCount, metaConversions, formatMoney]);
+
+  // ── Meta Ads detail breakdowns (por campaña) ─────────────────────────────
+  const adsGastoDetails: KPIDetailItem[] = useMemo(() => {
+    const allAds = ads.data?.activeAds ?? [];
+    if (!allAds.length) return [];
+    const byCampaign: Record<string, number> = {};
+    allAds.forEach((ad) => { byCampaign[ad.campaignName] = (byCampaign[ad.campaignName] ?? 0) + ad.spend; });
+    return Object.entries(byCampaign)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 5)
+      .map(([name, val]) => ({
+        label: name.length > 30 ? name.substring(0, 28) + "…" : name,
+        value: formatMoney(val),
+      }));
+  }, [ads.data?.activeAds, formatMoney]);
+
+  const adsImpresionesDetails: KPIDetailItem[] = useMemo(() => {
+    const allAds = ads.data?.activeAds ?? [];
+    if (!allAds.length) return [];
+    const byCampaign: Record<string, number> = {};
+    allAds.forEach((ad) => { byCampaign[ad.campaignName] = (byCampaign[ad.campaignName] ?? 0) + ad.impressions; });
+    return Object.entries(byCampaign)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 5)
+      .map(([name, val]) => ({
+        label: name.length > 30 ? name.substring(0, 28) + "…" : name,
+        value: formatNumber(val),
+      }));
+  }, [ads.data?.activeAds]);
+
+  const adsClicsDetails: KPIDetailItem[] = useMemo(() => {
+    const allAds = ads.data?.activeAds ?? [];
+    if (!allAds.length) return [];
+    const byCampaign: Record<string, number> = {};
+    allAds.forEach((ad) => { byCampaign[ad.campaignName] = (byCampaign[ad.campaignName] ?? 0) + ad.clicks; });
+    return Object.entries(byCampaign)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 5)
+      .map(([name, val]) => ({
+        label: name.length > 30 ? name.substring(0, 28) + "…" : name,
+        value: formatNumber(val),
+      }));
+  }, [ads.data?.activeAds]);
+
+  const adsCtrDetails: KPIDetailItem[] = useMemo(() => {
+    const allAds = ads.data?.activeAds ?? [];
+    if (!allAds.length) return [];
+    const byCampaign: Record<string, { clicks: number; impressions: number }> = {};
+    allAds.forEach((ad) => {
+      if (!byCampaign[ad.campaignName]) byCampaign[ad.campaignName] = { clicks: 0, impressions: 0 };
+      byCampaign[ad.campaignName].clicks += ad.clicks;
+      byCampaign[ad.campaignName].impressions += ad.impressions;
+    });
+    const totalImpressions = allAds.reduce((s, ad) => s + ad.impressions, 0);
+    const totalClicks = allAds.reduce((s, ad) => s + ad.clicks, 0);
+    const avgCtr = totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0;
+    return Object.entries(byCampaign)
+      .filter(([, d]) => d.impressions > 0)
+      .map(([name, d]) => ({ name, ctr: (d.clicks / d.impressions) * 100 }))
+      .sort((a, b) => b.ctr - a.ctr)
+      .slice(0, 5)
+      .map(({ name, ctr }) => ({
+        label: name.length > 30 ? name.substring(0, 28) + "…" : name,
+        value: `${ctr.toFixed(2)}%`,
+        highlighted: ctr >= avgCtr,
+      }));
+  }, [ads.data?.activeAds]);
+
+  // ── Promociones IG breakdowns ─────────────────────────────────────────────
+  // Aggregate mode: breakdown by business profile
+  const promoGastoBreakdown = useMemo(() =>
+    promotions.perProfile?.map((p) => ({
+      profileName: p.profileName,
+      profileColor: p.profileColor,
+      formattedValue: formatMoney(p.insights.spend),
+      rawValue: p.insights.spend,
+    })),
+  [promotions.perProfile, formatMoney]);
+
+  const promoImpresionesBreakdown = useMemo(() =>
+    promotions.perProfile?.map((p) => ({
+      profileName: p.profileName,
+      profileColor: p.profileColor,
+      formattedValue: formatNumber(p.insights.impressions),
+      rawValue: p.insights.impressions,
+    })),
+  [promotions.perProfile]);
+
+  const promoClicsBreakdown = useMemo(() =>
+    promotions.perProfile?.map((p) => ({
+      profileName: p.profileName,
+      profileColor: p.profileColor,
+      formattedValue: formatNumber(p.insights.clicks),
+      rawValue: p.insights.clicks,
+    })),
+  [promotions.perProfile]);
+
+  const promoCtrBreakdown = useMemo(() =>
+    promotions.perProfile?.map((p) => ({
+      profileName: p.profileName,
+      profileColor: p.profileColor,
+      formattedValue: `${p.insights.ctr.toFixed(2)}%`,
+      rawValue: p.insights.ctr,
+    })),
+  [promotions.perProfile]);
+
+  // Single mode: detail by individual ad
+  const promoGastoDetails: KPIDetailItem[] = useMemo(() => {
+    if (promotions.perProfile) return [];
+    const allAds = promotions.ads;
+    if (!allAds.length) return [];
+    const sorted = [...allAds].sort((a, b) => b.spend - a.spend).slice(0, 5);
+    return sorted.map((ad) => ({
+      label: ad.adName.length > 30 ? ad.adName.substring(0, 28) + "…" : ad.adName,
+      value: formatMoney(ad.spend),
+    }));
+  }, [promotions.ads, promotions.perProfile, formatMoney]);
+
+  const promoImpresionesDetails: KPIDetailItem[] = useMemo(() => {
+    if (promotions.perProfile) return [];
+    const allAds = promotions.ads;
+    if (!allAds.length) return [];
+    const sorted = [...allAds].sort((a, b) => b.impressions - a.impressions).slice(0, 5);
+    return sorted.map((ad) => ({
+      label: ad.adName.length > 30 ? ad.adName.substring(0, 28) + "…" : ad.adName,
+      value: formatNumber(ad.impressions),
+    }));
+  }, [promotions.ads, promotions.perProfile]);
+
+  const promoClicsDetails: KPIDetailItem[] = useMemo(() => {
+    if (promotions.perProfile) return [];
+    const allAds = promotions.ads;
+    if (!allAds.length) return [];
+    const sorted = [...allAds].sort((a, b) => b.clicks - a.clicks).slice(0, 5);
+    return sorted.map((ad) => ({
+      label: ad.adName.length > 30 ? ad.adName.substring(0, 28) + "…" : ad.adName,
+      value: formatNumber(ad.clicks),
+    }));
+  }, [promotions.ads, promotions.perProfile]);
+
+  const promoCtrDetails: KPIDetailItem[] = useMemo(() => {
+    if (promotions.perProfile) return [];
+    const allAds = promotions.ads;
+    if (!allAds.length) return [];
+    return [...allAds]
+      .filter((ad) => ad.impressions > 0)
+      .sort((a, b) => b.ctr - a.ctr)
+      .slice(0, 5)
+      .map((ad) => ({
+        label: ad.adName.length > 30 ? ad.adName.substring(0, 28) + "…" : ad.adName,
+        value: `${ad.ctr.toFixed(2)}%`,
+        highlighted: ad.ctr >= (promotions.data?.ctr ?? 0),
+      }));
+  }, [promotions.ads, promotions.perProfile, promotions.data?.ctr]);
 
   // ── Explorar datasets ──────────────────────────────────────────────────────
   const dailyExploreData = useMemo(() =>
@@ -781,7 +936,7 @@ export default function PanelGeneralPage() {
                     <KPICard title="Ganancia Neta" value={netProfit} formattedValue={formatMoney(netProfit)} icon={Percent} iconClassName={netProfit >= 0 ? "text-emerald-500" : "text-red-500"} isLoading={isLoadingMain} trend={revenueTrendProp} detailItems={gananciaDetails} />
                     <KPICard title="ROAS" value={roas} formattedValue={`${roas.toFixed(2)}x`} icon={TrendingUp} iconClassName="text-teal-500" isLoading={meta.isLoading} detailItems={roasDetails} />
                     <KPICard title="Pedidos" value={orderCount} formattedValue={formatNumber(orderCount)} icon={ShoppingCart} iconClassName="text-blue-500" isLoading={shopify.isLoading} subtitle={`~${(orderCount / dayCount).toFixed(1)} por día`} detailItems={pedidosDetails} />
-                    <KPICard title="Gasto en Ads" value={adSpend} formattedValue={formatMoney(adSpend)} icon={Megaphone} iconClassName="text-red-500" isLoading={meta.isLoading} detailItems={gastoDetails} />
+                    <KPICard title="Gasto en Ads" value={totalAdSpend} formattedValue={formatMoney(totalAdSpend)} icon={Megaphone} iconClassName="text-red-500" isLoading={isLoadingMain} detailItems={gastoDetails} />
                     <KPICard title="Costo x Resultado" value={costPerResult} formattedValue={formatMoney(costPerResult)} icon={Target} iconClassName="text-orange-500" isLoading={isLoadingMain} subtitle={metaConversions > 0 ? `${formatNumber(metaConversions)} conv.` : undefined} detailItems={costoResultadoDetails} />
                   </div>
                 )}
@@ -849,7 +1004,7 @@ export default function PanelGeneralPage() {
                 <KPICard title="ROAS" value={roas} formattedValue={`${roas.toFixed(2)}x`} icon={TrendingUp} iconClassName="text-teal-500" isLoading={meta.isLoading} detailItems={roasDetails} />
                 <KPICard title="Pedidos" value={orderCount} formattedValue={formatNumber(orderCount)} icon={ShoppingCart} iconClassName="text-blue-500" isLoading={shopify.isLoading} subtitle={`~${(orderCount / dayCount).toFixed(1)} por día`} detailItems={pedidosDetails} />
                 <KPICard title="Ticket Promedio" value={aov} formattedValue={formatMoney(aov)} icon={Receipt} iconClassName="text-emerald-500" isLoading={shopify.isLoading} detailItems={ticketDetails} />
-                <KPICard title="Gasto en Ads" value={adSpend} formattedValue={formatMoney(adSpend)} icon={Megaphone} iconClassName="text-red-500" isLoading={meta.isLoading} detailItems={gastoDetails} />
+                <KPICard title="Gasto en Ads" value={totalAdSpend} formattedValue={formatMoney(totalAdSpend)} icon={Megaphone} iconClassName="text-red-500" isLoading={isLoadingMain} detailItems={gastoDetails} />
                 <KPICard title="Costo x Resultado" value={costPerResult} formattedValue={formatMoney(costPerResult)} icon={Target} iconClassName="text-orange-500" isLoading={isLoadingMain} subtitle={metaConversions > 0 ? `${formatNumber(metaConversions)} conv.` : undefined} detailItems={costoResultadoDetails} />
               </div>
 
@@ -995,41 +1150,44 @@ export default function PanelGeneralPage() {
                 <div className="grid gap-2 grid-cols-2 sm:grid-cols-4 flex-shrink-0">
                   <KPICard
                     title="Gasto Meta"
-                    value={ads.data?.ads.reduce((sum, ad) => sum + ad.spend, 0) ?? 0}
-                    formattedValue={formatMoney(ads.data?.ads.reduce((sum, ad) => sum + ad.spend, 0) ?? 0)}
+                    value={ads.data?.activeAds.reduce((sum, ad) => sum + ad.spend, 0) ?? 0}
+                    formattedValue={formatMoney(ads.data?.activeAds.reduce((sum, ad) => sum + ad.spend, 0) ?? 0)}
                     icon={TrendingUp}
                     iconClassName="text-blue-500"
                     isLoading={ads.isLoading}
+                    detailItems={adsGastoDetails}
                   />
                   <KPICard
                     title="Impresiones"
-                    value={ads.data?.ads.reduce((sum, ad) => sum + ad.impressions, 0) ?? 0}
-                    formattedValue={formatNumber(ads.data?.ads.reduce((sum, ad) => sum + ad.impressions, 0) ?? 0)}
+                    value={ads.data?.activeAds.reduce((sum, ad) => sum + ad.impressions, 0) ?? 0}
+                    formattedValue={formatNumber(ads.data?.activeAds.reduce((sum, ad) => sum + ad.impressions, 0) ?? 0)}
                     icon={Eye}
                     iconClassName="text-blue-500"
                     isLoading={ads.isLoading}
+                    detailItems={adsImpresionesDetails}
                   />
                   <KPICard
                     title="Clics"
-                    value={ads.data?.ads.reduce((sum, ad) => sum + ad.clicks, 0) ?? 0}
-                    formattedValue={formatNumber(ads.data?.ads.reduce((sum, ad) => sum + ad.clicks, 0) ?? 0)}
+                    value={ads.data?.activeAds.reduce((sum, ad) => sum + ad.clicks, 0) ?? 0}
+                    formattedValue={formatNumber(ads.data?.activeAds.reduce((sum, ad) => sum + ad.clicks, 0) ?? 0)}
                     icon={MousePointerClick}
                     iconClassName="text-blue-500"
                     isLoading={ads.isLoading}
+                    detailItems={adsClicsDetails}
                   />
                   <KPICard
                     title="CTR Meta"
                     value={
                       (() => {
-                        const totalClicks = ads.data?.ads.reduce((sum, ad) => sum + ad.clicks, 0) ?? 0;
-                        const totalImpressions = ads.data?.ads.reduce((sum, ad) => sum + ad.impressions, 0) ?? 0;
+                        const totalClicks = ads.data?.activeAds.reduce((sum, ad) => sum + ad.clicks, 0) ?? 0;
+                        const totalImpressions = ads.data?.activeAds.reduce((sum, ad) => sum + ad.impressions, 0) ?? 0;
                         return totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0;
                       })()
                     }
                     formattedValue={
                       (() => {
-                        const totalClicks = ads.data?.ads.reduce((sum, ad) => sum + ad.clicks, 0) ?? 0;
-                        const totalImpressions = ads.data?.ads.reduce((sum, ad) => sum + ad.impressions, 0) ?? 0;
+                        const totalClicks = ads.data?.activeAds.reduce((sum, ad) => sum + ad.clicks, 0) ?? 0;
+                        const totalImpressions = ads.data?.activeAds.reduce((sum, ad) => sum + ad.impressions, 0) ?? 0;
                         const ctr = totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0;
                         return `${ctr.toFixed(2)}%`;
                       })()
@@ -1037,11 +1195,13 @@ export default function PanelGeneralPage() {
                     icon={Target}
                     iconClassName="text-blue-500"
                     isLoading={ads.isLoading}
+                    detailItems={adsCtrDetails}
                   />
                 </div>
                 <div className="flex-1 min-h-0 overflow-y-auto">
                   <ActiveAdsCard
-                    ads={ads.data?.ads ?? []}
+                    activeAds={ads.data?.activeAds ?? []}
+                    inactiveAds={ads.data?.inactiveAds ?? []}
                     isLoading={ads.isLoading}
                   />
                 </div>
@@ -1060,6 +1220,8 @@ export default function PanelGeneralPage() {
                       icon={Instagram}
                       iconClassName="text-fuchsia-500"
                       isLoading={promotions.isLoading}
+                      detailItems={promoGastoDetails}
+                      breakdown={promoGastoBreakdown}
                     />
                     <KPICard
                       title="Impresiones"
@@ -1068,6 +1230,8 @@ export default function PanelGeneralPage() {
                       icon={Instagram}
                       iconClassName="text-fuchsia-500"
                       isLoading={promotions.isLoading}
+                      detailItems={promoImpresionesDetails}
+                      breakdown={promoImpresionesBreakdown}
                     />
                     <KPICard
                       title="Clics"
@@ -1076,6 +1240,8 @@ export default function PanelGeneralPage() {
                       icon={Instagram}
                       iconClassName="text-fuchsia-500"
                       isLoading={promotions.isLoading}
+                      detailItems={promoClicsDetails}
+                      breakdown={promoClicsBreakdown}
                     />
                     <KPICard
                       title="CTR Promos"
@@ -1084,66 +1250,134 @@ export default function PanelGeneralPage() {
                       icon={Instagram}
                       iconClassName="text-fuchsia-500"
                       isLoading={promotions.isLoading}
+                      detailItems={promoCtrDetails}
+                      breakdown={promoCtrBreakdown}
                     />
                   </div>
                   <Card className="flex-1 min-h-0 flex flex-col overflow-hidden">
-                    <CardContent className="flex-1 min-h-0 overflow-y-auto px-5 py-4">
-                      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-4">
-                        Promociones activas ({promotions.ads.length})
-                      </p>
-                      {promotions.ads.length === 0 ? (
-                        <p className="text-sm text-muted-foreground text-center py-4">No hay promociones activas.</p>
-                      ) : (
-                        <div className="overflow-x-auto">
-                          <table className="w-full">
-                            <thead>
-                              <tr className="border-b border-border/30">
-                                <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-left pb-3">Anuncio</th>
-                                <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right pb-3">Duración</th>
-                                <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right pb-3">Gasto</th>
-                                <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right pb-3">Impresiones</th>
-                                <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right pb-3">CTR</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {promotions.ads
-                                .sort((a, b) => b.spend - a.spend)
-                                .map((ad) => (
-                                  <tr key={ad.adId} className="border-b border-border/10 last:border-0 hover:bg-slate-50 dark:hover:bg-white/[0.03] transition-colors">
-                                    <td className="py-3 pr-6">
-                                      <div className="flex items-center gap-3">
-                                        {ad.thumbnailUrl && (
-                                          <img src={ad.thumbnailUrl} alt="" className="h-9 w-9 rounded-md object-cover flex-shrink-0" />
-                                        )}
-                                        <div className="min-w-0">
-                                          <p className="text-[13px] font-medium truncate max-w-[280px]">{ad.adName}</p>
-                                          <p className="text-xs text-muted-foreground truncate max-w-[280px]">{ad.linkUrl || ad.campaignName}</p>
-                                        </div>
-                                      </div>
-                                    </td>
-                                    <td className="py-3 text-right">
-                                      <span className="text-[13px] font-semibold text-violet-600 dark:text-violet-300">
-                                        {ad.createdAt ? (() => {
-                                          const days = Math.floor((Date.now() - new Date(ad.createdAt).getTime()) / (1000 * 60 * 60 * 24));
-                                          return days === 0 ? "Hoy" : days === 1 ? "1 día" : `${days} días`;
-                                        })() : "—"}
-                                      </span>
-                                    </td>
-                                    <td className="py-3 text-right">
-                                      <span className="text-[13px] font-semibold text-violet-600 dark:text-violet-300">{formatMoney(ad.spend)}</span>
-                                    </td>
-                                    <td className="py-3 text-right">
-                                      <span className="text-[13px] font-semibold text-violet-600 dark:text-violet-300">{formatNumber(ad.impressions)}</span>
-                                    </td>
-                                    <td className="py-3 text-right">
-                                      <span className="text-[13px] font-semibold text-violet-600 dark:text-violet-300">{ad.ctr.toFixed(2)}%</span>
-                                    </td>
+                    <CardContent className="flex-1 min-h-0 overflow-hidden px-5 py-4 flex flex-col">
+                      <Tabs value={promoStatusTab} onValueChange={setPromoStatusTab} className="flex-1 flex flex-col min-h-0">
+                        <TabsList variant="line" className="flex-shrink-0 w-full h-7 border-b border-border rounded-none bg-transparent gap-0 mb-3">
+                          <TabsTrigger value="promo-activas" className="text-xs flex-none sm:flex-1 px-3 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-foreground text-muted-foreground/60 hover:text-muted-foreground">
+                            Activas ({promotions.activeAds.length})
+                          </TabsTrigger>
+                          <TabsTrigger value="promo-inactivas" className="text-xs flex-none sm:flex-1 px-3 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-foreground text-muted-foreground/60 hover:text-muted-foreground">
+                            Inactivas ({promotions.inactiveAds.length})
+                          </TabsTrigger>
+                        </TabsList>
+
+                        <TabsContent value="promo-activas" className="flex-1 min-h-0 overflow-y-auto">
+                          {promotions.activeAds.length === 0 ? (
+                            <p className="text-sm text-muted-foreground text-center py-4">No hay promociones activas.</p>
+                          ) : (
+                            <div className="overflow-x-auto">
+                              <table className="w-full">
+                                <thead>
+                                  <tr className="border-b border-border/30">
+                                    <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-left pb-3">Anuncio</th>
+                                    <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right pb-3">Duración</th>
+                                    <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right pb-3">Gasto</th>
+                                    <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right pb-3">Impresiones</th>
+                                    <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right pb-3">CTR</th>
                                   </tr>
-                                ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      )}
+                                </thead>
+                                <tbody>
+                                  {promotions.activeAds
+                                    .sort((a, b) => b.spend - a.spend)
+                                    .map((ad) => (
+                                      <tr key={ad.adId} className="border-b border-border/10 last:border-0 hover:bg-slate-50 dark:hover:bg-white/[0.03] transition-colors">
+                                        <td className="py-3 pr-6">
+                                          <div className="flex items-center gap-3">
+                                            {ad.thumbnailUrl && (
+                                              <img src={ad.thumbnailUrl} alt="" className="h-9 w-9 rounded-md object-cover flex-shrink-0" />
+                                            )}
+                                            <div className="min-w-0">
+                                              <p className="text-[13px] font-medium truncate max-w-[280px]">{ad.adName}</p>
+                                              <p className="text-xs text-muted-foreground truncate max-w-[280px]">{ad.linkUrl || ad.campaignName}</p>
+                                            </div>
+                                          </div>
+                                        </td>
+                                        <td className="py-3 text-right">
+                                          <span className="text-[13px] font-semibold text-violet-600 dark:text-violet-300">
+                                            {ad.createdAt ? (() => {
+                                              const days = Math.floor((Date.now() - new Date(ad.createdAt).getTime()) / (1000 * 60 * 60 * 24));
+                                              return days === 0 ? "Hoy" : days === 1 ? "1 día" : `${days} días`;
+                                            })() : "—"}
+                                          </span>
+                                        </td>
+                                        <td className="py-3 text-right">
+                                          <span className="text-[13px] font-semibold text-violet-600 dark:text-violet-300">{formatMoney(ad.spend)}</span>
+                                        </td>
+                                        <td className="py-3 text-right">
+                                          <span className="text-[13px] font-semibold text-violet-600 dark:text-violet-300">{formatNumber(ad.impressions)}</span>
+                                        </td>
+                                        <td className="py-3 text-right">
+                                          <span className="text-[13px] font-semibold text-violet-600 dark:text-violet-300">{ad.ctr.toFixed(2)}%</span>
+                                        </td>
+                                      </tr>
+                                    ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          )}
+                        </TabsContent>
+
+                        <TabsContent value="promo-inactivas" className="flex-1 min-h-0 overflow-y-auto">
+                          {promotions.inactiveAds.length === 0 ? (
+                            <p className="text-sm text-muted-foreground text-center py-4">No hay promociones inactivas en este periodo.</p>
+                          ) : (
+                            <div className="overflow-x-auto">
+                              <table className="w-full">
+                                <thead>
+                                  <tr className="border-b border-border/30">
+                                    <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-left pb-3">Anuncio</th>
+                                    <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right pb-3">Estado</th>
+                                    <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right pb-3">Gasto</th>
+                                    <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right pb-3">Impresiones</th>
+                                    <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right pb-3">CTR</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {promotions.inactiveAds
+                                    .sort((a, b) => b.spend - a.spend)
+                                    .map((ad) => (
+                                      <tr key={ad.adId} className="border-b border-border/10 last:border-0 hover:bg-slate-50 dark:hover:bg-white/[0.03] transition-colors">
+                                        <td className="py-3 pr-6">
+                                          <div className="flex items-center gap-3">
+                                            {ad.thumbnailUrl && (
+                                              <img src={ad.thumbnailUrl} alt="" className="h-9 w-9 rounded-md object-cover flex-shrink-0 opacity-60" />
+                                            )}
+                                            <div className="min-w-0">
+                                              <p className="text-[13px] font-medium truncate max-w-[280px] text-muted-foreground">{ad.adName}</p>
+                                              <p className="text-xs text-muted-foreground/70 truncate max-w-[280px]">{ad.linkUrl || ad.campaignName}</p>
+                                            </div>
+                                          </div>
+                                        </td>
+                                        <td className="py-3 text-right">
+                                          <span className="text-[11px] font-medium px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                                            {ad.effectiveStatus === "PAUSED" ? "Pausada" :
+                                             ad.effectiveStatus === "ARCHIVED" ? "Archivada" :
+                                             ad.effectiveStatus === "DELETED" ? "Eliminada" :
+                                             "Inactiva"}
+                                          </span>
+                                        </td>
+                                        <td className="py-3 text-right">
+                                          <span className="text-[13px] font-semibold text-muted-foreground">{formatMoney(ad.spend)}</span>
+                                        </td>
+                                        <td className="py-3 text-right">
+                                          <span className="text-[13px] font-semibold text-muted-foreground">{formatNumber(ad.impressions)}</span>
+                                        </td>
+                                        <td className="py-3 text-right">
+                                          <span className="text-[13px] font-semibold text-muted-foreground">{ad.ctr.toFixed(2)}%</span>
+                                        </td>
+                                      </tr>
+                                    ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          )}
+                        </TabsContent>
+                      </Tabs>
                     </CardContent>
                   </Card>
                 </div>

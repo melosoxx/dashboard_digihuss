@@ -21,6 +21,11 @@ const emptyInsights: MetaAccountInsights = {
   dailyMetrics: [],
 };
 
+function isInstagramPromotion(campaignName: string): boolean {
+  const lower = campaignName.toLowerCase();
+  return lower.startsWith("publicación") || lower.startsWith("instagram post:");
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = request.nextUrl;
@@ -55,38 +60,37 @@ export async function GET(request: NextRequest) {
     // Fetch insights and active ads in parallel
     const [insights, ads] = await Promise.all([
       client.getAccountInsights(startDate, endDate),
-      client.getActiveAds(startDate, endDate).catch(() => [] as MetaActiveAd[]),
+      client.getAllAds(startDate, endDate).catch(() => [] as MetaActiveAd[]),
     ]);
 
-    // Filter ads by domain when not in aggregate mode
-    let filteredAds = ads;
+    // Filter to only include Instagram promotions (boosted posts)
+    let filteredAds = ads.filter((ad) => isInstagramPromotion(ad.campaignName));
+
+    // Additionally filter by domain when not in aggregate mode
     if (!aggregate && domain) {
-      filteredAds = ads.filter(
+      filteredAds = filteredAds.filter(
         (ad) => ad.linkUrl && ad.linkUrl.toLowerCase().includes(domain.toLowerCase())
       );
     }
 
-    // Recalculate insights from filtered ads only (when filtering by domain)
-    let filteredInsights = insights;
-    if (!aggregate && domain && filteredAds.length !== ads.length) {
-      const spend = filteredAds.reduce((s, a) => s + a.spend, 0);
-      const impressions = filteredAds.reduce((s, a) => s + a.impressions, 0);
-      const clicks = filteredAds.reduce((s, a) => s + a.clicks, 0);
-      const conversions = filteredAds.reduce((s, a) => s + a.conversions, 0);
+    // Recalculate insights from filtered promotion ads
+    const spend = filteredAds.reduce((s, a) => s + a.spend, 0);
+    const impressions = filteredAds.reduce((s, a) => s + a.impressions, 0);
+    const clicks = filteredAds.reduce((s, a) => s + a.clicks, 0);
+    const conversions = filteredAds.reduce((s, a) => s + a.conversions, 0);
 
-      filteredInsights = {
-        spend,
-        impressions,
-        clicks,
-        cpc: clicks > 0 ? spend / clicks : 0,
-        ctr: impressions > 0 ? (clicks / impressions) * 100 : 0,
-        roas: 0,
-        conversions,
-        purchaseRevenue: 0,
-        costPerAcquisition: conversions > 0 ? spend / conversions : 0,
-        dailyMetrics: [],
-      };
-    }
+    const filteredInsights: MetaAccountInsights = {
+      spend,
+      impressions,
+      clicks,
+      cpc: clicks > 0 ? spend / clicks : 0,
+      ctr: impressions > 0 ? (clicks / impressions) * 100 : 0,
+      roas: 0,
+      conversions,
+      purchaseRevenue: 0,
+      costPerAcquisition: conversions > 0 ? spend / conversions : 0,
+      dailyMetrics: [],
+    };
 
     return NextResponse.json({
       configured: true,
