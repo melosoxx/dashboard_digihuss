@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   DollarSign,
   ShoppingCart,
@@ -34,6 +34,7 @@ import { RoasDailyChart } from "@/components/panel/roas-daily-chart";
 import { ConversionsDailyChart } from "@/components/panel/conversions-daily-chart";
 import { MarketingFunnel } from "@/components/panel/marketing-funnel";
 import { RecentOrdersCard } from "@/components/panel/recent-orders-card";
+import { EmailComposer } from "@/components/comprobantes/email-composer";
 import { SalesAttribution } from "@/components/panel/sales-attribution";
 import { AIAssistantBar } from "@/components/panel/ai-assistant-bar";
 import { ExploreDataTable } from "@/components/panel/explore-data-table";
@@ -69,6 +70,7 @@ import { useCurrency } from "@/providers/currency-provider";
 import type { ClarityInsights } from "@/types/clarity";
 import { useIsMobile } from "@/hooks/use-is-mobile";
 import { useSwipeNavigation } from "@/hooks/use-swipe-navigation";
+import type { ComposerData } from "@/types/email";
 
 function formatDateDisplay(iso: string): string {
   return new Date(iso + "T00:00:00").toLocaleDateString("es-AR", {
@@ -267,8 +269,22 @@ export default function PanelGeneralPage() {
 
   const clarityIsWorking = clarityIsFetching || clarityIsManualFetching;
 
-  // Pagination state for Pedidos tab
-  const [ordersPage, setOrdersPage] = useState(0);
+  // Pedidos subtabs state
+  const [pedidosTab, setPedidosTab] = useState("pedidos-recibidos");
+  const [composerData, setComposerData] = useState<ComposerData | null>(null);
+
+
+  const pedidosSwipe = useSwipeNavigation({
+    items: ["pedidos-recibidos", "envios"],
+    active: pedidosTab,
+    onChangeAction: setPedidosTab,
+    enabled: isMobile,
+  });
+
+  const handleCompose = useCallback((data: ComposerData) => {
+    setComposerData(data);
+    setPedidosTab("envios");
+  }, []);
 
   const revenue = shopify.data?.totalRevenue ?? 0;
   const orderCount = shopify.data?.orderCount ?? 0;
@@ -1118,16 +1134,46 @@ export default function PanelGeneralPage() {
         {/* ── Tab: Pedidos ──────────────────────────────────────────────── */}
         <TabsContent
           value="pedidos"
-          className="flex-1 min-h-0 overflow-hidden mt-2 animate-in fade-in-0 duration-200"
+          className="flex-1 min-h-0 overflow-hidden mt-2 flex flex-col animate-in fade-in-0 duration-200"
         >
-          <RecentOrdersCard
-            orders={orderList.data ?? []}
-            isLoading={orderList.isLoading}
-            aggregateMode={aggregateMode}
-            page={ordersPage}
-            pageSize={15}
-            onPageChange={setOrdersPage}
-          />
+          <Tabs value={pedidosTab} onValueChange={setPedidosTab} className="flex-1 flex flex-col min-h-0">
+            <TabsList
+              variant="line"
+              className="flex-shrink-0 w-full h-8 border-b border-border rounded-none bg-transparent gap-0 overflow-x-auto scrollbar-none"
+            >
+              <TabsTrigger value="pedidos-recibidos" className="text-xs flex-none sm:flex-1 px-3 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-foreground text-muted-foreground/60 hover:text-muted-foreground">Pedidos Recibidos</TabsTrigger>
+              <TabsTrigger value="envios" className="text-xs flex-none sm:flex-1 px-3 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-foreground text-muted-foreground/60 hover:text-muted-foreground">Envíos</TabsTrigger>
+            </TabsList>
+
+            <TabsContent
+              value="pedidos-recibidos"
+              className="flex-1 min-h-0 overflow-hidden pt-2 animate-in fade-in-0 duration-150"
+              onTouchStart={pedidosSwipe.onTouchStart}
+              onTouchEnd={pedidosSwipe.onTouchEnd}
+            >
+              <RecentOrdersCard
+                orders={orderList.data ?? []}
+                isLoading={orderList.isLoading}
+                aggregateMode={aggregateMode}
+                onCompose={handleCompose}
+              />
+            </TabsContent>
+
+            <TabsContent
+              value="envios"
+              className="flex-1 min-h-0 overflow-hidden pt-2 animate-in fade-in-0 duration-150"
+              onTouchStart={pedidosSwipe.onTouchStart}
+              onTouchEnd={pedidosSwipe.onTouchEnd}
+            >
+              <EmailComposer
+                composerData={composerData}
+                onDiscard={() => {
+                  setComposerData(null);
+                  setPedidosTab("pedidos-recibidos");
+                }}
+              />
+            </TabsContent>
+          </Tabs>
         </TabsContent>
 
         {/* ── Tab: Anuncios ─────────────────────────────────────────────── */}

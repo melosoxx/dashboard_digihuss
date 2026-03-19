@@ -5,6 +5,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Send, CheckCircle2, AlertCircle, Loader2, Mail } from "lucide-react";
+import type { ComposerData } from "@/types/email";
 
 interface SendButtonProps {
   profileId: string;
@@ -16,11 +17,19 @@ interface SendButtonProps {
     sentAt: string;
     errorMessage?: string;
   };
+  onCompose?: (data: ComposerData) => void;
 }
 
-export function SendButton({ profileId, orderName, customerEmail, customerName, sendStatus }: SendButtonProps) {
+export function SendButton({ profileId, orderName, customerEmail, customerName, sendStatus, onCompose }: SendButtonProps) {
   const queryClient = useQueryClient();
   const [justSent, setJustSent] = useState(false);
+
+  const composerData: ComposerData = {
+    profileId,
+    orderName,
+    customerName: customerName || "Cliente",
+    customerEmail: customerEmail || "",
+  };
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -44,8 +53,36 @@ export function SendButton({ profileId, orderName, customerEmail, customerName, 
     },
   });
 
+  const handleAction = () => {
+    if (onCompose) {
+      onCompose(composerData);
+    } else {
+      setJustSent(false);
+      mutation.mutate();
+    }
+  };
+
   // No email available
   if (!customerEmail) {
+    if (onCompose) {
+      return (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={() => onCompose(composerData)}
+              >
+                <Mail className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top">Escribir email manualmente</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    }
     return (
       <TooltipProvider>
         <Tooltip>
@@ -60,13 +97,13 @@ export function SendButton({ profileId, orderName, customerEmail, customerName, 
     );
   }
 
-  // Currently sending
-  if (mutation.isPending) {
+  // Currently sending (only when using direct send, not composer)
+  if (!onCompose && mutation.isPending) {
     return <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />;
   }
 
-  // Just sent successfully (optimistic)
-  if (justSent && !mutation.isError) {
+  // Just sent successfully (optimistic, only direct send)
+  if (!onCompose && justSent && !mutation.isError) {
     return (
       <TooltipProvider>
         <Tooltip>
@@ -81,8 +118,8 @@ export function SendButton({ profileId, orderName, customerEmail, customerName, 
     );
   }
 
-  // Error from mutation
-  if (mutation.isError) {
+  // Error from mutation (only direct send)
+  if (!onCompose && mutation.isError) {
     return (
       <TooltipProvider>
         <Tooltip>
@@ -123,17 +160,16 @@ export function SendButton({ profileId, orderName, customerEmail, customerName, 
               variant="ghost"
               size="icon"
               className="h-7 w-7"
-              onClick={() => {
-                setJustSent(false);
-                mutation.mutate();
-              }}
+              onClick={handleAction}
             >
               <CheckCircle2 className="h-4 w-4 text-green-500" />
             </Button>
           </TooltipTrigger>
           <TooltipContent side="top">
             <p className="text-xs">Enviado: {sentDate}</p>
-            <p className="text-xs text-muted-foreground mt-1">Click para reenviar</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Click para {onCompose ? "abrir compositor" : "reenviar"}
+            </p>
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
@@ -150,17 +186,16 @@ export function SendButton({ profileId, orderName, customerEmail, customerName, 
               variant="ghost"
               size="icon"
               className="h-7 w-7"
-              onClick={() => {
-                setJustSent(false);
-                mutation.mutate();
-              }}
+              onClick={handleAction}
             >
               <AlertCircle className="h-4 w-4 text-red-500" />
             </Button>
           </TooltipTrigger>
           <TooltipContent side="top" className="max-w-xs">
             <p className="text-xs text-red-500">{sendStatus.errorMessage || "Error previo"}</p>
-            <p className="text-xs text-muted-foreground mt-1">Click para reintentar</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Click para {onCompose ? "abrir compositor" : "reintentar"}
+            </p>
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
@@ -176,7 +211,7 @@ export function SendButton({ profileId, orderName, customerEmail, customerName, 
             variant="ghost"
             size="icon"
             className="h-7 w-7"
-            onClick={() => mutation.mutate()}
+            onClick={handleAction}
           >
             <Send className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground transition-colors" />
           </Button>

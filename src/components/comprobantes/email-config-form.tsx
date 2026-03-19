@@ -25,7 +25,10 @@ export function EmailConfigForm() {
   const [downloadUrl, setDownloadUrl] = useState("");
   const [savingCreds, setSavingCreds] = useState(false);
 
-  // Sync form state when config loads
+  // Sync form state only when a different config loads (initial load or profile switch)
+  // Using config id + activeProfileId avoids re-syncing on background refetches
+  // which would overwrite the user's pending edits
+  const configId = data?.config?.id;
   useEffect(() => {
     if (!data?.config) return;
     setEnabled(data.config.enabled);
@@ -34,7 +37,8 @@ export function EmailConfigForm() {
     setSubjectTemplate(data.config.subjectTemplate);
     setFooterText(data.config.footerText);
     setDownloadUrl(data.config.downloadUrl ?? "");
-  }, [data]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [configId, activeProfileId]);
 
   const handleSaveCredentials = useCallback(async () => {
     if (!activeProfileId || !appPassword.trim()) return;

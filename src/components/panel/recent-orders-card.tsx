@@ -1,17 +1,18 @@
 "use client";
 
-import { useMemo } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useCallback, useMemo, useState } from "react";
+import { Copy, Check } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+
+import { cn } from "@/lib/utils";
 import { useBusinessProfile } from "@/providers/business-profile-provider";
 import { useCurrency } from "@/providers/currency-provider";
 import { useEmailSendStatus } from "@/hooks/use-email-send-status";
 import { useIsMobile } from "@/hooks/use-is-mobile";
 import { SendButton } from "@/components/comprobantes/send-button";
 import type { OrderListItem } from "@/types/shopify";
-import type { EmailSendStatusMap } from "@/types/email";
+import type { EmailSendStatusMap, ComposerData } from "@/types/email";
 
 type SendStatus = EmailSendStatusMap[string];
 
@@ -19,9 +20,7 @@ interface RecentOrdersCardProps {
   orders: OrderListItem[];
   isLoading: boolean;
   aggregateMode?: boolean;
-  page?: number;
-  pageSize?: number;
-  onPageChange?: (page: number) => void;
+  onCompose?: (data: ComposerData) => void;
 }
 
 function formatOrderDate(iso: string): string {
@@ -38,31 +37,31 @@ export function RecentOrdersCard({
   orders,
   isLoading,
   aggregateMode,
-  page = 0,
-  pageSize = 15,
-  onPageChange,
+  onCompose,
 }: RecentOrdersCardProps) {
   const { activeProfileId } = useBusinessProfile();
   const { formatMoney } = useCurrency();
   const isMobile = useIsMobile();
 
-  const isPaginated = !!onPageChange;
-  const totalPages = Math.max(1, Math.ceil(orders.length / pageSize));
-  const safePage = Math.min(page, totalPages - 1);
-  const displayedOrders = isPaginated
-    ? orders.slice(safePage * pageSize, (safePage + 1) * pageSize)
-    : orders;
-
   const orderNames = useMemo(() => orders.map((o) => o.name), [orders]);
   const { data: sendStatusMap } = useEmailSendStatus(orderNames);
+
+  // Lookup status using composite key in aggregate mode
+  const getStatus = useCallback(
+    (order: OrderListItem): SendStatus | undefined => {
+      if (!sendStatusMap) return undefined;
+      if (aggregateMode && order.profileId) {
+        return sendStatusMap[`${order.profileId}:${order.name}`];
+      }
+      return sendStatusMap[order.name];
+    },
+    [sendStatusMap, aggregateMode]
+  );
 
   if (isLoading) {
     return (
       <Card className="h-full flex flex-col">
-        <CardHeader>
-          <Skeleton className="h-5 w-40" />
-        </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="space-y-3 py-3">
           {Array.from({ length: 5 }).map((_, i) => (
             <Skeleton key={i} className="h-10 w-full" />
           ))}
@@ -73,12 +72,7 @@ export function RecentOrdersCard({
 
   return (
     <Card className="h-full flex flex-col overflow-hidden">
-      <CardHeader className="flex-shrink-0 py-3 px-4">
-        <CardTitle className="text-sm font-semibold">
-          Pedidos ({orders.length})
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="flex-1 flex flex-col min-h-0 px-4 pb-3">
+      <CardContent className="flex-1 flex flex-col min-h-0 px-4 py-3">
         {orders.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-4">
             No se encontraron pedidos en el periodo seleccionado
@@ -88,14 +82,15 @@ export function RecentOrdersCard({
             {isMobile ? (
               // Mobile: Card-based layout
               <div className="flex-1 min-h-0 overflow-y-auto space-y-2 px-1">
-                {displayedOrders.map((order, idx) => (
+                {orders.map((order, idx) => (
                   <MobileOrderCard
                     key={`${order.name}-${idx}`}
                     order={order}
                     aggregateMode={!!aggregateMode}
-                    sendStatus={sendStatusMap?.[order.name]}
+                    sendStatus={getStatus(order)}
                     activeProfileId={activeProfileId}
                     formatMoney={formatMoney}
+                    onCompose={onCompose}
                   />
                 ))}
               </div>
@@ -111,13 +106,19 @@ export function RecentOrdersCard({
                       <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-left pb-3">Pedido</th>
                       <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-left pb-3">Fecha</th>
                       <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-left pb-3">Cliente</th>
+                      <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-left pb-3">Contacto</th>
                       <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right pb-3">Total</th>
                       <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-center pb-3 w-12"></th>
                     </tr>
                   </thead>
                   <tbody>
-                    {displayedOrders.map((order, idx) => (
-                      <tr key={`${order.name}-${idx}`} className="border-b border-border/50 dark:border-border/10 last:border-0 hover:bg-slate-50 dark:hover:bg-white/[0.03] transition-colors duration-150">
+                    {orders.map((order, idx) => (
+                      <tr key={`${order.name}-${idx}`} className={cn(
+                        "border-b border-border/50 dark:border-border/10 last:border-0 transition-colors duration-150",
+                        getStatus(order)?.status === "sent"
+                          ? "bg-green-50/40 dark:bg-green-950/10 hover:bg-green-50/70 dark:hover:bg-green-950/20"
+                          : "hover:bg-slate-50 dark:hover:bg-white/[0.03]"
+                      )}>
                         {aggregateMode && (
                           <td className="py-3 pr-4">
                             <span className="flex items-center gap-1.5">
@@ -140,23 +141,20 @@ export function RecentOrdersCard({
                           </span>
                         </td>
                         <td className="py-3 pr-4">
-                          {order.customerEmail ? (
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <span className="text-[13px] text-muted-foreground truncate block max-w-[200px] cursor-default">
-                                    {order.customerName}
-                                  </span>
-                                </TooltipTrigger>
-                                <TooltipContent side="top">
-                                  {order.customerEmail}
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          ) : (
-                            <span className="text-[13px] text-muted-foreground truncate block max-w-[200px]" title={order.customerName}>
-                              {order.customerName}
+                          <span className="text-[13px] text-muted-foreground truncate block max-w-[200px]" title={order.customerName}>
+                            {order.customerName}
+                          </span>
+                        </td>
+                        <td className="py-3 pr-4">
+                          {(order.customerEmail || order.customerPhone) ? (
+                            <span className="flex items-center gap-1.5 max-w-[200px]">
+                              <span className="text-[13px] text-muted-foreground truncate" title={order.customerEmail || order.customerPhone}>
+                                {order.customerEmail || order.customerPhone}
+                              </span>
+                              <CopyButton text={order.customerEmail || order.customerPhone || ""} />
                             </span>
+                          ) : (
+                            <span className="text-[13px] text-muted-foreground">-</span>
                           )}
                         </td>
                         <td className="py-3 text-right text-[13px] font-medium">
@@ -168,7 +166,8 @@ export function RecentOrdersCard({
                             orderName={order.name}
                             customerEmail={order.customerEmail}
                             customerName={order.customerName}
-                            sendStatus={sendStatusMap?.[order.name]}
+                            sendStatus={getStatus(order)}
+                            onCompose={onCompose}
                           />
                         </td>
                       </tr>
@@ -178,52 +177,6 @@ export function RecentOrdersCard({
               </div>
             )}
 
-            {/* Pagination controls */}
-            {isPaginated && totalPages > 1 && (
-              <div className="flex items-center justify-center gap-1.5 mt-3 flex-shrink-0 border-t border-border/30 pt-3">
-                <button
-                  onClick={() => onPageChange(Math.max(0, safePage - 1))}
-                  disabled={safePage === 0}
-                  className="flex items-center justify-center h-7 w-7 rounded-md border border-border/40 text-muted-foreground hover:text-foreground hover:border-border/70 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                >
-                  <ChevronLeft className="h-3.5 w-3.5" />
-                </button>
-
-                {Array.from({ length: totalPages }, (_, i) => {
-                  // Show first, last, current and neighbours; collapse others to "..."
-                  const showDot = i !== 0 && i !== totalPages - 1 && Math.abs(i - safePage) > 1;
-                  const showDotBefore = i === 1 && safePage > 2;
-                  const showDotAfter = i === totalPages - 2 && safePage < totalPages - 3;
-                  if (showDot && !showDotBefore && !showDotAfter) return null;
-                  if (showDot && (showDotBefore || showDotAfter)) {
-                    return (
-                      <span key={i} className="text-xs text-muted-foreground/50 px-0.5">…</span>
-                    );
-                  }
-                  return (
-                    <button
-                      key={i}
-                      onClick={() => onPageChange(i)}
-                      className={`flex items-center justify-center h-7 min-w-[28px] px-1.5 rounded-md text-xs font-medium transition-colors border ${
-                        i === safePage
-                          ? "bg-primary/15 border-primary/40 text-primary"
-                          : "border-border/40 text-muted-foreground hover:text-foreground hover:border-border/70"
-                      }`}
-                    >
-                      {i + 1}
-                    </button>
-                  );
-                })}
-
-                <button
-                  onClick={() => onPageChange(Math.min(totalPages - 1, safePage + 1))}
-                  disabled={safePage === totalPages - 1}
-                  className="flex items-center justify-center h-7 w-7 rounded-md border border-border/40 text-muted-foreground hover:text-foreground hover:border-border/70 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                >
-                  <ChevronRight className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            )}
           </>
         )}
       </CardContent>
@@ -237,6 +190,7 @@ interface MobileOrderCardProps {
   sendStatus: SendStatus | undefined;
   activeProfileId: string;
   formatMoney: (amount: number) => string;
+  onCompose?: (data: ComposerData) => void;
 }
 
 function MobileOrderCard({
@@ -245,9 +199,15 @@ function MobileOrderCard({
   sendStatus,
   activeProfileId,
   formatMoney,
+  onCompose,
 }: MobileOrderCardProps) {
   return (
-    <div className="rounded-lg border border-border/20 bg-card overflow-hidden hover:bg-slate-50 dark:hover:bg-white/[0.03] transition-colors duration-150">
+    <div className={cn(
+      "rounded-lg border overflow-hidden transition-colors duration-150",
+      sendStatus?.status === "sent"
+        ? "border-green-200/50 dark:border-green-800/20 bg-green-50/30 dark:bg-green-950/10"
+        : "border-border/20 bg-card hover:bg-slate-50 dark:hover:bg-white/[0.03]"
+    )}>
       {/* Profile Header (conditional) */}
       {aggregateMode && (
         <div className="flex items-center gap-1.5 px-3 py-2 border-b border-border/50 dark:border-border/10 bg-slate-50 dark:bg-white/[0.02]">
@@ -270,23 +230,16 @@ function MobileOrderCard({
       </div>
 
       {/* Customer Section */}
-      <div className="px-3 py-2 border-b border-border/50 dark:border-border/10">
-        {order.customerEmail ? (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="text-[13px] text-muted-foreground truncate cursor-default">
-                  {order.customerName}
-                </div>
-              </TooltipTrigger>
-              <TooltipContent side="top">
-                {order.customerEmail}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        ) : (
-          <div className="text-[13px] text-muted-foreground truncate" title={order.customerName}>
-            {order.customerName}
+      <div className="px-3 py-2 border-b border-border/50 dark:border-border/10 space-y-0.5">
+        <div className="text-[13px] text-muted-foreground truncate" title={order.customerName}>
+          {order.customerName}
+        </div>
+        {(order.customerEmail || order.customerPhone) && (
+          <div className="flex items-center gap-1.5">
+            <span className="text-[11px] text-muted-foreground/70 truncate">
+              {order.customerEmail || order.customerPhone}
+            </span>
+            <CopyButton text={order.customerEmail || order.customerPhone || ""} />
           </div>
         )}
       </div>
@@ -309,8 +262,35 @@ function MobileOrderCard({
           customerEmail={order.customerEmail}
           customerName={order.customerName}
           sendStatus={sendStatus}
+          onCompose={onCompose}
         />
       </div>
     </div>
+  );
+}
+
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = useCallback(() => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  }, [text]);
+
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      className="shrink-0 p-0.5 rounded hover:bg-white/10 text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+      title="Copiar"
+    >
+      {copied ? (
+        <Check className="h-3 w-3 text-green-500" />
+      ) : (
+        <Copy className="h-3 w-3" />
+      )}
+    </button>
   );
 }

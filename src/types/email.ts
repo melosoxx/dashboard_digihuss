@@ -20,6 +20,13 @@ export interface EmailSendLogEntry {
   sentAt: string;
 }
 
+export interface ComposerData {
+  profileId: string;
+  orderName: string;
+  customerName: string;
+  customerEmail: string;
+}
+
 export interface EmailSendStatusMap {
   [orderName: string]: {
     status: "sent" | "failed";

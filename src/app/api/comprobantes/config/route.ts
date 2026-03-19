@@ -67,7 +67,18 @@ export async function PUT(request: NextRequest) {
     const { profileId, enabled, gmailAddress, senderName, subjectTemplate, footerText, downloadUrl } =
       parsed.data;
 
-    const { error: configErr } = await supabase.from("email_config").upsert(
+    // Verify profile ownership (RLS also enforces this)
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("id", profileId)
+      .single();
+
+    if (!profile) {
+      return NextResponse.json({ error: "Perfil no encontrado" }, { status: 404 });
+    }
+
+    const { data: result, error: configErr } = await supabase.from("email_config").upsert(
       {
         profile_id: profileId,
         enabled,
@@ -78,10 +89,13 @@ export async function PUT(request: NextRequest) {
         download_url: downloadUrl,
       },
       { onConflict: "profile_id" }
-    );
+    ).select().single();
 
-    if (configErr) {
-      return NextResponse.json({ error: configErr.message }, { status: 500 });
+    if (configErr || !result) {
+      return NextResponse.json(
+        { error: configErr?.message || "No se pudo guardar la configuracion" },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({ success: true });
