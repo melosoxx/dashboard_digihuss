@@ -4,7 +4,7 @@ import { useCallback, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useDateRange } from "@/providers/date-range-provider";
 import { useBusinessProfile } from "@/providers/business-profile-provider";
-import type { ClarityInsights } from "@/types/clarity";
+import type { ClarityInsights, ClarityDailyDataPoint } from "@/types/clarity";
 
 const STALE_TIME = 5 * 60 * 1000; // 5 minutes
 
@@ -21,6 +21,7 @@ export function useClarity() {
     data: ClarityInsights | null;
     daysAvailable: number;
     availableDates: string[];
+    dailyBreakdown: ClarityDailyDataPoint[];
     dateRange: { start: string; end: string } | null;
     lastFetchedAt: string | null;
   }>({
@@ -75,6 +76,7 @@ export function useClarity() {
     error: query.error,
     daysAvailable: query.data?.daysAvailable ?? 0,
     availableDates: query.data?.availableDates ?? [],
+    dailyBreakdown: query.data?.dailyBreakdown ?? [],
     lastFetchedAt: query.data?.lastFetchedAt ?? null,
     fetchToday,
     isManualFetching,

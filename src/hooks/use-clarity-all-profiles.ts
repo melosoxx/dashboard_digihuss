@@ -1,10 +1,10 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useQueries, useQueryClient } from "@tanstack/react-query";
 import { useDateRange } from "@/providers/date-range-provider";
 import { useBusinessProfile } from "@/providers/business-profile-provider";
-import type { ClarityInsights } from "@/types/clarity";
+import type { ClarityInsights, ClarityDailyDataPoint } from "@/types/clarity";
 
 const STALE_TIME = 5 * 60 * 1000; // 5 minutes
 
@@ -48,6 +48,7 @@ export function useClarityAllProfiles() {
         return res.json() as Promise<{
           data: ClarityInsights | null;
           daysAvailable: number;
+          dailyBreakdown: ClarityDailyDataPoint[];
           dateRange: { start: string; end: string } | null;
           lastFetchedAt: string | null;
         }>;
@@ -67,6 +68,33 @@ export function useClarityAllProfiles() {
       data: results[i]?.data?.data ?? null,
     })
   );
+
+  // Aggregate daily breakdown across all profiles (sum sessions/users per date)
+  const dailyBreakdown = useMemo<ClarityDailyDataPoint[]>(() => {
+    const byDate = new Map<string, {
+      sessions: number;
+      users: number;
+      profileBreakdown: Array<{ profileName: string; profileColor: string; sessions: number; users: number }>;
+    }>();
+    for (let i = 0; i < clarityProfiles.length; i++) {
+      const profile = clarityProfiles[i];
+      for (const point of results[i]?.data?.dailyBreakdown ?? []) {
+        const existing = byDate.get(point.date) ?? { sessions: 0, users: 0, profileBreakdown: [] };
+        existing.sessions += point.sessions;
+        existing.users += point.users;
+        existing.profileBreakdown.push({
+          profileName: profile.name,
+          profileColor: profile.color,
+          sessions: point.sessions,
+          users: point.users,
+        });
+        byDate.set(point.date, existing);
+      }
+    }
+    return Array.from(byDate.entries())
+      .map(([date, vals]) => ({ date, ...vals }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+  }, [results, clarityProfiles]);
 
   // Aggregate daysAvailable and lastFetchedAt across all profiles
   const daysAvailable = Math.max(
@@ -107,6 +135,7 @@ export function useClarityAllProfiles() {
 
   return {
     profilesData,
+    dailyBreakdown,
     isLoading,
     isFetching,
     daysAvailable,

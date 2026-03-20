@@ -2,17 +2,16 @@
 
 import {
   ComposedChart,
+  Area,
   Bar,
-  Line,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  ReferenceLine,
   Legend,
 } from "recharts";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCurrency } from "@/providers/currency-provider";
 
@@ -26,8 +25,6 @@ interface DailyDataPoint {
 interface ConversionsDailyChartProps {
   data: DailyDataPoint[];
   isLoading: boolean;
-  /** Target cost per conversion in raw currency (ARS) */
-  costTarget?: number;
   chartHeight?: number;
   fillHeight?: boolean;
 }
@@ -41,7 +38,7 @@ const TOOLTIP_STYLE = {
   color: "var(--tooltip-color)",
 };
 
-export function ConversionsDailyChart({ data, isLoading, costTarget = 2000, chartHeight = 280, fillHeight = false }: ConversionsDailyChartProps) {
+export function ConversionsDailyChart({ data, isLoading, chartHeight = 280, fillHeight = false }: ConversionsDailyChartProps) {
   const { convert, currencySymbol, formatMoney } = useCurrency();
 
   if (isLoading) {
@@ -56,9 +53,7 @@ export function ConversionsDailyChart({ data, isLoading, costTarget = 2000, char
   const chartData = data.map((d) => ({
     date: d.date,
     orders: d.orders,
-    costPerConversion: d.orders > 0 ? d.adSpend / d.orders : null,
     adSpend: d.adSpend,
-    revenue: d.revenue,
   }));
 
   function formatCostAxis(v: number): string {
@@ -69,18 +64,16 @@ export function ConversionsDailyChart({ data, isLoading, costTarget = 2000, char
 
   return (
     <Card className={fillHeight ? "h-full flex flex-col" : ""}>
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-sm font-semibold">Conversiones diarias</CardTitle>
-          <span className="text-[11px] text-muted-foreground">
-            Target CPC: <span className="text-amber-600 font-semibold">{formatMoney(costTarget)}</span>
-          </span>
-        </div>
-      </CardHeader>
-      <CardContent className={fillHeight ? "flex-1 min-h-0" : ""}>
+      <CardContent className={`${fillHeight ? "flex-1 min-h-0" : ""} rounded-lg`} style={{ backgroundColor: "var(--chart-bg)" }}>
         <ResponsiveContainer width="100%" height={fillHeight ? "100%" : chartHeight}>
           <ComposedChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" vertical={false} />
+            <defs>
+              <linearGradient id="spendGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#ef4444" stopOpacity={0.2} />
+                <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="4 4" stroke="var(--chart-grid)" />
             <XAxis
               dataKey="date"
               tick={{ fontSize: 11, fill: "var(--chart-tick)" }}
@@ -95,7 +88,8 @@ export function ConversionsDailyChart({ data, isLoading, costTarget = 2000, char
             />
             <YAxis
               yAxisId="left"
-              tick={{ fontSize: 11, fill: "var(--chart-tick)" }}
+              domain={[0, 10]}
+              tick={{ fontSize: 11, fill: "rgba(16, 185, 129, 0.7)" }}
               tickLine={false}
               axisLine={false}
               allowDecimals={false}
@@ -104,7 +98,9 @@ export function ConversionsDailyChart({ data, isLoading, costTarget = 2000, char
             <YAxis
               yAxisId="right"
               orientation="right"
-              tick={{ fontSize: 11, fill: "rgba(251, 191, 36, 0.7)" }}
+              domain={[0, 30000]}
+              ticks={[0, 10000, 20000, 30000]}
+              tick={{ fontSize: 11, fill: "rgba(239, 68, 68, 0.7)" }}
               tickLine={false}
               axisLine={false}
               tickFormatter={formatCostAxis}
@@ -114,49 +110,47 @@ export function ConversionsDailyChart({ data, isLoading, costTarget = 2000, char
                 if (!active || !payload?.length) return null;
                 const raw = payload[0]?.payload;
                 const date = new Date(label + "T00:00:00").toLocaleDateString("es-AR", { day: "numeric", month: "short" });
-                const cpc = raw?.costPerConversion != null ? formatMoney(raw.costPerConversion) : "—";
+                const orders = raw?.orders ?? 0;
+                const spend = raw?.adSpend ?? 0;
+                const cpc = orders > 0 ? formatMoney(spend / orders) : "—";
                 return (
                   <div style={TOOLTIP_STYLE} className="px-3 py-2 text-xs space-y-1">
                     <p className="text-muted-foreground font-medium mb-1">{date}</p>
-                    <p className="text-emerald-600 dark:text-emerald-300">Pedidos: <span className="font-semibold text-slate-800 dark:text-white">{raw?.orders ?? 0}</span></p>
-                    <p className="text-amber-600 dark:text-amber-300">Costo/conv.: <span className="font-semibold text-slate-800 dark:text-white">{cpc}</span></p>
-                    <p className="text-amber-600 dark:text-amber-300">Target CPC: <span className="font-semibold">{formatMoney(costTarget)}</span></p>
-                    <p className="text-rose-600 dark:text-rose-300">Gasto Ads: <span className="font-semibold text-slate-800 dark:text-white">{formatMoney(raw?.adSpend ?? 0)}</span></p>
+                    <p className="text-rose-600 dark:text-rose-300">Gasto: <span className="font-semibold text-slate-800 dark:text-white">{formatMoney(spend)}</span></p>
+                    <p className="text-emerald-600 dark:text-emerald-300">Pedidos: <span className="font-semibold text-slate-800 dark:text-white">{orders}</span></p>
+                    <p className="text-muted-foreground">Costo/conv.: <span className="font-semibold text-slate-800 dark:text-white">{cpc}</span></p>
                   </div>
                 );
               }}
             />
             <Legend
               wrapperStyle={{ fontSize: 12, color: "rgba(100, 116, 139, 0.7)" }}
+              content={() => (
+                <div className="flex justify-center gap-4 text-xs text-muted-foreground mt-1">
+                  <span className="flex items-center gap-1.5"><span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: "#10b981" }} />Pedidos</span>
+                  <span className="flex items-center gap-1.5"><span className="inline-block w-2.5 h-0.5 rounded" style={{ backgroundColor: "#ef4444" }} />Gasto Ads</span>
+                </div>
+              )}
             />
 
-            {/* Target cost per conversion */}
-            <ReferenceLine
+            <Area
               yAxisId="right"
-              y={costTarget}
-              stroke="#fbbf24"
-              strokeDasharray="5 3"
-              strokeWidth={1.5}
+              type="monotone"
+              dataKey="adSpend"
+              stroke="#ef4444"
+              fill="url(#spendGradient)"
+              strokeWidth={2}
+              dot={false}
+              name="Gasto Ads"
             />
-
             <Bar
               yAxisId="left"
               dataKey="orders"
               fill="#10b981"
-              fillOpacity={0.75}
+              fillOpacity={1}
               radius={[3, 3, 0, 0]}
               name="Pedidos"
               maxBarSize={20}
-            />
-            <Line
-              yAxisId="right"
-              type="monotone"
-              dataKey="costPerConversion"
-              stroke="#fbbf24"
-              strokeWidth={2}
-              dot={false}
-              name="Costo/conv."
-              connectNulls={false}
             />
           </ComposedChart>
         </ResponsiveContainer>

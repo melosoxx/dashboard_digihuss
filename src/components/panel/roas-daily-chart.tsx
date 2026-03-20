@@ -72,7 +72,7 @@ export function RoasDailyChart({ data, isLoading, roasTarget = 4, chartHeight = 
           </span>
         </div>
       </CardHeader>
-      <CardContent className={fillHeight ? "flex-1 min-h-0" : ""}>
+      <CardContent className={`${fillHeight ? "flex-1 min-h-0" : ""} rounded-lg`} style={{ backgroundColor: "var(--chart-bg)" }}>
         <ResponsiveContainer width="100%" height={fillHeight ? "100%" : chartHeight}>
           <AreaChart data={chartData}>
             <defs>
@@ -81,7 +81,7 @@ export function RoasDailyChart({ data, isLoading, roasTarget = 4, chartHeight = 
                 <stop offset="95%" stopColor="#a78bfa" stopOpacity={0.03} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" vertical={false} />
+            <CartesianGrid strokeDasharray="4 4" stroke="var(--chart-grid)" />
             <XAxis
               dataKey="date"
               tick={{ fontSize: 11, fill: "var(--chart-tick)" }}

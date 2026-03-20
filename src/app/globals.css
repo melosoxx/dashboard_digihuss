@@ -98,9 +98,10 @@
   --tooltip-border: 1px solid rgba(226, 232, 240, 1);
   --tooltip-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
   --tooltip-color: #1e293b;
-  --chart-grid: rgba(148, 163, 184, 0.2);
-  --chart-axis: rgba(148, 163, 184, 0.3);
+  --chart-grid: rgba(148, 163, 184, 0.45);
+  --chart-axis: rgba(148, 163, 184, 0.4);
   --chart-tick: rgba(100, 116, 139, 0.8);
+  --chart-bg: rgba(241, 245, 249, 0.6);
   --chart-item-style: rgba(30, 41, 59, 0.9);
   --chart-label-style: rgba(100, 116, 139, 0.7);
 
@@ -180,6 +181,7 @@
   --chart-grid: rgba(100, 120, 180, 0.08);
   --chart-axis: rgba(100, 120, 180, 0.1);
   --chart-tick: rgba(150, 165, 200, 0.6);
+  --chart-bg: transparent;
   --chart-item-style: rgba(220, 230, 255, 0.9);
   --chart-label-style: rgba(150, 165, 200, 0.7);
 

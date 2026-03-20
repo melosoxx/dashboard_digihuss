@@ -129,7 +129,7 @@ export function MarketingFunnel({
                   )}
                   style={{ width: `${widthPct}%` }}
                 >
-                  <span className="text-xs font-medium text-white">{stage.label}</span>
+                  <span className="text-xs font-medium text-muted-foreground">{stage.label}</span>
                   <span className={cn("text-sm font-bold", stage.text)}>
                     {formatCompactNumber(val)}
                   </span>

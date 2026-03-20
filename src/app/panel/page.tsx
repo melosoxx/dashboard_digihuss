@@ -20,9 +20,9 @@ import {
   Clock,
   Monitor,
   Globe,
+  Smartphone,
+  Tablet,
   MousePointerClick,
-  Flame,
-  CircleDot,
   ExternalLink,
   Map as MapIcon,
   RefreshCw,
@@ -36,10 +36,8 @@ import { MarketingFunnel } from "@/components/panel/marketing-funnel";
 import { RecentOrdersCard } from "@/components/panel/recent-orders-card";
 import { EmailComposer } from "@/components/comprobantes/email-composer";
 import { SalesAttribution } from "@/components/panel/sales-attribution";
+import { SessionsDailyChart } from "@/components/panel/sessions-daily-chart";
 import { AIAssistantBar } from "@/components/panel/ai-assistant-bar";
-import { ExploreDataTable } from "@/components/panel/explore-data-table";
-import type { ExploreColumnDef } from "@/components/panel/explore-data-table";
-import { SpendChart } from "@/components/ads/spend-chart";
 import { CampaignTable } from "@/components/ads/campaign-table";
 import { AdsetTable } from "@/components/ads/adset-table";
 import { ActiveAdsCard } from "@/components/panel/top-campaigns-card";
@@ -113,16 +111,62 @@ function formatSeconds(seconds: number): string {
   return `${mins}m ${secs}s`;
 }
 
+const DEVICE_ICONS: Record<string, typeof Monitor> = {
+  Mobile: Smartphone,
+  PC: Monitor,
+  Desktop: Monitor,
+  Tablet: Tablet,
+};
+
+const COUNTRY_FLAGS: Record<string, string> = {
+  Argentina: "🇦🇷",
+  Mexico: "🇲🇽",
+  "United States": "🇺🇸",
+  Colombia: "🇨🇴",
+  "El Salvador": "🇸🇻",
+  Spain: "🇪🇸",
+  Canada: "🇨🇦",
+  Brazil: "🇧🇷",
+  Chile: "🇨🇱",
+  Peru: "🇵🇪",
+  Uruguay: "🇺🇾",
+  Ecuador: "🇪🇨",
+  Paraguay: "🇵🇾",
+  Bolivia: "🇧🇴",
+  Venezuela: "🇻🇪",
+  Guatemala: "🇬🇹",
+  "Costa Rica": "🇨🇷",
+  Panama: "🇵🇦",
+  "Dominican Republic": "🇩🇴",
+  Honduras: "🇭🇳",
+  Nicaragua: "🇳🇮",
+  "Puerto Rico": "🇵🇷",
+  Cuba: "🇨🇺",
+  Germany: "🇩🇪",
+  France: "🇫🇷",
+  Italy: "🇮🇹",
+  "United Kingdom": "🇬🇧",
+  Portugal: "🇵🇹",
+  Japan: "🇯🇵",
+  China: "🇨🇳",
+  India: "🇮🇳",
+  Australia: "🇦🇺",
+  Russia: "🇷🇺",
+  "South Korea": "🇰🇷",
+};
+
 function ClarityBreakdownCard({
   title,
   icon: Icon,
   items,
   isLoading,
+  getItemAdornment,
 }: {
   title: string;
   icon: typeof Monitor;
   items: Array<{ name: string; sessions: number }>;
   isLoading?: boolean;
+  getItemAdornment?: (name: string) => React.ReactNode;
 }) {
   if (isLoading) {
     return (
@@ -151,7 +195,10 @@ function ClarityBreakdownCard({
           return (
             <div key={item.name}>
               <div className="flex items-center justify-between text-sm mb-1">
-                <span className="truncate mr-2">{item.name}</span>
+                <span className="truncate mr-2 flex items-center gap-1.5">
+                  {getItemAdornment?.(item.name)}
+                  {item.name}
+                </span>
                 <span className="text-muted-foreground whitespace-nowrap">
                   {formatNumber(item.sessions)} ({pct.toFixed(1)}%)
                 </span>
@@ -226,7 +273,7 @@ export default function PanelGeneralPage() {
     enabled: isMobile,
   });
   const rendimientoSwipe = useSwipeNavigation({
-    items: ["embudo", "gasto", "conversiones", "roas"],
+    items: ["embudo", "conversiones", "roas"],
     active: rendimientoTab,
     onChangeAction: setRendimientoTab,
     enabled: isMobile,
@@ -238,7 +285,7 @@ export default function PanelGeneralPage() {
     enabled: isMobile,
   });
   const claritySwipe = useSwipeNavigation({
-    items: ["cl-resumen", "cl-trafico", "cl-frustracion", "cl-datos"],
+    items: ["cl-resumen", "cl-trafico", "cl-datos"],
     active: clarityTab,
     onChangeAction: setClarityTab,
     enabled: isMobile,
@@ -247,6 +294,7 @@ export default function PanelGeneralPage() {
   // Clarity multi-profile data
   const {
     profilesData: allProfilesClarity,
+    dailyBreakdown: allProfilesDailyBreakdown,
     isLoading: allProfilesClarityLoading,
     isFetching: clarityIsFetching,
     lastFetchedAt: clarityLastFetchedAt,
@@ -259,13 +307,29 @@ export default function PanelGeneralPage() {
   const clarityUsuarios = buildClarityBreakdown(allProfilesClarity, (d) => d.traffic.distinctUsers, formatNumber);
   const clarityPaginas = buildClarityBreakdown(allProfilesClarity, (d) => d.traffic.pagesPerSession, (v) => v.toFixed(2), "average");
   const clarityScroll = buildClarityBreakdown(allProfilesClarity, (d) => d.scrollDepth, (v) => `${v.toFixed(1)}%`, "average");
-  const clarityTiempo = buildClarityBreakdown(allProfilesClarity, (d) => d.engagement.activeTime, formatSeconds);
+  const clarityTiempo = buildClarityBreakdown(allProfilesClarity, (d) => d.engagement.activeTime, formatSeconds, "average");
 
-  const totalFrustration =
-    (clarity.data?.frustration.deadClicks ?? 0) +
-    (clarity.data?.frustration.rageClicks ?? 0) +
-    (clarity.data?.frustration.quickbacks ?? 0) +
-    (clarity.data?.frustration.errorClicks ?? 0);
+  const clarityDailyBreakdown = aggregateMode
+    ? allProfilesDailyBreakdown
+    : clarity.dailyBreakdown;
+
+  // Merge topPages across all profiles (aggregate mode)
+  const clarityTopPages = useMemo(() => {
+    const isReal = (url: string) => !url.includes("localhost");
+    if (!aggregateMode) return (clarity.data?.topPages ?? []).filter((p) => isReal(p.url));
+    const map = new Map<string, number>();
+    for (const p of allProfilesClarity) {
+      if (!p.data) continue;
+      for (const page of p.data.topPages) {
+        if (!isReal(page.url)) continue;
+        map.set(page.url, (map.get(page.url) ?? 0) + page.visits);
+      }
+    }
+    return Array.from(map.entries())
+      .map(([url, visits]) => ({ url, visits }))
+      .sort((a, b) => b.visits - a.visits)
+      .slice(0, 10);
+  }, [aggregateMode, allProfilesClarity, clarity.data?.topPages]);
 
   const clarityIsWorking = clarityIsFetching || clarityIsManualFetching;
 
@@ -420,12 +484,12 @@ export default function PanelGeneralPage() {
         profileColor: profile?.color ?? "#888",
         impressions: m?.impressions ?? 0,
         clicks: m?.clicks ?? 0,
-        landingSessions: 0,
+        landingSessions: allProfilesClarity.find((c) => c.profileId === pid)?.data?.traffic.totalSessions ?? 0,
         checkouts: a?.checkoutSessions ?? 0,
         orders: s?.orderCount ?? 0,
       };
     });
-  }, [aggregateMode, profiles, shopify.profileBreakdown, analytics.profileBreakdown, meta.profileBreakdown]);
+  }, [aggregateMode, profiles, shopify.profileBreakdown, analytics.profileBreakdown, meta.profileBreakdown, allProfilesClarity]);
 
   const errorSources = [
     shopify.error && "Shopify",
@@ -694,206 +758,6 @@ export default function PanelGeneralPage() {
       }));
   }, [promotions.ads, promotions.perProfile, promotions.data?.ctr]);
 
-  // ── Explorar datasets ──────────────────────────────────────────────────────
-  const dailyExploreData = useMemo(() =>
-    combinedData.map((d) => ({
-      date: d.date,
-      revenue: d.revenue,
-      orders: d.orders,
-      adSpend: d.adSpend,
-      roas: d.adSpend > 0 ? d.revenue / d.adSpend : 0,
-      ticketProm: d.orders > 0 ? d.revenue / d.orders : 0,
-    })),
-  [combinedData]);
-
-  const campaignsExploreData = useMemo(() =>
-    (campaignsQuery.data?.campaigns ?? []).map((c) => ({
-      campaignName: c.campaignName,
-      spend: c.spend,
-      revenue: c.roas * c.spend,
-      roas: c.roas,
-      orders: c.conversions ?? 0,
-    })),
-  [campaignsQuery.data]);
-
-  const ordersExploreData = useMemo(() =>
-    (orderList.data ?? []).map((o) => ({
-      profileName: o.profileName ?? "",
-      name: o.name,
-      createdAt: o.createdAt,
-      customerName: o.customerName ?? "",
-      total: o.total,
-    })),
-  [orderList.data]);
-
-  const dailyColumns: ExploreColumnDef[] = useMemo(() => [
-    {
-      key: "date",
-      label: "Fecha",
-      render: (row) => formatDateDisplay(String(row.date)),
-      sortValue: (row) => String(row.date),
-      searchText: (row) => String(row.date),
-      align: "left",
-    },
-    {
-      key: "revenue",
-      label: "Ingresos",
-      render: (row) => formatMoney(Number(row.revenue)),
-      sortValue: (row) => Number(row.revenue),
-      align: "right",
-      summary: "sum",
-      summaryFormat: (v) => formatMoney(v),
-    },
-    {
-      key: "orders",
-      label: "Pedidos",
-      render: (row) => formatNumber(Number(row.orders)),
-      sortValue: (row) => Number(row.orders),
-      align: "right",
-      summary: "sum",
-      summaryFormat: (v) => String(Math.round(v)),
-    },
-    {
-      key: "ticketProm",
-      label: "Ticket Prom.",
-      render: (row) => formatMoney(Number(row.ticketProm)),
-      sortValue: (row) => Number(row.ticketProm),
-      align: "right",
-      summary: "avg",
-      summaryFormat: (v) => formatMoney(v),
-    },
-    {
-      key: "adSpend",
-      label: "Gasto Ads",
-      render: (row) => formatMoney(Number(row.adSpend)),
-      sortValue: (row) => Number(row.adSpend),
-      align: "right",
-      summary: "sum",
-      summaryFormat: (v) => formatMoney(v),
-    },
-    {
-      key: "roas",
-      label: "ROAS",
-      render: (row) => {
-        const v = Number(row.roas);
-        const color = v >= 4 ? "text-emerald-600 dark:text-emerald-400" : v >= 2 ? "text-amber-600 dark:text-amber-400" : v > 0 ? "text-red-600 dark:text-red-400" : "text-muted-foreground";
-        return <span className={color}>{v > 0 ? `${v.toFixed(2)}x` : "—"}</span>;
-      },
-      sortValue: (row) => Number(row.roas),
-      align: "right",
-      summary: "avg",
-      summaryFormat: (v) => `${v.toFixed(2)}x`,
-    },
-  ], [formatMoney]);
-
-  const campaignColumns: ExploreColumnDef[] = useMemo(() => [
-    {
-      key: "campaignName",
-      label: "Campaña",
-      render: (row) => <span className="max-w-[200px] truncate block">{String(row.campaignName)}</span>,
-      sortValue: (row) => String(row.campaignName),
-      searchText: (row) => String(row.campaignName),
-      align: "left",
-    },
-    {
-      key: "spend",
-      label: "Gasto",
-      render: (row) => formatMoney(Number(row.spend)),
-      sortValue: (row) => Number(row.spend),
-      align: "right",
-      summary: "sum",
-      summaryFormat: (v) => formatMoney(v),
-    },
-    {
-      key: "revenue",
-      label: "Ingresos",
-      render: (row) => formatMoney(Number(row.revenue)),
-      sortValue: (row) => Number(row.revenue),
-      align: "right",
-      summary: "sum",
-      summaryFormat: (v) => formatMoney(v),
-    },
-    {
-      key: "roas",
-      label: "ROAS",
-      render: (row) => {
-        const v = Number(row.roas);
-        const color = v >= 4 ? "text-emerald-600 dark:text-emerald-400" : v >= 2 ? "text-amber-600 dark:text-amber-400" : v > 0 ? "text-red-600 dark:text-red-400" : "text-muted-foreground";
-        return <span className={color}>{v > 0 ? `${v.toFixed(2)}x` : "—"}</span>;
-      },
-      sortValue: (row) => Number(row.roas),
-      align: "right",
-      summary: "avg",
-      summaryFormat: (v) => `${v.toFixed(2)}x`,
-    },
-    {
-      key: "orders",
-      label: "Pedidos",
-      render: (row) => formatNumber(Number(row.orders)),
-      sortValue: (row) => Number(row.orders),
-      align: "right",
-      summary: "sum",
-      summaryFormat: (v) => String(Math.round(v)),
-    },
-  ], [formatMoney]);
-
-  const ordersColumns: ExploreColumnDef[] = useMemo(() => {
-    const cols: ExploreColumnDef[] = [];
-    if (aggregateMode) {
-      cols.push({
-        key: "profileName",
-        label: "Perfil",
-        render: (row) => <span className="text-muted-foreground">{String(row.profileName)}</span>,
-        sortValue: (row) => String(row.profileName),
-        searchText: (row) => String(row.profileName),
-        align: "left",
-      });
-    }
-    cols.push(
-      {
-        key: "name",
-        label: "Pedido",
-        render: (row) => <span className="font-medium">{String(row.name)}</span>,
-        sortValue: (row) => String(row.name),
-        searchText: (row) => String(row.name),
-        align: "left",
-      },
-      {
-        key: "createdAt",
-        label: "Fecha",
-        render: (row) => {
-          const d = String(row.createdAt);
-          if (!d) return "—";
-          return new Date(d).toLocaleDateString("es-AR", {
-            day: "2-digit",
-            month: "short",
-            hour: "2-digit",
-            minute: "2-digit",
-          });
-        },
-        sortValue: (row) => String(row.createdAt),
-        align: "left",
-      },
-      {
-        key: "customerName",
-        label: "Cliente",
-        render: (row) => <span className="text-muted-foreground">{String(row.customerName)}</span>,
-        sortValue: (row) => String(row.customerName),
-        searchText: (row) => String(row.customerName),
-        align: "left",
-      },
-      {
-        key: "total",
-        label: "Total",
-        render: (row) => formatMoney(Number(row.total)),
-        sortValue: (row) => Number(row.total),
-        align: "right",
-        summary: "sum",
-        summaryFormat: (v) => formatMoney(v),
-      }
-    );
-    return cols;
-  }, [aggregateMode, formatMoney]);
 
   return (
     <TooltipProvider>
@@ -916,7 +780,6 @@ export default function PanelGeneralPage() {
           <TabsTrigger value="anuncios" className="flex-none sm:flex-1 px-3">Anuncios</TabsTrigger>
           <TabsTrigger value="pedidos" className="flex-none sm:flex-1 px-3">Pedidos</TabsTrigger>
           <TabsTrigger value="clarity" className="flex-none sm:flex-1 px-3">Clarity</TabsTrigger>
-          <TabsTrigger value="explorar" className="flex-none sm:flex-1 px-3">Explorar</TabsTrigger>
         </TabsList>
 
         {/* ── Tab: Resumen ──────────────────────────────────────────────── */}
@@ -1090,10 +953,9 @@ export default function PanelGeneralPage() {
               variant="line"
               className="flex-shrink-0 w-full h-8 border-b border-border rounded-none bg-transparent gap-0 overflow-x-auto scrollbar-none"
             >
-              <TabsTrigger value="embudo" className="text-xs flex-none sm:flex-1 px-3 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-foreground text-muted-foreground/60 hover:text-muted-foreground">Embudo</TabsTrigger>
-              <TabsTrigger value="gasto" className="text-xs flex-none sm:flex-1 px-3 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-foreground text-muted-foreground/60 hover:text-muted-foreground">Gasto</TabsTrigger>
-              <TabsTrigger value="conversiones" className="text-xs flex-none sm:flex-1 px-3 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-foreground text-muted-foreground/60 hover:text-muted-foreground">Conversiones</TabsTrigger>
-              <TabsTrigger value="roas" className="text-xs flex-none sm:flex-1 px-3 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-foreground text-muted-foreground/60 hover:text-muted-foreground">ROAS Diario</TabsTrigger>
+              <TabsTrigger value="embudo" className="text-xs flex-none sm:flex-1 px-3 rounded-none border-b-2 border-transparent data-[state=active]:border-b-primary data-[state=active]:text-foreground text-muted-foreground/60 hover:text-muted-foreground">Embudo</TabsTrigger>
+              <TabsTrigger value="conversiones" className="text-xs flex-none sm:flex-1 px-3 rounded-none border-b-2 border-transparent data-[state=active]:border-b-primary data-[state=active]:text-foreground text-muted-foreground/60 hover:text-muted-foreground">Pedidos y Gasto Ads</TabsTrigger>
+              <TabsTrigger value="roas" className="text-xs flex-none sm:flex-1 px-3 rounded-none border-b-2 border-transparent data-[state=active]:border-b-primary data-[state=active]:text-foreground text-muted-foreground/60 hover:text-muted-foreground">ROAS Diario</TabsTrigger>
             </TabsList>
 
             {/* Sub-tab: Embudo — marketing funnel */}
@@ -1101,7 +963,7 @@ export default function PanelGeneralPage() {
               <MarketingFunnel
                 impressions={meta.data?.impressions ?? 0}
                 clicks={meta.data?.clicks ?? 0}
-                landingSessions={clarity.data?.traffic.totalSessions ?? 0}
+                landingSessions={aggregateMode ? claritySesiones.totalValue : (clarity.data?.traffic.totalSessions ?? 0)}
                 checkouts={analytics.data?.checkoutSessions ?? 0}
                 orders={orderCount}
                 isLoading={isLoadingMain || analytics.isLoading || clarity.isLoading}
@@ -1110,15 +972,7 @@ export default function PanelGeneralPage() {
               />
             </TabsContent>
 
-            {/* Sub-tab: Gasto — daily spend chart */}
-            <TabsContent value="gasto" className="flex-1 min-h-0 overflow-hidden pt-2 animate-in fade-in-0 duration-150" onTouchStart={rendimientoSwipe.onTouchStart} onTouchEnd={rendimientoSwipe.onTouchEnd}>
-              <SpendChart
-                data={meta.data?.dailyMetrics ?? []}
-                isLoading={meta.isLoading}
-              />
-            </TabsContent>
-
-            {/* Sub-tab: Conversiones — fills full height */}
+            {/* Sub-tab: Gasto y Conversiones — unified chart */}
             <TabsContent value="conversiones" className="flex-1 min-h-0 overflow-hidden pt-2 animate-in fade-in-0 duration-150" onTouchStart={rendimientoSwipe.onTouchStart} onTouchEnd={rendimientoSwipe.onTouchEnd}>
               <ConversionsDailyChart data={combinedData} isLoading={isLoadingMain} fillHeight />
             </TabsContent>
@@ -1141,8 +995,8 @@ export default function PanelGeneralPage() {
               variant="line"
               className="flex-shrink-0 w-full h-8 border-b border-border rounded-none bg-transparent gap-0 overflow-x-auto scrollbar-none"
             >
-              <TabsTrigger value="pedidos-recibidos" className="text-xs flex-none sm:flex-1 px-3 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-foreground text-muted-foreground/60 hover:text-muted-foreground">Pedidos Recibidos</TabsTrigger>
-              <TabsTrigger value="envios" className="text-xs flex-none sm:flex-1 px-3 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-foreground text-muted-foreground/60 hover:text-muted-foreground">Envíos</TabsTrigger>
+              <TabsTrigger value="pedidos-recibidos" className="text-xs flex-none sm:flex-1 px-3 rounded-none border-b-2 border-transparent data-[state=active]:border-b-primary data-[state=active]:text-foreground text-muted-foreground/60 hover:text-muted-foreground">Pedidos Recibidos</TabsTrigger>
+              <TabsTrigger value="envios" className="text-xs flex-none sm:flex-1 px-3 rounded-none border-b-2 border-transparent data-[state=active]:border-b-primary data-[state=active]:text-foreground text-muted-foreground/60 hover:text-muted-foreground">Envíos</TabsTrigger>
             </TabsList>
 
             <TabsContent
@@ -1186,8 +1040,8 @@ export default function PanelGeneralPage() {
               variant="line"
               className="flex-shrink-0 w-full h-8 border-b border-border rounded-none bg-transparent gap-0 overflow-x-auto scrollbar-none"
             >
-              <TabsTrigger value="meta-ads" className="text-xs flex-none sm:flex-1 px-3 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-foreground text-muted-foreground/60 hover:text-muted-foreground">Publicidad</TabsTrigger>
-              <TabsTrigger value="promociones-ig" className="text-xs flex-none sm:flex-1 px-3 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-foreground text-muted-foreground/60 hover:text-muted-foreground">Promociones IG</TabsTrigger>
+              <TabsTrigger value="meta-ads" className="text-xs flex-none sm:flex-1 px-3 rounded-none border-b-2 border-transparent data-[state=active]:border-b-primary data-[state=active]:text-foreground text-muted-foreground/60 hover:text-muted-foreground">Publicidad</TabsTrigger>
+              <TabsTrigger value="promociones-ig" className="text-xs flex-none sm:flex-1 px-3 rounded-none border-b-2 border-transparent data-[state=active]:border-b-primary data-[state=active]:text-foreground text-muted-foreground/60 hover:text-muted-foreground">Promociones IG</TabsTrigger>
             </TabsList>
 
             {/* Sub-tab: Publicidad — active ads with preview */}
@@ -1304,10 +1158,10 @@ export default function PanelGeneralPage() {
                     <CardContent className="flex-1 min-h-0 overflow-hidden px-5 py-4 flex flex-col">
                       <Tabs value={promoStatusTab} onValueChange={setPromoStatusTab} className="flex-1 flex flex-col min-h-0">
                         <TabsList variant="line" className="flex-shrink-0 w-full h-7 border-b border-border rounded-none bg-transparent gap-0 mb-3">
-                          <TabsTrigger value="promo-activas" className="text-xs flex-none sm:flex-1 px-3 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-foreground text-muted-foreground/60 hover:text-muted-foreground">
+                          <TabsTrigger value="promo-activas" className="text-xs flex-none sm:flex-1 px-3 rounded-none border-b-2 border-transparent data-[state=active]:border-b-primary data-[state=active]:text-foreground text-muted-foreground/60 hover:text-muted-foreground">
                             Activas ({promotions.activeAds.length})
                           </TabsTrigger>
-                          <TabsTrigger value="promo-inactivas" className="text-xs flex-none sm:flex-1 px-3 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-foreground text-muted-foreground/60 hover:text-muted-foreground">
+                          <TabsTrigger value="promo-inactivas" className="text-xs flex-none sm:flex-1 px-3 rounded-none border-b-2 border-transparent data-[state=active]:border-b-primary data-[state=active]:text-foreground text-muted-foreground/60 hover:text-muted-foreground">
                             Inactivas ({promotions.inactiveAds.length})
                           </TabsTrigger>
                         </TabsList>
@@ -1451,65 +1305,39 @@ export default function PanelGeneralPage() {
               variant="line"
               className="flex-shrink-0 w-full h-8 border-b border-border rounded-none bg-transparent gap-0 overflow-x-auto scrollbar-none"
             >
-              <TabsTrigger value="cl-resumen" className="text-xs flex-none sm:flex-1 px-3 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-foreground text-muted-foreground/60 hover:text-muted-foreground">Resumen</TabsTrigger>
-              <TabsTrigger value="cl-trafico" className="text-xs flex-none sm:flex-1 px-3 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-foreground text-muted-foreground/60 hover:text-muted-foreground">Tráfico</TabsTrigger>
-              <TabsTrigger value="cl-frustracion" className="text-xs flex-none sm:flex-1 px-3 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-foreground text-muted-foreground/60 hover:text-muted-foreground">Frustración</TabsTrigger>
-              <TabsTrigger value="cl-datos" className="text-xs flex-none sm:flex-1 px-3 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-foreground text-muted-foreground/60 hover:text-muted-foreground">Datos</TabsTrigger>
+              <TabsTrigger value="cl-resumen" className="text-xs flex-none sm:flex-1 px-3 rounded-none border-b-2 border-transparent data-[state=active]:border-b-primary data-[state=active]:text-foreground text-muted-foreground/60 hover:text-muted-foreground">Resumen</TabsTrigger>
+              <TabsTrigger value="cl-trafico" className="text-xs flex-none sm:flex-1 px-3 rounded-none border-b-2 border-transparent data-[state=active]:border-b-primary data-[state=active]:text-foreground text-muted-foreground/60 hover:text-muted-foreground">Tráfico</TabsTrigger>
+              <TabsTrigger value="cl-datos" className="text-xs flex-none sm:flex-1 px-3 rounded-none border-b-2 border-transparent data-[state=active]:border-b-primary data-[state=active]:text-foreground text-muted-foreground/60 hover:text-muted-foreground">Datos</TabsTrigger>
             </TabsList>
 
             {/* Sub-tab: Resumen */}
             <TabsContent value="cl-resumen" className="flex-1 min-h-0 overflow-hidden pt-2 animate-in fade-in-0 duration-150" onTouchStart={claritySwipe.onTouchStart} onTouchEnd={claritySwipe.onTouchEnd}>
               <div className="h-full flex flex-col gap-2 overflow-hidden">
                 <div className="flex items-center gap-2 flex-shrink-0">
-                  <div className="grid gap-2 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 flex-1">
-                    <KPICard title="Sesiones" value={claritySesiones.totalValue} formattedValue={claritySesiones.totalFormatted} icon={Eye} iconClassName="text-blue-500" isLoading={clarity.isLoading || allProfilesClarityLoading} breakdown={claritySesiones.items} breakdownLoading={allProfilesClarityLoading} />
+                  <div className="grid gap-2 grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 flex-1">
+                    <KPICard title="Sesiones Totales (Periodo)" value={claritySesiones.totalValue} formattedValue={claritySesiones.totalFormatted} icon={Eye} iconClassName="text-blue-500" isLoading={clarity.isLoading || allProfilesClarityLoading} breakdown={claritySesiones.items} breakdownLoading={allProfilesClarityLoading} />
                     <KPICard title="Usuarios Únicos" value={clarityUsuarios.totalValue} formattedValue={clarityUsuarios.totalFormatted} icon={Users} iconClassName="text-violet-500" isLoading={clarity.isLoading || allProfilesClarityLoading} breakdown={clarityUsuarios.items} breakdownLoading={allProfilesClarityLoading} />
-                    <KPICard title="Páginas / Sesión" value={clarityPaginas.totalValue} formattedValue={clarityPaginas.totalFormatted} icon={BarChart3} iconClassName="text-teal-500" isLoading={clarity.isLoading || allProfilesClarityLoading} breakdown={clarityPaginas.items} breakdownLoading={allProfilesClarityLoading} />
                     <KPICard title="Prof. de Scroll" value={clarityScroll.totalValue} formattedValue={clarityScroll.totalFormatted} icon={ArrowDownUp} iconClassName="text-amber-500" isLoading={clarity.isLoading || allProfilesClarityLoading} breakdown={clarityScroll.items} breakdownLoading={allProfilesClarityLoading} />
                     <KPICard title="Tiempo Activo" value={clarityTiempo.totalValue} formattedValue={clarityTiempo.totalFormatted} icon={Clock} iconClassName="text-emerald-500" isLoading={clarity.isLoading || allProfilesClarityLoading} breakdown={clarityTiempo.items} breakdownLoading={allProfilesClarityLoading} />
                   </div>
-                  <CompactHeatmapLink />
                 </div>
-                <div className="grid gap-2 lg:grid-cols-2 flex-1 min-h-0">
-                  <Card className="h-full overflow-hidden flex flex-col">
-                    <CardContent className="px-4 py-3 flex-1 overflow-y-auto">
-                      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Señales de Frustración</p>
-                      {clarity.isLoading ? (
-                        <div className="space-y-2.5">{[1, 2, 3, 4].map((i) => <div key={i} className="h-4 bg-muted/40 rounded animate-pulse" />)}</div>
-                      ) : (
-                        <div className="space-y-2.5">
-                          {[
-                            { label: "Clics muertos", value: clarity.data?.frustration.deadClicks ?? 0 },
-                            { label: "Clics de rabia", value: clarity.data?.frustration.rageClicks ?? 0 },
-                            { label: "Retornos rápidos", value: clarity.data?.frustration.quickbacks ?? 0 },
-                            { label: "Errores de script", value: clarity.data?.frustration.scriptErrors ?? 0 },
-                            { label: "Scroll excesivo", value: clarity.data?.frustration.excessiveScrolls ?? 0 },
-                          ].map((item) => (
-                            <div key={item.label} className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <div className={`h-2 w-2 rounded-full ${item.value > 0 ? "bg-red-400" : "bg-muted-foreground/30"}`} />
-                                <span className="text-[13px] text-foreground/90">{item.label}</span>
-                              </div>
-                              <span className={`text-[13px] font-semibold ${item.value > 0 ? "text-red-600 dark:text-red-400" : "text-muted-foreground"}`}>{formatNumber(item.value)}</span>
-                            </div>
-                          ))}
-                          <div className="border-t border-border/20 pt-2 mt-2 flex items-center justify-between">
-                            <span className="text-xs font-semibold text-muted-foreground">Total frustración</span>
-                            <span className="text-sm font-bold text-red-600 dark:text-red-400">{formatNumber(totalFrustration)}</span>
-                          </div>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                  <Card className="h-full overflow-hidden flex flex-col">
+                <div className="flex-1 min-h-0 grid grid-cols-12 gap-4">
+                  <div className="col-span-12 lg:col-span-7 min-h-0">
+                    <SessionsDailyChart
+                      data={clarityDailyBreakdown}
+                      isLoading={clarity.isLoading || allProfilesClarityLoading}
+                      fillHeight
+                    />
+                  </div>
+                  <Card className="col-span-12 lg:col-span-5 overflow-hidden flex flex-col min-h-0">
                     <CardContent className="px-4 py-3 flex-1 overflow-y-auto">
                       <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Páginas más visitadas</p>
-                      {clarity.isLoading ? (
+                      {(clarity.isLoading || allProfilesClarityLoading) ? (
                         <div className="space-y-2.5">{[1, 2, 3, 4, 5].map((i) => <div key={i} className="h-4 bg-muted/40 rounded animate-pulse" />)}</div>
-                      ) : (clarity.data?.topPages ?? []).length > 0 ? (
+                      ) : clarityTopPages.length > 0 ? (
                         <div className="space-y-2">
-                          {(clarity.data?.topPages ?? []).map((page) => {
-                            const maxVisits = clarity.data?.topPages?.[0]?.visits ?? 1;
+                          {clarityTopPages.map((page) => {
+                            const maxVisits = clarityTopPages[0]?.visits ?? 1;
                             const pct = (page.visits / maxVisits) * 100;
                             return (
                               <div key={page.url}>
@@ -1536,43 +1364,27 @@ export default function PanelGeneralPage() {
             {/* Sub-tab: Tráfico */}
             <TabsContent value="cl-trafico" className="flex-1 min-h-0 overflow-hidden pt-2 animate-in fade-in-0 duration-150" onTouchStart={claritySwipe.onTouchStart} onTouchEnd={claritySwipe.onTouchEnd}>
               <div className="h-full grid gap-2 lg:grid-cols-3">
-                <ClarityBreakdownCard title="Dispositivos" icon={Monitor} items={clarity.data?.devices ?? []} isLoading={clarity.isLoading} />
+                <ClarityBreakdownCard
+                  title="Dispositivos"
+                  icon={Monitor}
+                  items={clarity.data?.devices ?? []}
+                  isLoading={clarity.isLoading}
+                  getItemAdornment={(name) => {
+                    const DevIcon = DEVICE_ICONS[name];
+                    return DevIcon ? <DevIcon className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" /> : null;
+                  }}
+                />
                 <ClarityBreakdownCard title="Navegadores" icon={Globe} items={clarity.data?.browsers ?? []} isLoading={clarity.isLoading} />
-                <ClarityBreakdownCard title="Países" icon={Globe} items={clarity.data?.countries ?? []} isLoading={clarity.isLoading} />
-              </div>
-            </TabsContent>
-
-            {/* Sub-tab: Frustración */}
-            <TabsContent value="cl-frustracion" className="flex-1 min-h-0 overflow-hidden pt-2 animate-in fade-in-0 duration-150" onTouchStart={claritySwipe.onTouchStart} onTouchEnd={claritySwipe.onTouchEnd}>
-              <div className="h-full grid gap-2 grid-cols-2 lg:grid-cols-3">
-                {[
-                  { title: "Clics Muertos", value: clarity.data?.frustration.deadClicks ?? 0, icon: CircleDot, iconColor: "text-muted-foreground", valueColor: "text-red-500", desc: "Clics en elementos no interactivos" },
-                  { title: "Clics de Rabia", value: clarity.data?.frustration.rageClicks ?? 0, icon: Flame, iconColor: "text-red-500", valueColor: "text-red-500", desc: "Clics rápidos repetidos por frustración" },
-                  { title: "Retornos Rápidos", value: clarity.data?.frustration.quickbacks ?? 0, icon: MousePointerClick, iconColor: "text-orange-500", valueColor: "text-orange-500", desc: "Usuarios que volvieron atrás rápidamente" },
-                  { title: "Clics con Error", value: clarity.data?.frustration.errorClicks ?? 0, icon: AlertTriangle, iconColor: "text-amber-500", valueColor: "text-amber-500", desc: "Clics que generaron errores" },
-                  { title: "Errores de Script", value: clarity.data?.frustration.scriptErrors ?? 0, icon: AlertTriangle, iconColor: "text-yellow-500", valueColor: "text-yellow-500", desc: "Errores JavaScript en la página" },
-                  { title: "Scroll Excesivo", value: clarity.data?.frustration.excessiveScrolls ?? 0, icon: ArrowDownUp, iconColor: "text-orange-600", valueColor: "text-orange-600", desc: "Scroll desmedido por los usuarios" },
-                ].map((item) => {
-                  const ItemIcon = item.icon;
-                  return (
-                    <Card key={item.title} className="flex flex-col justify-center">
-                      <CardContent className="px-4 py-4">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{item.title}</span>
-                          <ItemIcon className={`h-4 w-4 ${item.iconColor}`} />
-                        </div>
-                        {clarity.isLoading ? (
-                          <Skeleton className="h-8 w-20" />
-                        ) : (
-                          <>
-                            <div className={`text-3xl font-bold ${item.valueColor}`}>{formatNumber(item.value)}</div>
-                            <p className="text-xs text-muted-foreground mt-1">{item.desc}</p>
-                          </>
-                        )}
-                      </CardContent>
-                    </Card>
-                  );
-                })}
+                <ClarityBreakdownCard
+                  title="Países"
+                  icon={Globe}
+                  items={clarity.data?.countries ?? []}
+                  isLoading={clarity.isLoading}
+                  getItemAdornment={(name) => {
+                    const flag = COUNTRY_FLAGS[name];
+                    return flag ? <span className="flex-shrink-0">{flag}</span> : null;
+                  }}
+                />
               </div>
             </TabsContent>
 
@@ -1654,35 +1466,6 @@ export default function PanelGeneralPage() {
           </Tabs>
         </TabsContent>
 
-        {/* ── Tab: Explorar ─────────────────────────────────────────────── */}
-        <TabsContent
-          value="explorar"
-          className="flex-1 min-h-0 overflow-hidden mt-2 animate-in fade-in-0 duration-200"
-        >
-          <ExploreDataTable
-            datasets={[
-              {
-                label: "Ventas por Día",
-                key: "ventas",
-                columns: dailyColumns,
-                data: dailyExploreData as Record<string, unknown>[],
-              },
-              {
-                label: "Por Campaña",
-                key: "campanas",
-                columns: campaignColumns,
-                data: campaignsExploreData as Record<string, unknown>[],
-              },
-              {
-                label: "Pedidos",
-                key: "pedidos",
-                columns: ordersColumns,
-                data: ordersExploreData as Record<string, unknown>[],
-              },
-            ]}
-            isLoading={isLoadingMain || orderList.isLoading}
-          />
-        </TabsContent>
       </Tabs>
     </div>
     </TooltipProvider>

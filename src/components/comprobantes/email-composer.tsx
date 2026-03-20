@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { useEmailConfig } from "@/hooks/use-email-config";
 import { useBusinessProfile } from "@/providers/business-profile-provider";
 import { renderDownloadEmail } from "@/lib/email/templates/download-template";
+import { useIsMobile } from "@/hooks/use-is-mobile";
 import type { ComposerData } from "@/types/email";
 
 interface EmailComposerProps {
@@ -21,6 +22,7 @@ export function EmailComposer({ composerData, onDiscard }: EmailComposerProps) {
   const { activeProfile } = useBusinessProfile();
   const { data: emailConfigData, isLoading: configLoading } = useEmailConfig();
   const config = emailConfigData?.config;
+  const isMobile = useIsMobile();
 
   const [toEmail, setToEmail] = useState("");
   const [subject, setSubject] = useState("");
@@ -114,118 +116,126 @@ export function EmailComposer({ composerData, onDiscard }: EmailComposerProps) {
   }
 
   return (
-    <Card className="h-full flex flex-col overflow-hidden">
-      {/* Header fields */}
-      <div className="flex-shrink-0 border-b border-border/30">
-        {/* From */}
-        <div className="flex items-center gap-3 px-4 py-2 border-b border-border/20">
-          <span className="text-xs text-muted-foreground/60 w-12 flex-shrink-0">De</span>
-          <span className="text-sm text-muted-foreground">
-            {config?.senderName ? `${config.senderName} ` : ""}
-            <span className="text-muted-foreground/60">
-              &lt;{config?.gmailAddress ?? "..."}&gt;
-            </span>
-          </span>
-        </div>
+    <Card className={`h-full flex flex-col ${isMobile ? "overflow-y-auto" : "overflow-hidden"}`}>
+      <div className={`${isMobile ? "" : "flex-1"} min-h-0 flex ${isMobile ? "flex-col" : "flex-row"}`}>
+        {/* Left panel — form fields + footer */}
+        <div className={`flex flex-col ${isMobile ? "flex-shrink-0" : "w-[40%] border-r border-border/30"}`}>
+          {/* Header fields */}
+          <div className="flex-shrink-0 border-b border-border/30">
+            {/* From */}
+            <div className="flex items-center gap-3 px-4 py-2 border-b border-border/20">
+              <span className="text-xs text-muted-foreground/60 w-12 flex-shrink-0">De</span>
+              <span className="text-sm text-muted-foreground">
+                {config?.senderName ? `${config.senderName} ` : ""}
+                <span className="text-muted-foreground/60">
+                  &lt;{config?.gmailAddress ?? "..."}&gt;
+                </span>
+              </span>
+            </div>
 
-        {/* To */}
-        <div className="flex items-center gap-3 px-4 py-1.5 border-b border-border/20">
-          <label htmlFor="composer-to" className="text-xs text-muted-foreground/60 w-12 flex-shrink-0">
-            Para
-          </label>
-          <Input
-            id="composer-to"
-            type="email"
-            value={toEmail}
-            onChange={(e) => {
-              setToEmail(e.target.value);
-              setSentTo(null);
-            }}
-            placeholder="email@ejemplo.com"
-            className="border-0 shadow-none focus-visible:ring-0 px-0 h-8 text-sm"
-          />
-        </div>
+            {/* To */}
+            <div className="flex items-center gap-3 px-4 py-1.5 border-b border-border/20">
+              <label htmlFor="composer-to" className="text-xs text-muted-foreground/60 w-12 flex-shrink-0">
+                Para
+              </label>
+              <Input
+                id="composer-to"
+                type="email"
+                value={toEmail}
+                onChange={(e) => {
+                  setToEmail(e.target.value);
+                  setSentTo(null);
+                }}
+                placeholder="email@ejemplo.com"
+                className="border-0 shadow-none focus-visible:ring-0 px-0 h-8 text-sm"
+              />
+            </div>
 
-        {/* Subject */}
-        <div className="flex items-center gap-3 px-4 py-1.5">
-          <label htmlFor="composer-subject" className="text-xs text-muted-foreground/60 w-12 flex-shrink-0">
-            Asunto
-          </label>
-          <Input
-            id="composer-subject"
-            value={subject}
-            onChange={(e) => setSubject(e.target.value)}
-            placeholder="Asunto del email"
-            className="border-0 shadow-none focus-visible:ring-0 px-0 h-8 text-sm"
-          />
-        </div>
-      </div>
-
-      {/* Email preview */}
-      <div className="flex-1 min-h-0 overflow-hidden p-4">
-        {previewHtml ? (
-          <iframe
-            srcDoc={previewHtml}
-            sandbox=""
-            className="w-full h-full border border-border/30 rounded-lg bg-white"
-            title="Vista previa del email"
-          />
-        ) : (
-          <div className="h-full flex items-center justify-center text-sm text-muted-foreground/50">
-            {configLoading ? "Cargando preview..." : "No hay link de descarga configurado"}
+            {/* Subject */}
+            <div className="flex items-center gap-3 px-4 py-1.5">
+              <label htmlFor="composer-subject" className="text-xs text-muted-foreground/60 w-12 flex-shrink-0">
+                Asunto
+              </label>
+              <Input
+                id="composer-subject"
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+                placeholder="Asunto del email"
+                className="border-0 shadow-none focus-visible:ring-0 px-0 h-8 text-sm"
+              />
+            </div>
           </div>
-        )}
-      </div>
 
-      {/* Footer */}
-      <div className="flex-shrink-0 border-t border-border/30 px-4 py-3 flex items-center justify-between gap-3">
-        <div className="text-xs text-muted-foreground/60 truncate">
-          Pedido: <span className="font-medium text-muted-foreground">{composerData.orderName}</span>
-          {" · "}
-          Cliente: <span className="font-medium text-muted-foreground">{composerData.customerName}</span>
+          {/* Spacer pushes footer to bottom on desktop */}
+          <div className="flex-1" />
+
+          {/* Footer */}
+          <div className="flex-shrink-0 border-t border-border/30 px-4 py-3 flex flex-col gap-2">
+            <div className="text-xs text-muted-foreground/60 truncate">
+              Pedido: <span className="font-medium text-muted-foreground">{composerData.orderName}</span>
+              {" · "}
+              Cliente: <span className="font-medium text-muted-foreground">{composerData.customerName}</span>
+            </div>
+
+            <div className="flex items-center gap-2 justify-end flex-wrap">
+              {/* Success message */}
+              {sentTo && (
+                <span className="flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400 animate-in fade-in-0 duration-300 mr-auto">
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  Enviado a {sentTo}
+                </span>
+              )}
+
+              {/* Error message */}
+              {mutation.isError && (
+                <span className="text-xs text-red-500 truncate max-w-[200px] mr-auto">
+                  {mutation.error.message}
+                </span>
+              )}
+
+              {onDiscard && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={onDiscard}
+                  className="text-xs h-8"
+                >
+                  <X className="h-3.5 w-3.5 mr-1" />
+                  Descartar
+                </Button>
+              )}
+
+              <Button
+                size="sm"
+                onClick={() => mutation.mutate()}
+                disabled={!canSend || mutation.isPending}
+                className="h-8 gap-1.5"
+              >
+                {mutation.isPending ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Send className="h-3.5 w-3.5" />
+                )}
+                Enviar
+              </Button>
+            </div>
+          </div>
         </div>
 
-        <div className="flex items-center gap-2 flex-shrink-0">
-          {/* Success message */}
-          {sentTo && (
-            <span className="flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400 animate-in fade-in-0 duration-300">
-              <CheckCircle2 className="h-3.5 w-3.5" />
-              Enviado a {sentTo}
-            </span>
+        {/* Right panel — email preview */}
+        <div className={`${isMobile ? "h-[60vh] flex-shrink-0" : "flex-1"} min-h-0 overflow-hidden p-4`}>
+          {previewHtml ? (
+            <iframe
+              srcDoc={previewHtml}
+              sandbox=""
+              className="w-full h-full border border-border/30 rounded-lg bg-white"
+              title="Vista previa del email"
+            />
+          ) : (
+            <div className="h-full flex items-center justify-center text-sm text-muted-foreground/50">
+              {configLoading ? "Cargando preview..." : "No hay link de descarga configurado"}
+            </div>
           )}
-
-          {/* Error message */}
-          {mutation.isError && (
-            <span className="text-xs text-red-500 truncate max-w-[200px]">
-              {mutation.error.message}
-            </span>
-          )}
-
-          {onDiscard && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onDiscard}
-              className="text-xs h-8"
-            >
-              <X className="h-3.5 w-3.5 mr-1" />
-              Descartar
-            </Button>
-          )}
-
-          <Button
-            size="sm"
-            onClick={() => mutation.mutate()}
-            disabled={!canSend || mutation.isPending}
-            className="h-8 gap-1.5"
-          >
-            {mutation.isPending ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <Send className="h-3.5 w-3.5" />
-            )}
-            Enviar
-          </Button>
         </div>
       </div>
     </Card>

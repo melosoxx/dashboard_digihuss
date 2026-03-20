@@ -34,6 +34,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         data: null,
         daysAvailable: 0,
+        dailyBreakdown: [],
         dateRange: null,
         lastFetchedAt: null,
       });
@@ -47,6 +48,11 @@ export async function GET(request: NextRequest) {
       data: aggregated,
       daysAvailable: rows.length,
       availableDates: rows.map((r) => r.date),
+      dailyBreakdown: rows.map((r) => ({
+        date: r.date,
+        sessions: (r.data as ClarityInsights).traffic.totalSessions,
+        users: (r.data as ClarityInsights).traffic.distinctUsers,
+      })),
       dateRange: { start: rows[0].date, end: rows[rows.length - 1].date },
       lastFetchedAt: rows[rows.length - 1].fetched_at,
     });
