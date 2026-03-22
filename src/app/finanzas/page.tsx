@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { Plus } from "lucide-react";
 import { PageHeader } from "@/components/shared/page-header";
 import { ErrorDisplay } from "@/components/shared/error-display";
@@ -20,10 +20,13 @@ import { useFinanceExpenses } from "@/hooks/use-finance-expenses";
 import { useFinanceCategories } from "@/hooks/use-finance-categories";
 import { useMpTransactions } from "@/hooks/use-mp-transactions";
 import { useBusinessProfile } from "@/providers/business-profile-provider";
+import { useDateRange } from "@/providers/date-range-provider";
+import { buildDashboardContext } from "@/lib/ai-context-builder";
 import type { Expense } from "@/types/finance";
 
 export default function FinanzasPage() {
-  const { profiles, activeProfileId, aggregateMode } = useBusinessProfile();
+  const { profiles, activeProfileId, aggregateMode, selectedProfileIds } = useBusinessProfile();
+  const { dateRange } = useDateRange();
   const summary = useFinanceSummary();
   const expenses = useFinanceExpenses();
   const categories = useFinanceCategories();
@@ -77,6 +80,27 @@ export default function FinanzasPage() {
     [editingExpense, expenses]
   );
 
+  const activeProfileName = aggregateMode
+    ? profiles.filter((p) => selectedProfileIds.includes(p.id)).map((p) => p.name).join(", ") || "Todos"
+    : profiles.find((p) => p.isActive)?.name || "Mi negocio";
+
+  const dashboardContext = useMemo(() => {
+    const s = summary.data;
+    return buildDashboardContext({
+      dateRange,
+      profileName: activeProfileName,
+      aggregateMode,
+      finance: s ? {
+        grossRevenue: s.grossRevenue,
+        netProfit: s.netProfit,
+        profitMargin: s.profitMargin,
+        adSpend: s.adSpend,
+        totalExpenses: s.totalExpenses,
+        mpFees: s.mpFees,
+      } : null,
+    });
+  }, [dateRange, activeProfileName, aggregateMode, summary.data]);
+
   return (
     <div className="h-full flex flex-col gap-1">
       <PageHeader
@@ -94,7 +118,7 @@ export default function FinanzasPage() {
         <ErrorDisplay message="Error al cargar el resumen financiero. Verifica tus credenciales en Configuracion." />
       )}
 
-      <AIAssistantBar placeholder="Preguntale algo a tus finanzas..." />
+      <AIAssistantBar placeholder="Preguntale algo a tus finanzas..." dashboardContext={dashboardContext} />
 
       <Tabs defaultValue="resumen" className="flex-1 flex flex-col min-h-0">
         <TabsList

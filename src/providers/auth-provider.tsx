@@ -18,6 +18,13 @@ interface AuthContextValue {
   user: User | null;
   loading: boolean;
   signOut: () => Promise<void>;
+  updateUser: (attributes: {
+    password?: string;
+    data?: Record<string, unknown>;
+  }) => Promise<{ error: Error | null }>;
+  refreshUser: () => Promise<void>;
+  verifyPassword: (password: string) => Promise<{ error: Error | null }>;
+  sendPasswordReset: () => Promise<{ error: Error | null }>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -58,6 +65,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, [supabase]);
 
+  const refreshUser = useCallback(async () => {
+    if (!supabase) return;
+    const { data: { user: freshUser } } = await supabase.auth.getUser();
+    if (freshUser) setUser(freshUser);
+  }, [supabase]);
+
+  const updateUser = useCallback(
+    async (attributes: { password?: string; data?: Record<string, unknown> }) => {
+      if (!supabase) return { error: new Error("Supabase not configured") };
+      const { error } = await supabase.auth.updateUser(attributes);
+      if (!error) await refreshUser();
+      return { error: error ? new Error(error.message) : null };
+    },
+    [supabase, refreshUser]
+  );
+
+  const verifyPassword = useCallback(
+    async (password: string) => {
+      if (!supabase || !user?.email)
+        return { error: new Error("Not authenticated") };
+      const { error } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password,
+      });
+      return { error: error ? new Error(error.message) : null };
+    },
+    [supabase, user?.email]
+  );
+
+  const sendPasswordReset = useCallback(async () => {
+    if (!supabase || !user?.email)
+      return { error: new Error("Not authenticated") };
+    const { error } = await supabase.auth.resetPasswordForEmail(user.email);
+    return { error: error ? new Error(error.message) : null };
+  }, [supabase, user?.email]);
+
   const signOut = useCallback(async () => {
     if (supabase) {
       await supabase.auth.signOut();
@@ -67,7 +110,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [supabase, queryClient, router]);
 
   return (
-    <AuthContext.Provider value={{ user, loading, signOut }}>
+    <AuthContext.Provider value={{ user, loading, signOut, updateUser, refreshUser, verifyPassword, sendPasswordReset }}>
       {children}
     </AuthContext.Provider>
   );

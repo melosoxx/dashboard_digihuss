@@ -146,7 +146,8 @@ export function MarketingFunnel({
                     <Tooltip>
                       <TooltipTrigger asChild>{bar}</TooltipTrigger>
                       <TooltipContent
-                        side="right"
+                        side="top"
+                        collisionPadding={16}
                         className="bg-card border border-border px-3 py-2 text-foreground"
                       >
                         <div className="space-y-1">

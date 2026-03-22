@@ -70,35 +70,9 @@ export function DateRangePicker() {
         align={isMobile ? "center" : "end"}
       >
         <div className={cn(
-          "flex",
-          isMobile ? "flex-col max-h-[70vh] overflow-y-auto" : "flex-row"
+          "flex max-h-[70vh] overflow-y-auto",
+          isMobile ? "flex-col" : "flex-row"
         )}>
-          {/* Presets: fila horizontal scrollable en mobile, sidebar vertical en desktop */}
-          <div className={cn(
-            isMobile
-              ? "flex overflow-x-auto gap-1.5 p-3 border-b scrollbar-none"
-              : "border-r p-3 space-y-1"
-          )}>
-            {datePresets.map((preset) => (
-              <Button
-                key={preset.label}
-                variant="ghost"
-                size="sm"
-                className={cn(
-                  "text-xs",
-                  isMobile
-                    ? "whitespace-nowrap flex-shrink-0"
-                    : "w-full justify-start"
-                )}
-                onClick={() => {
-                  setDateRange(preset.getValue());
-                  setOpen(false);
-                }}
-              >
-                {preset.label}
-              </Button>
-            ))}
-          </div>
           <div className="flex flex-col">
             <Calendar
               mode="range"
@@ -117,6 +91,32 @@ export function DateRangePicker() {
                 Aplicar
               </Button>
             </div>
+          </div>
+          {/* Presets: lista vertical a la derecha en desktop, fila horizontal en mobile */}
+          <div className={cn(
+            isMobile
+              ? "flex overflow-x-auto gap-1.5 p-3 border-t scrollbar-none order-first"
+              : "border-l p-2 space-y-0.5 flex flex-col justify-start"
+          )}>
+            {datePresets.map((preset) => (
+              <Button
+                key={preset.label}
+                variant="ghost"
+                size="sm"
+                className={cn(
+                  "text-xs h-7 px-2.5",
+                  isMobile
+                    ? "whitespace-nowrap flex-shrink-0"
+                    : "w-full justify-start"
+                )}
+                onClick={() => {
+                  setDateRange(preset.getValue());
+                  setOpen(false);
+                }}
+              >
+                {preset.label}
+              </Button>
+            ))}
           </div>
         </div>
       </PopoverContent>

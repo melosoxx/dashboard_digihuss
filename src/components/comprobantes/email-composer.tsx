@@ -19,8 +19,11 @@ interface EmailComposerProps {
 
 export function EmailComposer({ composerData, onDiscard }: EmailComposerProps) {
   const queryClient = useQueryClient();
-  const { activeProfile } = useBusinessProfile();
-  const { data: emailConfigData, isLoading: configLoading } = useEmailConfig();
+  const { profiles } = useBusinessProfile();
+  const orderProfile = composerData
+    ? profiles.find((p) => p.id === composerData.profileId) ?? null
+    : null;
+  const { data: emailConfigData, isLoading: configLoading } = useEmailConfig(composerData?.profileId);
   const config = emailConfigData?.config;
   const isMobile = useIsMobile();
 
@@ -63,15 +66,15 @@ export function EmailComposer({ composerData, onDiscard }: EmailComposerProps) {
   });
 
   const previewHtml = useMemo(() => {
-    if (!activeProfile || !config?.downloadUrl) return "";
+    if (!orderProfile || !config?.downloadUrl) return "";
     return renderDownloadEmail({
-      businessName: activeProfile.name,
-      businessColor: activeProfile.color,
+      businessName: orderProfile.name,
+      businessColor: orderProfile.color,
       customerName: composerData?.customerName ?? "Cliente",
       downloadUrl: config.downloadUrl,
       footerText: config.footerText ?? "Gracias por tu compra!",
     });
-  }, [activeProfile, config, composerData?.customerName]);
+  }, [orderProfile, config, composerData?.customerName]);
 
   const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(toEmail.trim());
   const canSend = !!composerData && isValidEmail && !configLoading && !!config?.enabled && !!config?.downloadUrl;

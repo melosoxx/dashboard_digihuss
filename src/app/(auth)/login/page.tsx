@@ -4,14 +4,12 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
+import { Mail, Lock, Eye, EyeOff } from "lucide-react";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -49,56 +47,73 @@ export default function LoginPage() {
   }
 
   return (
-    <Card className="w-full max-w-sm">
-      <CardHeader className="text-center">
-        <CardTitle className="text-xl">Iniciar Sesion</CardTitle>
-        <p className="text-sm text-muted-foreground">
-          Ingresa a tu cuenta de Digital Products Dashboard
-        </p>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="tu@email.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              autoComplete="email"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="password">Contraseña</Label>
-            <Input
-              id="password"
-              type="password"
-              placeholder="********"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              autoComplete="current-password"
-            />
+    <>
+      {/* Form centered */}
+      <div className="flex flex-1 items-center justify-center px-8">
+        <form className="modern-form" onSubmit={handleSubmit}>
+          <h2 className="form-title">Bienvenido!</h2>
+          <p className="form-subtitle">Ingresa a tu cuenta de Digital Products Dashboard</p>
+
+          <div className="input-group">
+            <label htmlFor="email">Email</label>
+            <div className="input-wrapper">
+              <Mail className="input-icon" />
+              <input
+                id="email"
+                type="email"
+                className="form-input"
+                placeholder="tu@email.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                autoComplete="email"
+              />
+            </div>
           </div>
 
-          {error && (
-            <p className="text-sm text-red-500 text-center">{error}</p>
-          )}
+          <div className="input-group">
+            <label htmlFor="password">Contraseña</label>
+            <div className="input-wrapper">
+              <Lock className="input-icon" />
+              <input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                className="form-input"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                autoComplete="current-password"
+                style={{ paddingRight: 40 }}
+              />
+              <button
+                type="button"
+                className="password-toggle"
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? <EyeOff className="eye-icon" /> : <Eye className="eye-icon" />}
+              </button>
+            </div>
+          </div>
 
-          <Button type="submit" className="w-full" disabled={loading}>
+          {error && <p className="form-error">{error}</p>}
+
+          <button type="submit" className="submit-button" disabled={loading}>
+            <span className="button-glow" />
             {loading ? "Ingresando..." : "Ingresar"}
-          </Button>
-        </form>
+          </button>
 
-        <p className="mt-4 text-center text-sm text-muted-foreground">
-          No tenes cuenta?{" "}
-          <Link href="/signup" className="text-primary underline-offset-4 hover:underline">
-            Crear cuenta
-          </Link>
-        </p>
-      </CardContent>
-    </Card>
+          <div className="form-footer">
+            <Link href="/signup" className="login-link">
+              No tenes cuenta? <span>Crear cuenta</span>
+            </Link>
+          </div>
+
+          <p className="form-legal">
+            Al iniciar sesion, aceptas nuestros Terminos de Servicio y Politica de Privacidad.
+          </p>
+        </form>
+      </div>
+    </>
   );
 }

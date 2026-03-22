@@ -498,3 +498,22 @@ CREATE POLICY "Users can view own email logs"
 CREATE POLICY "Users can insert own email logs"
   ON email_send_log FOR INSERT
   WITH CHECK (profile_id IN (SELECT id FROM profiles WHERE user_id = auth.uid()));
+
+-- AI assistant configuration (global per user, not per profile)
+CREATE TABLE ai_config (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id         UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  provider        TEXT NOT NULL DEFAULT 'openai' CHECK (provider IN ('openai', 'anthropic')),
+  encrypted_api_key TEXT NOT NULL,
+  iv              TEXT NOT NULL,
+  model           TEXT,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE(user_id)
+);
+
+ALTER TABLE ai_config ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can manage own AI config"
+  ON ai_config FOR ALL
+  USING (user_id = auth.uid());

@@ -8,17 +8,18 @@ interface EmailConfigResponse {
   config: EmailConfig | null;
 }
 
-export function useEmailConfig() {
+export function useEmailConfig(overrideProfileId?: string) {
   const { activeProfileId } = useBusinessProfile();
+  const profileId = overrideProfileId || activeProfileId;
 
   return useQuery<EmailConfigResponse>({
-    queryKey: ["email-config", activeProfileId],
+    queryKey: ["email-config", profileId],
     queryFn: async () => {
-      const res = await fetch(`/api/comprobantes/config?profileId=${activeProfileId}`);
+      const res = await fetch(`/api/comprobantes/config?profileId=${profileId}`);
       if (!res.ok) throw new Error("Error al cargar configuracion de email");
       return res.json();
     },
-    enabled: !!activeProfileId,
+    enabled: !!profileId,
   });
 }
 

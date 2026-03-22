@@ -36,6 +36,6 @@ export const config = {
      * - favicon.ico (favicon)
      * - api/health (health check)
      */
-    "/((?!_next/static|_next/image|favicon.ico|api/health|api/clarity/cron).*)",
+    "/((?!_next/static|_next/image|favicon.ico|api/health|api/clarity/cron|.*\\.png$|.*\\.jpeg$|.*\\.jpg$|.*\\.svg$|.*\\.webp$).*)",
   ],
 };

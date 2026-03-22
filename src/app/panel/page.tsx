@@ -26,6 +26,8 @@ import {
   ExternalLink,
   Map as MapIcon,
   RefreshCw,
+  Sparkles,
+  ChevronDown,
 } from "lucide-react";
 import { KPICard } from "@/components/dashboard/kpi-card";
 import type { ProfileBreakdownItem, KPIDetailItem } from "@/components/dashboard/kpi-card";
@@ -38,6 +40,7 @@ import { EmailComposer } from "@/components/comprobantes/email-composer";
 import { SalesAttribution } from "@/components/panel/sales-attribution";
 import { SessionsDailyChart } from "@/components/panel/sessions-daily-chart";
 import { AIAssistantBar } from "@/components/panel/ai-assistant-bar";
+import { buildDashboardContext } from "@/lib/ai-context-builder";
 import { CampaignTable } from "@/components/ads/campaign-table";
 import { AdsetTable } from "@/components/ads/adset-table";
 import { ActiveAdsCard } from "@/components/panel/top-campaigns-card";
@@ -258,7 +261,9 @@ export default function PanelGeneralPage() {
   const promotions = useMetaPromotions();
   const mp = useMercadoPago();
   const isMobile = useIsMobile();
+  const [activeTab, setActiveTab] = useState("resumen");
   const [resumenView, setResumenView] = useState<"kpis" | "alertas" | "atribucion">("kpis");
+  const [expandedInsight, setExpandedInsight] = useState<number | null>(null);
   const [rendimientoTab, setRendimientoTab] = useState("embudo");
   const [anunciosTab, setAnunciosTab] = useState("meta-ads");
   const [promoStatusTab, setPromoStatusTab] = useState("promo-activas");
@@ -374,22 +379,42 @@ export default function PanelGeneralPage() {
   }, [dateRange.startDate, dateRange.endDate]);
 
   const insights = useMemo(() => {
-    const list: { type: "warning" | "success" | "info"; message: string }[] = [];
+    type Insight = { type: "warning" | "success" | "info"; message: string; metric?: string; detail: { label: string; value: string }[] };
+    const list: Insight[] = [];
 
     if (!isLoadingMain) {
       if (roas > 0 && roas < 2) {
-        list.push({ type: "warning", message: `ROAS actual (${roas.toFixed(2)}x) está por debajo del mínimo recomendado de 2x` });
+        list.push({ type: "warning", message: `ROAS por debajo del mínimo recomendado de 2x`, metric: `${roas.toFixed(2)}x`, detail: [
+          { label: "Ingresos totales", value: formatMoney(revenue) },
+          { label: "Gasto en Ads", value: formatMoney(totalAdSpend) },
+          { label: "Fórmula", value: `${formatMoney(revenue)} ÷ ${formatMoney(totalAdSpend)}` },
+        ]});
       } else if (roas >= 2 && roas < 4) {
-        list.push({ type: "info", message: `ROAS de ${roas.toFixed(2)}x — rentable, pero con margen de mejora` });
+        list.push({ type: "info", message: `ROAS rentable, con margen de mejora`, metric: `${roas.toFixed(2)}x`, detail: [
+          { label: "Ingresos totales", value: formatMoney(revenue) },
+          { label: "Gasto en Ads", value: formatMoney(totalAdSpend) },
+          { label: "Fórmula", value: `${formatMoney(revenue)} ÷ ${formatMoney(totalAdSpend)}` },
+        ]});
       } else if (roas >= 4) {
-        list.push({ type: "success", message: `ROAS de ${roas.toFixed(2)}x — excelente rendimiento de campañas` });
+        list.push({ type: "success", message: `Excelente rendimiento de campañas`, metric: `${roas.toFixed(2)}x`, detail: [
+          { label: "Ingresos totales", value: formatMoney(revenue) },
+          { label: "Gasto en Ads", value: formatMoney(totalAdSpend) },
+          { label: "Fórmula", value: `${formatMoney(revenue)} ÷ ${formatMoney(totalAdSpend)}` },
+        ]});
       }
 
       if (revenueTrend && revenueTrend.percentChange !== 0) {
         const dir = revenueTrend.percentChange > 0 ? "subieron" : "bajaron";
+        const pct = Math.abs(revenueTrend.percentChange);
         list.push({
           type: revenueTrend.percentChange > 0 ? "success" : "warning",
-          message: `Ingresos ${dir} un ${Math.abs(revenueTrend.percentChange).toFixed(1)}% respecto al periodo anterior`,
+          message: `Ingresos ${dir} respecto al periodo anterior`,
+          metric: `${revenueTrend.percentChange > 0 ? "+" : "-"}${pct.toFixed(1)}%`,
+          detail: [
+            { label: "Periodo actual", value: formatMoney(revenue) },
+            { label: "Periodo anterior", value: formatMoney(revenue / (1 + revenueTrend.percentChange / 100)) },
+            { label: "Variación", value: `${pct.toFixed(1)}%` },
+          ],
         });
       }
 
@@ -399,19 +424,32 @@ export default function PanelGeneralPage() {
       );
       if (bestDay && bestDay.revenue > 0) {
         const label = new Date(bestDay.date + "T00:00:00").toLocaleDateString("es-AR", { day: "numeric", month: "short" });
-        list.push({ type: "success", message: `Mejor día del periodo: ${label} con ${formatMoney(bestDay.revenue)} en ingresos` });
+        const pctOfTotal = revenue > 0 ? ((bestDay.revenue / revenue) * 100).toFixed(1) : "0";
+        list.push({ type: "success", message: `Mejor día del periodo: ${label}`, metric: formatMoney(bestDay.revenue), detail: [
+          { label: "Pedidos del día", value: formatNumber(bestDay.orders) },
+          { label: "% del total", value: `${pctOfTotal}%` },
+          { label: "Ingreso promedio", value: bestDay.orders > 0 ? formatMoney(bestDay.revenue / bestDay.orders) : "-" },
+        ]});
       }
 
       const campaigns = campaignsQuery.data?.campaigns ?? [];
       if (campaigns.length > 0) {
         const best = campaigns.reduce((b, c) => (c.roas > b.roas ? c : b), campaigns[0]);
         if (best.roas > 0) {
-          list.push({ type: "info", message: `Mejor campaña: "${best.campaignName}" con ROAS ${best.roas.toFixed(2)}x` });
+          list.push({ type: "info", message: `Mejor campaña: "${best.campaignName}"`, metric: `${best.roas.toFixed(2)}x`, detail: [
+            { label: "Campaña", value: best.campaignName },
+            { label: "ROAS", value: `${best.roas.toFixed(2)}x` },
+            { label: "Gasto", value: formatMoney(best.spend) },
+          ]});
         }
       }
 
       if (costPerResult > 0) {
-        list.push({ type: "info", message: `Costo por resultado promedio: ${formatMoney(costPerResult)} por pedido` });
+        list.push({ type: "info", message: `Costo por resultado promedio`, metric: formatMoney(costPerResult), detail: [
+          { label: "Gasto total en Ads", value: formatMoney(totalAdSpend) },
+          { label: "Total pedidos", value: formatNumber(orderCount) },
+          { label: "Costo unitario", value: formatMoney(costPerResult) },
+        ]});
       }
 
       const impressions = meta.data?.impressions ?? 0;
@@ -419,12 +457,16 @@ export default function PanelGeneralPage() {
       if (impressions > 0 && clicks > 0) {
         const ctr = (clicks / impressions) * 100;
         const ctrType = ctr >= 2 ? "success" : ctr >= 1 ? "info" : "warning";
-        list.push({ type: ctrType, message: `CTR de campañas Meta: ${ctr.toFixed(2)}% (${formatNumber(clicks)} clics de ${formatNumber(impressions)} impresiones)` });
+        list.push({ type: ctrType, message: `CTR de campañas Meta`, metric: `${ctr.toFixed(2)}%`, detail: [
+          { label: "Clics", value: formatNumber(clicks) },
+          { label: "Impresiones", value: formatNumber(impressions) },
+          { label: "Ratio", value: `${ctr.toFixed(2)}%` },
+        ]});
       }
     }
 
     return list.slice(0, 6);
-  }, [isLoadingMain, roas, revenueTrend, shopify.data, campaignsQuery.data, meta.data, costPerResult, formatMoney]);
+  }, [isLoadingMain, roas, revenueTrend, shopify.data, campaignsQuery.data, meta.data, costPerResult, formatMoney, revenue, totalAdSpend, orderCount]);
 
   const combinedData = useMemo(() => {
     const normalizeDate = (dateStr: string): string => {
@@ -758,6 +800,58 @@ export default function PanelGeneralPage() {
       }));
   }, [promotions.ads, promotions.perProfile, promotions.data?.ctr]);
 
+  const activeProfileName = aggregateMode
+    ? profiles.filter((p) => selectedProfileIds.includes(p.id)).map((p) => p.name).join(", ") || "Todos"
+    : profiles.find((p) => p.isActive)?.name || "Mi negocio";
+
+  const dashboardContext = useMemo(() => {
+    const campaigns = campaignsQuery.data?.campaigns ?? [];
+    return buildDashboardContext({
+      dateRange,
+      profileName: activeProfileName,
+      aggregateMode,
+      shopify: shopify.data ? {
+        totalRevenue: shopify.data.totalRevenue,
+        orderCount: shopify.data.orderCount,
+        averageOrderValue: shopify.data.averageOrderValue,
+        currency: shopify.data.currency,
+        dailyRevenue: shopify.data.dailyRevenue,
+      } : null,
+      meta: meta.data ? {
+        spend: meta.data.spend,
+        impressions: meta.data.impressions,
+        clicks: meta.data.clicks,
+        cpc: meta.data.cpc,
+        ctr: meta.data.ctr,
+        roas: meta.data.roas,
+        conversions: meta.data.conversions,
+        purchaseRevenue: meta.data.purchaseRevenue,
+        costPerAcquisition: meta.data.costPerAcquisition,
+        dailyMetrics: meta.data.dailyMetrics,
+      } : null,
+      campaigns: campaigns.length > 0 ? campaigns.map((c) => ({
+        name: c.campaignName,
+        spend: c.spend,
+        impressions: c.impressions,
+        clicks: c.clicks,
+        roas: c.roas,
+        conversions: c.conversions,
+      })) : null,
+      clarity: clarity.data ? {
+        totalSessions: clarity.data.traffic.totalSessions,
+        distinctUsers: clarity.data.traffic.distinctUsers,
+        pagesPerSession: clarity.data.traffic.pagesPerSession,
+        scrollDepth: clarity.data.scrollDepth,
+        activeTime: clarity.data.engagement.activeTime,
+        deadClicks: clarity.data.frustration.deadClicks,
+        rageClicks: clarity.data.frustration.rageClicks,
+        quickbacks: clarity.data.frustration.quickbacks,
+        topPages: clarity.data.topPages,
+        devices: clarity.data.devices,
+        countries: clarity.data.countries,
+      } : null,
+    });
+  }, [dateRange, activeProfileName, aggregateMode, shopify.data, meta.data, campaignsQuery.data, clarity.data]);
 
   return (
     <TooltipProvider>
@@ -768,9 +862,9 @@ export default function PanelGeneralPage() {
         />
       )}
 
-      <AIAssistantBar placeholder="Preguntale algo a tus datos..." />
+      <AIAssistantBar placeholder="Preguntale algo a tus datos..." dashboardContext={dashboardContext} activeSection={activeTab} />
 
-      <Tabs defaultValue="resumen" className="flex-1 flex flex-col min-h-0">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
         <TabsList
           variant="default"
           className="flex-shrink-0 w-full h-9 overflow-x-auto scrollbar-none justify-start sm:justify-center"
@@ -822,38 +916,67 @@ export default function PanelGeneralPage() {
 
                 {resumenView === "alertas" && (
                   <Card className="py-0 gap-0 rounded-2xl">
-                    <CardContent className="p-6">
-                      <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-6">
-                        Alertas & Insights
-                      </p>
+                    <CardContent className="p-5">
+                      <div className="flex items-center gap-2 mb-5">
+                        <h3 className="text-sm font-semibold bg-gradient-to-r from-foreground to-foreground/70 dark:from-cyan-300 dark:to-blue-400 bg-clip-text text-transparent">
+                          Alertas & Insights
+                        </h3>
+                        {!isLoadingMain && insights.length > 0 && (
+                          <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20">
+                            {insights.length}
+                          </span>
+                        )}
+                      </div>
                       {isLoadingMain ? (
-                        <div className="space-y-5">
-                          {[1, 2, 3, 4, 5, 6].map((i) => (
-                            <div key={i} className="h-4 bg-muted/40 rounded animate-pulse" />
+                        <div className="space-y-3">
+                          {[1, 2, 3, 4].map((i) => (
+                            <div key={i} className="h-20 bg-muted/40 rounded-xl animate-pulse" />
                           ))}
                         </div>
                       ) : insights.length > 0 ? (
-                        <div className="space-y-5">
-                          {insights.map((insight, i) => (
-                            <div key={i} className="flex items-start gap-3">
-                              {insight.type === "warning" && (
-                                <div className="mt-1 flex-shrink-0 w-4 h-4 rounded-full border border-amber-500 flex items-center justify-center">
-                                  <AlertTriangle className="h-2.5 w-2.5 text-amber-500" />
+                        <div className="space-y-3">
+                          {insights.map((insight, i) => {
+                            const isExpanded = expandedInsight === i;
+                            const colorMap = {
+                              success: { border: "border-emerald-500/20", glow: "shadow-[0_0_8px_rgba(16,185,129,0.08)]", hoverGlow: "hover:shadow-[0_0_14px_rgba(16,185,129,0.15)]", text: "text-emerald-500 dark:text-emerald-400", dot: "bg-emerald-500" },
+                              warning: { border: "border-amber-500/20", glow: "shadow-[0_0_8px_rgba(245,158,11,0.08)]", hoverGlow: "hover:shadow-[0_0_14px_rgba(245,158,11,0.15)]", text: "text-amber-500 dark:text-amber-400", dot: "bg-amber-500" },
+                              info: { border: "border-blue-500/20", glow: "shadow-[0_0_8px_rgba(59,130,246,0.08)]", hoverGlow: "hover:shadow-[0_0_14px_rgba(59,130,246,0.15)]", text: "text-blue-500 dark:text-blue-400", dot: "bg-blue-500" },
+                            };
+                            const c = colorMap[insight.type];
+                            return (
+                              <button
+                                key={i}
+                                type="button"
+                                onClick={() => setExpandedInsight(isExpanded ? null : i)}
+                                className={cn(
+                                  "w-full text-left rounded-lg border px-3.5 py-3 transition-all duration-200 cursor-pointer bg-transparent",
+                                  c.border, c.glow, c.hoverGlow
+                                )}
+                              >
+                                <div className="flex items-center gap-2.5">
+                                  <div className={cn("flex-shrink-0 w-1.5 h-1.5 rounded-full", c.dot)} />
+                                  <p className="flex-1 text-sm text-foreground/80 leading-snug">{insight.message}</p>
+                                  {insight.metric && (
+                                    <span className={cn("text-xs font-semibold flex-shrink-0", c.text)}>{insight.metric}</span>
+                                  )}
+                                  <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground/40 transition-transform duration-200 flex-shrink-0", isExpanded && "rotate-180")} />
                                 </div>
-                              )}
-                              {insight.type === "success" && (
-                                <div className="mt-1 flex-shrink-0 w-4 h-4 rounded-full border border-emerald-500 flex items-center justify-center">
-                                  <CheckCircle2 className="h-2.5 w-2.5 text-emerald-500" />
+                                <div className={cn(
+                                  "overflow-hidden transition-all duration-200 ease-in-out",
+                                  isExpanded ? "max-h-40 opacity-100 mt-2.5" : "max-h-0 opacity-0"
+                                )}>
+                                  <div className="border-t border-foreground/5 pt-2.5 space-y-1.5 ml-4">
+                                    {insight.detail.map((d, j) => (
+                                      <div key={j} className="flex items-center justify-between text-xs">
+                                        <span className="text-muted-foreground">{d.label}</span>
+                                        <span className="font-medium text-foreground/70">{d.value}</span>
+                                      </div>
+                                    ))}
+                                  </div>
                                 </div>
-                              )}
-                              {insight.type === "info" && (
-                                <div className="mt-1 flex-shrink-0 w-4 h-4 rounded-full border border-blue-500 flex items-center justify-center">
-                                  <Info className="h-2.5 w-2.5 text-blue-500" />
-                                </div>
-                              )}
-                              <span className="text-sm leading-snug text-foreground/70">{insight.message}</span>
-                            </div>
-                          ))}
+                              </button>
+                            );
+                          })}
                         </div>
                       ) : (
                         <p className="text-sm text-muted-foreground">Sin alertas para este periodo.</p>
@@ -889,39 +1012,68 @@ export default function PanelGeneralPage() {
 
               {/* Alertas + Attribution */}
               <div className="grid grid-cols-12 gap-6 flex-1 min-h-0">
-                <Card className="col-span-12 lg:col-span-5 h-full overflow-hidden flex flex-col rounded-2xl">
-                  <CardContent className="p-6 flex-1 overflow-y-auto">
-                    <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-6">
-                      Alertas & Insights
-                    </p>
+                <Card className="col-span-12 lg:col-span-5 h-full overflow-hidden flex flex-col rounded-2xl py-0 gap-0">
+                  <CardContent className="p-4 pt-4 flex-1 overflow-y-auto">
+                    <div className="flex items-center gap-2 mb-5">
+                      <h3 className="text-sm font-semibold bg-gradient-to-r from-foreground to-foreground/70 dark:from-cyan-300 dark:to-blue-400 bg-clip-text text-transparent">
+                        Alertas & Insights
+                      </h3>
+                      {!isLoadingMain && insights.length > 0 && (
+                        <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20">
+                          {insights.length}
+                        </span>
+                      )}
+                    </div>
                     {isLoadingMain ? (
-                      <div className="space-y-5">
-                        {[1, 2, 3, 4, 5, 6].map((i) => (
-                          <div key={i} className="h-4 bg-muted/40 rounded animate-pulse" />
+                      <div className="space-y-3">
+                        {[1, 2, 3, 4].map((i) => (
+                          <div key={i} className="h-20 bg-muted/40 rounded-xl animate-pulse" />
                         ))}
                       </div>
                     ) : insights.length > 0 ? (
-                      <div className="space-y-5">
-                        {insights.map((insight, i) => (
-                          <div key={i} className="flex items-start gap-3">
-                            {insight.type === "warning" && (
-                              <div className="mt-1 flex-shrink-0 w-4 h-4 rounded-full border border-amber-500 flex items-center justify-center">
-                                <AlertTriangle className="h-2.5 w-2.5 text-amber-500" />
+                      <div className="space-y-3">
+                        {insights.map((insight, i) => {
+                          const isExpanded = expandedInsight === i;
+                          const colorMap = {
+                            success: { border: "border-emerald-500/20", glow: "shadow-[0_0_8px_rgba(16,185,129,0.08)]", hoverGlow: "hover:shadow-[0_0_14px_rgba(16,185,129,0.15)]", text: "text-emerald-500 dark:text-emerald-400", dot: "bg-emerald-500" },
+                            warning: { border: "border-amber-500/20", glow: "shadow-[0_0_8px_rgba(245,158,11,0.08)]", hoverGlow: "hover:shadow-[0_0_14px_rgba(245,158,11,0.15)]", text: "text-amber-500 dark:text-amber-400", dot: "bg-amber-500" },
+                            info: { border: "border-blue-500/20", glow: "shadow-[0_0_8px_rgba(59,130,246,0.08)]", hoverGlow: "hover:shadow-[0_0_14px_rgba(59,130,246,0.15)]", text: "text-blue-500 dark:text-blue-400", dot: "bg-blue-500" },
+                          };
+                          const c = colorMap[insight.type];
+                          return (
+                            <button
+                              key={i}
+                              type="button"
+                              onClick={() => setExpandedInsight(isExpanded ? null : i)}
+                              className={cn(
+                                "w-full text-left rounded-lg border px-3.5 py-3 transition-all duration-200 cursor-pointer bg-transparent",
+                                c.border, c.glow, c.hoverGlow
+                              )}
+                            >
+                              <div className="flex items-center gap-2.5">
+                                <div className={cn("flex-shrink-0 w-1.5 h-1.5 rounded-full", c.dot)} />
+                                <p className="flex-1 text-sm text-foreground/80 leading-snug">{insight.message}</p>
+                                {insight.metric && (
+                                  <span className={cn("text-xs font-semibold flex-shrink-0", c.text)}>{insight.metric}</span>
+                                )}
+                                <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground/40 transition-transform duration-200 flex-shrink-0", isExpanded && "rotate-180")} />
                               </div>
-                            )}
-                            {insight.type === "success" && (
-                              <div className="mt-1 flex-shrink-0 w-4 h-4 rounded-full border border-emerald-500 flex items-center justify-center">
-                                <CheckCircle2 className="h-2.5 w-2.5 text-emerald-500" />
+                              <div className={cn(
+                                "overflow-hidden transition-all duration-200 ease-in-out",
+                                isExpanded ? "max-h-40 opacity-100 mt-2.5" : "max-h-0 opacity-0"
+                              )}>
+                                <div className="border-t border-foreground/5 pt-2.5 space-y-1.5 ml-4">
+                                  {insight.detail.map((d, j) => (
+                                    <div key={j} className="flex items-center justify-between text-xs">
+                                      <span className="text-muted-foreground">{d.label}</span>
+                                      <span className="font-medium text-foreground/70">{d.value}</span>
+                                    </div>
+                                  ))}
+                                </div>
                               </div>
-                            )}
-                            {insight.type === "info" && (
-                              <div className="mt-1 flex-shrink-0 w-4 h-4 rounded-full border border-blue-500 flex items-center justify-center">
-                                <Info className="h-2.5 w-2.5 text-blue-500" />
-                              </div>
-                            )}
-                            <span className="text-sm leading-snug text-foreground/70">{insight.message}</span>
-                          </div>
-                        ))}
+                            </button>
+                          );
+                        })}
                       </div>
                     ) : (
                       <p className="text-sm text-muted-foreground">Sin alertas para este periodo.</p>
