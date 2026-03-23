@@ -270,6 +270,33 @@ export default function PanelGeneralPage() {
   const [clarityTab, setClarityTab] = useState("cl-resumen");
   const isLoadingMain = shopify.isLoading || meta.isLoading || promotions.isLoading || mp.isLoading;
 
+  // Check which platforms are disabled for all active profiles
+  const activeProfiles = useMemo(() =>
+    aggregateMode
+      ? profiles.filter((p) => selectedProfileIds.includes(p.id))
+      : profiles.filter((p) => p.isActive),
+    [aggregateMode, profiles, selectedProfileIds],
+  );
+  const isClarityDisabled = useMemo(() => {
+    if (activeProfiles.length === 0) return false;
+    return activeProfiles.every((p) => p.disabledServices?.includes("clarity"));
+  }, [activeProfiles]);
+  const isMetaDisabled = useMemo(() => {
+    if (activeProfiles.length === 0) return false;
+    return activeProfiles.every((p) => p.disabledServices?.includes("meta"));
+  }, [activeProfiles]);
+  const isShopifyDisabled = useMemo(() => {
+    if (activeProfiles.length === 0) return false;
+    return activeProfiles.every((p) => p.disabledServices?.includes("shopify"));
+  }, [activeProfiles]);
+
+  // Reset tab if clarity gets disabled while it's active
+  useEffect(() => {
+    if (isClarityDisabled && activeTab === "clarity") {
+      setActiveTab("resumen");
+    }
+  }, [isClarityDisabled, activeTab]);
+
   // ── Swipe navigation for sub-tabs (mobile only) ──
   const resumenSwipe = useSwipeNavigation({
     items: ["kpis", "alertas", "atribucion"],
@@ -527,7 +554,7 @@ export default function PanelGeneralPage() {
         impressions: m?.impressions ?? 0,
         clicks: m?.clicks ?? 0,
         landingSessions: allProfilesClarity.find((c) => c.profileId === pid)?.data?.traffic.totalSessions ?? 0,
-        checkouts: a?.checkoutSessions ?? 0,
+        checkouts: a?.checkoutCount ?? 0,
         orders: s?.orderCount ?? 0,
       };
     });
@@ -546,6 +573,41 @@ export default function PanelGeneralPage() {
         isPositive: revenueTrend.percentChange >= 0,
       }
     : undefined;
+
+  const aovTrendProp = useMemo(() => {
+    const prev = revenueTrend?.previousPeriodAOV;
+    if (!prev || prev === 0 || !aov) return undefined;
+    const pct = ((aov - prev) / prev) * 100;
+    return {
+      value: pct,
+      direction: pct > 0 ? "up" as const : pct < 0 ? "down" as const : "neutral" as const,
+      isPositive: pct >= 0,
+    };
+  }, [aov, revenueTrend]);
+
+  const prevAdSpend = meta.data?.previousPeriodSpend ?? 0;
+  const roasTrendProp = useMemo(() => {
+    const prevRevenue = revenueTrend?.previousPeriodRevenue ?? 0;
+    const prevRoas = prevAdSpend > 0 ? prevRevenue / prevAdSpend : 0;
+    if (!prevRoas || !roas) return undefined;
+    const pct = ((roas - prevRoas) / prevRoas) * 100;
+    return {
+      value: pct,
+      direction: pct > 0 ? "up" as const : pct < 0 ? "down" as const : "neutral" as const,
+      isPositive: pct >= 0,
+    };
+  }, [roas, revenueTrend, prevAdSpend]);
+
+  const ordersTrendProp = useMemo(() => {
+    const prev = revenueTrend?.previousPeriodOrderCount;
+    if (!prev || prev === 0 || !orderCount) return undefined;
+    const pct = ((orderCount - prev) / prev) * 100;
+    return {
+      value: pct,
+      direction: pct > 0 ? "up" as const : pct < 0 ? "down" as const : "neutral" as const,
+      isPositive: pct >= 0,
+    };
+  }, [orderCount, revenueTrend]);
 
   // ── KPI detail items (composición) ──────────────────────────────────────────
   const bestDay = useMemo(() => {
@@ -873,7 +935,7 @@ export default function PanelGeneralPage() {
           <TabsTrigger value="campanas" className="flex-none sm:flex-1 px-3">Rendimiento</TabsTrigger>
           <TabsTrigger value="anuncios" className="flex-none sm:flex-1 px-3">Anuncios</TabsTrigger>
           <TabsTrigger value="pedidos" className="flex-none sm:flex-1 px-3">Pedidos</TabsTrigger>
-          <TabsTrigger value="clarity" className="flex-none sm:flex-1 px-3">Clarity</TabsTrigger>
+          {!isClarityDisabled && <TabsTrigger value="clarity" className="flex-none sm:flex-1 px-3">Clarity</TabsTrigger>}
         </TabsList>
 
         {/* ── Tab: Resumen ──────────────────────────────────────────────── */}
@@ -907,10 +969,11 @@ export default function PanelGeneralPage() {
                   <div className="grid gap-2 grid-cols-2 items-start">
                     <KPICard title="Ingresos Totales" value={revenue} formattedValue={formatMoney(revenue)} icon={DollarSign} iconClassName="text-emerald-500" isLoading={shopify.isLoading} trend={revenueTrendProp} detailItems={ingresoDetails} />
                     <KPICard title="Ganancia Neta" value={netProfit} formattedValue={formatMoney(netProfit)} icon={Percent} iconClassName={netProfit >= 0 ? "text-emerald-500" : "text-red-500"} isLoading={isLoadingMain} trend={revenueTrendProp} detailItems={gananciaDetails} />
-                    <KPICard title="ROAS" value={roas} formattedValue={`${roas.toFixed(2)}x`} icon={TrendingUp} iconClassName="text-teal-500" isLoading={meta.isLoading} detailItems={roasDetails} />
-                    <KPICard title="Pedidos" value={orderCount} formattedValue={formatNumber(orderCount)} icon={ShoppingCart} iconClassName="text-blue-500" isLoading={shopify.isLoading} subtitle={`~${(orderCount / dayCount).toFixed(1)} por día`} detailItems={pedidosDetails} />
-                    <KPICard title="Gasto en Ads" value={totalAdSpend} formattedValue={formatMoney(totalAdSpend)} icon={Megaphone} iconClassName="text-red-500" isLoading={isLoadingMain} detailItems={gastoDetails} />
-                    <KPICard title="Costo x Resultado" value={costPerResult} formattedValue={formatMoney(costPerResult)} icon={Target} iconClassName="text-orange-500" isLoading={isLoadingMain} subtitle={metaConversions > 0 ? `${formatNumber(metaConversions)} conv.` : undefined} detailItems={costoResultadoDetails} />
+                    <KPICard title="ROAS" value={roas} formattedValue={`${roas.toFixed(2)}x`} icon={TrendingUp} iconClassName="text-teal-500" isLoading={meta.isLoading} trend={roasTrendProp} detailItems={roasDetails} />
+                    <KPICard title="Ticket Promedio" value={aov} formattedValue={formatMoney(aov)} icon={Receipt} iconClassName="text-emerald-500" isLoading={shopify.isLoading} trend={aovTrendProp} detailItems={ticketDetails} />
+                    <KPICard title="Pedidos" value={orderCount} formattedValue={formatNumber(orderCount)} icon={ShoppingCart} iconClassName="text-blue-500" isLoading={shopify.isLoading} trend={ordersTrendProp} detailItems={pedidosDetails} />
+                    <KPICard title="Gasto en Ads" value={totalAdSpend} formattedValue={formatMoney(totalAdSpend)} icon={Megaphone} iconClassName="text-red-500" isLoading={isLoadingMain} subtitle={`~${formatMoney(totalAdSpend / dayCount)}/día`} detailItems={gastoDetails} />
+                    <KPICard title="Costo x Resultado" value={costPerResult} formattedValue={formatMoney(costPerResult)} icon={Target} iconClassName="text-orange-500" isLoading={isLoadingMain} subtitle={orderCount > 0 ? `${formatNumber(orderCount)} pedidos` : undefined} detailItems={costoResultadoDetails} />
                   </div>
                 )}
 
@@ -1003,11 +1066,11 @@ export default function PanelGeneralPage() {
               <div className="grid gap-4 grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 flex-shrink-0 items-start">
                 <KPICard title="Ingresos Totales" value={revenue} formattedValue={formatMoney(revenue)} icon={DollarSign} iconClassName="text-emerald-500" isLoading={shopify.isLoading} trend={revenueTrendProp} detailItems={ingresoDetails} />
                 <KPICard title="Ganancia Neta" value={netProfit} formattedValue={formatMoney(netProfit)} icon={Percent} iconClassName={netProfit >= 0 ? "text-emerald-500" : "text-red-500"} isLoading={isLoadingMain} trend={revenueTrendProp} detailItems={gananciaDetails} />
-                <KPICard title="ROAS" value={roas} formattedValue={`${roas.toFixed(2)}x`} icon={TrendingUp} iconClassName="text-teal-500" isLoading={meta.isLoading} detailItems={roasDetails} />
-                <KPICard title="Pedidos" value={orderCount} formattedValue={formatNumber(orderCount)} icon={ShoppingCart} iconClassName="text-blue-500" isLoading={shopify.isLoading} subtitle={`~${(orderCount / dayCount).toFixed(1)} por día`} detailItems={pedidosDetails} />
-                <KPICard title="Ticket Promedio" value={aov} formattedValue={formatMoney(aov)} icon={Receipt} iconClassName="text-emerald-500" isLoading={shopify.isLoading} detailItems={ticketDetails} />
-                <KPICard title="Gasto en Ads" value={totalAdSpend} formattedValue={formatMoney(totalAdSpend)} icon={Megaphone} iconClassName="text-red-500" isLoading={isLoadingMain} detailItems={gastoDetails} />
-                <KPICard title="Costo x Resultado" value={costPerResult} formattedValue={formatMoney(costPerResult)} icon={Target} iconClassName="text-orange-500" isLoading={isLoadingMain} subtitle={metaConversions > 0 ? `${formatNumber(metaConversions)} conv.` : undefined} detailItems={costoResultadoDetails} />
+                <KPICard title="ROAS" value={roas} formattedValue={`${roas.toFixed(2)}x`} icon={TrendingUp} iconClassName="text-teal-500" isLoading={meta.isLoading} trend={roasTrendProp} detailItems={roasDetails} />
+                <KPICard title="Ticket Promedio" value={aov} formattedValue={formatMoney(aov)} icon={Receipt} iconClassName="text-emerald-500" isLoading={shopify.isLoading} trend={aovTrendProp} detailItems={ticketDetails} />
+                <KPICard title="Pedidos" value={orderCount} formattedValue={formatNumber(orderCount)} icon={ShoppingCart} iconClassName="text-blue-500" isLoading={shopify.isLoading} trend={ordersTrendProp} detailItems={pedidosDetails} />
+                <KPICard title="Gasto en Ads" value={totalAdSpend} formattedValue={formatMoney(totalAdSpend)} icon={Megaphone} iconClassName="text-red-500" isLoading={isLoadingMain} subtitle={`~${formatMoney(totalAdSpend / dayCount)}/día`} detailItems={gastoDetails} />
+                <KPICard title="Costo x Resultado" value={costPerResult} formattedValue={formatMoney(costPerResult)} icon={Target} iconClassName="text-orange-500" isLoading={isLoadingMain} subtitle={orderCount > 0 ? `${formatNumber(orderCount)} pedidos` : undefined} detailItems={costoResultadoDetails} />
               </div>
 
               {/* Alertas + Attribution */}
@@ -1116,9 +1179,12 @@ export default function PanelGeneralPage() {
                 impressions={meta.data?.impressions ?? 0}
                 clicks={meta.data?.clicks ?? 0}
                 landingSessions={aggregateMode ? claritySesiones.totalValue : (clarity.data?.traffic.totalSessions ?? 0)}
-                checkouts={analytics.data?.checkoutSessions ?? 0}
+                checkouts={analytics.data?.checkoutCount ?? 0}
                 orders={orderCount}
                 isLoading={isLoadingMain || analytics.isLoading || clarity.isLoading}
+                metaEnabled={!isMetaDisabled}
+                clarityEnabled={!isClarityDisabled}
+                shopifyEnabled={!isShopifyDisabled}
                 profileBreakdown={funnelBreakdown}
                 fillHeight
               />
@@ -1192,14 +1258,14 @@ export default function PanelGeneralPage() {
               variant="line"
               className="flex-shrink-0 w-full h-8 border-b border-border rounded-none bg-transparent gap-0 overflow-x-auto scrollbar-none"
             >
-              <TabsTrigger value="meta-ads" className="text-xs flex-none sm:flex-1 px-3 rounded-none border-b-2 border-transparent data-[state=active]:border-b-primary data-[state=active]:text-foreground text-muted-foreground/60 hover:text-muted-foreground">Publicidad</TabsTrigger>
-              <TabsTrigger value="promociones-ig" className="text-xs flex-none sm:flex-1 px-3 rounded-none border-b-2 border-transparent data-[state=active]:border-b-primary data-[state=active]:text-foreground text-muted-foreground/60 hover:text-muted-foreground">Promociones IG</TabsTrigger>
+              <TabsTrigger value="meta-ads" className="text-xs flex-none sm:flex-1 px-3 rounded-none border-b-2 border-transparent data-[state=active]:border-b-primary data-[state=active]:text-foreground text-muted-foreground/60 hover:text-muted-foreground">Meta Ads</TabsTrigger>
+              <TabsTrigger value="promociones-ig" className="text-xs flex-none sm:flex-1 px-3 rounded-none border-b-2 border-transparent data-[state=active]:border-b-primary data-[state=active]:text-foreground text-muted-foreground/60 hover:text-muted-foreground">Promociones</TabsTrigger>
             </TabsList>
 
             {/* Sub-tab: Publicidad — active ads with preview */}
             <TabsContent value="meta-ads" className="flex-1 min-h-0 overflow-hidden pt-2 animate-in fade-in-0 duration-150" onTouchStart={anunciosSwipe.onTouchStart} onTouchEnd={anunciosSwipe.onTouchEnd}>
-              <div className="h-full flex flex-col gap-2 overflow-hidden">
-                <div className="grid gap-2 grid-cols-2 sm:grid-cols-4 flex-shrink-0">
+              <div className="h-full flex flex-col gap-4 overflow-hidden">
+                <div className="grid gap-4 grid-cols-2 sm:grid-cols-4 flex-shrink-0 items-start">
                   <KPICard
                     title="Gasto Meta"
                     value={ads.data?.activeAds.reduce((sum, ad) => sum + ad.spend, 0) ?? 0}
@@ -1208,6 +1274,7 @@ export default function PanelGeneralPage() {
                     iconClassName="text-blue-500"
                     isLoading={ads.isLoading}
                     detailItems={adsGastoDetails}
+                    subtitle={`~${formatMoney((ads.data?.activeAds.reduce((sum, ad) => sum + ad.spend, 0) ?? 0) / dayCount)}/día`}
                   />
                   <KPICard
                     title="Impresiones"
@@ -1217,6 +1284,7 @@ export default function PanelGeneralPage() {
                     iconClassName="text-blue-500"
                     isLoading={ads.isLoading}
                     detailItems={adsImpresionesDetails}
+                    subtitle={`~${formatNumber(Math.round((ads.data?.activeAds.reduce((sum, ad) => sum + ad.impressions, 0) ?? 0) / dayCount))}/día`}
                   />
                   <KPICard
                     title="Clics"
@@ -1226,6 +1294,7 @@ export default function PanelGeneralPage() {
                     iconClassName="text-blue-500"
                     isLoading={ads.isLoading}
                     detailItems={adsClicsDetails}
+                    subtitle={`~${formatNumber(Math.round((ads.data?.activeAds.reduce((sum, ad) => sum + ad.clicks, 0) ?? 0) / dayCount))}/día`}
                   />
                   <KPICard
                     title="CTR Meta"
@@ -1248,9 +1317,10 @@ export default function PanelGeneralPage() {
                     iconClassName="text-blue-500"
                     isLoading={ads.isLoading}
                     detailItems={adsCtrDetails}
+                    subtitle={`${formatNumber(ads.data?.activeAds.reduce((sum, ad) => sum + ad.impressions, 0) ?? 0)} impresiones`}
                   />
                 </div>
-                <div className="flex-1 min-h-0 overflow-y-auto">
+                <div className="flex-1 min-h-0 flex flex-col">
                   <ActiveAdsCard
                     activeAds={ads.data?.activeAds ?? []}
                     inactiveAds={ads.data?.inactiveAds ?? []}
@@ -1263,8 +1333,8 @@ export default function PanelGeneralPage() {
             {/* Sub-tab: Promociones IG — Instagram promotions */}
             <TabsContent value="promociones-ig" className="flex-1 min-h-0 overflow-hidden pt-2 animate-in fade-in-0 duration-150" onTouchStart={anunciosSwipe.onTouchStart} onTouchEnd={anunciosSwipe.onTouchEnd}>
               {(promotions.configured || promotions.isLoading) ? (
-                <div className="h-full flex flex-col gap-2 overflow-hidden">
-                  <div className="grid gap-2 grid-cols-2 sm:grid-cols-4 flex-shrink-0">
+                <div className="h-full flex flex-col gap-4 overflow-hidden">
+                  <div className="grid gap-4 grid-cols-2 sm:grid-cols-4 flex-shrink-0 items-start">
                     <KPICard
                       title="Gasto Promos"
                       value={promotions.data?.spend ?? 0}
@@ -1274,6 +1344,7 @@ export default function PanelGeneralPage() {
                       isLoading={promotions.isLoading}
                       detailItems={promoGastoDetails}
                       breakdown={promoGastoBreakdown}
+                      subtitle={`~${formatMoney((promotions.data?.spend ?? 0) / dayCount)}/día`}
                     />
                     <KPICard
                       title="Impresiones"
@@ -1284,6 +1355,7 @@ export default function PanelGeneralPage() {
                       isLoading={promotions.isLoading}
                       detailItems={promoImpresionesDetails}
                       breakdown={promoImpresionesBreakdown}
+                      subtitle={`~${formatNumber(Math.round((promotions.data?.impressions ?? 0) / dayCount))}/día`}
                     />
                     <KPICard
                       title="Clics"
@@ -1294,6 +1366,7 @@ export default function PanelGeneralPage() {
                       isLoading={promotions.isLoading}
                       detailItems={promoClicsDetails}
                       breakdown={promoClicsBreakdown}
+                      subtitle={`~${formatNumber(Math.round((promotions.data?.clicks ?? 0) / dayCount))}/día`}
                     />
                     <KPICard
                       title="CTR Promos"
@@ -1304,6 +1377,7 @@ export default function PanelGeneralPage() {
                       isLoading={promotions.isLoading}
                       detailItems={promoCtrDetails}
                       breakdown={promoCtrBreakdown}
+                      subtitle={`${formatNumber(promotions.data?.impressions ?? 0)} impresiones`}
                     />
                   </div>
                   <Card className="flex-1 min-h-0 flex flex-col overflow-hidden">
@@ -1323,14 +1397,25 @@ export default function PanelGeneralPage() {
                             <p className="text-sm text-muted-foreground text-center py-4">No hay promociones activas.</p>
                           ) : (
                             <div className="overflow-x-auto">
-                              <table className="w-full">
+                              <table className="w-full table-fixed">
+                                <colgroup>
+                                  <col style={{ width: "30%" }} />
+                                  <col style={{ width: "10%" }} />
+                                  <col style={{ width: "12%" }} />
+                                  <col style={{ width: "12%" }} />
+                                  <col style={{ width: "10%" }} />
+                                  <col style={{ width: "12%" }} />
+                                  <col style={{ width: "14%" }} />
+                                </colgroup>
                                 <thead>
                                   <tr className="border-b border-border/30">
-                                    <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-left pb-3">Anuncio</th>
-                                    <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right pb-3">Duración</th>
-                                    <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right pb-3">Gasto</th>
-                                    <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right pb-3">Impresiones</th>
-                                    <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right pb-3">CTR</th>
+                                    <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-left pb-3 px-2">Anuncio</th>
+                                    <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-center pb-3 px-2">Duración</th>
+                                    <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-center pb-3 px-2">Gasto</th>
+                                    <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-center pb-3 px-2">Impr.</th>
+                                    <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-center pb-3 px-2">Clics</th>
+                                    <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-center pb-3 px-2">Costo/Clic</th>
+                                    <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-center pb-3 px-2">CTR</th>
                                   </tr>
                                 </thead>
                                 <tbody>
@@ -1338,18 +1423,18 @@ export default function PanelGeneralPage() {
                                     .sort((a, b) => b.spend - a.spend)
                                     .map((ad) => (
                                       <tr key={ad.adId} className="border-b border-border/10 last:border-0 hover:bg-slate-50 dark:hover:bg-white/[0.03] transition-colors">
-                                        <td className="py-3 pr-6">
+                                        <td className="py-3 px-2">
                                           <div className="flex items-center gap-3">
                                             {ad.thumbnailUrl && (
                                               <img src={ad.thumbnailUrl} alt="" className="h-9 w-9 rounded-md object-cover flex-shrink-0" />
                                             )}
                                             <div className="min-w-0">
-                                              <p className="text-[13px] font-medium truncate max-w-[280px]">{ad.adName}</p>
-                                              <p className="text-xs text-muted-foreground truncate max-w-[280px]">{ad.linkUrl || ad.campaignName}</p>
+                                              <p className="text-[13px] font-medium truncate">{ad.adName}</p>
+                                              <p className="text-xs text-muted-foreground truncate">{ad.linkUrl || ad.campaignName}</p>
                                             </div>
                                           </div>
                                         </td>
-                                        <td className="py-3 text-right">
+                                        <td className="py-3 text-center px-2">
                                           <span className="text-[13px] font-semibold text-violet-600 dark:text-violet-300">
                                             {ad.createdAt ? (() => {
                                               const days = Math.floor((Date.now() - new Date(ad.createdAt).getTime()) / (1000 * 60 * 60 * 24));
@@ -1357,13 +1442,19 @@ export default function PanelGeneralPage() {
                                             })() : "—"}
                                           </span>
                                         </td>
-                                        <td className="py-3 text-right">
+                                        <td className="py-3 text-center px-2">
                                           <span className="text-[13px] font-semibold text-violet-600 dark:text-violet-300">{formatMoney(ad.spend)}</span>
                                         </td>
-                                        <td className="py-3 text-right">
+                                        <td className="py-3 text-center px-2">
                                           <span className="text-[13px] font-semibold text-violet-600 dark:text-violet-300">{formatNumber(ad.impressions)}</span>
                                         </td>
-                                        <td className="py-3 text-right">
+                                        <td className="py-3 text-center px-2">
+                                          <span className="text-[13px] font-semibold text-violet-600 dark:text-violet-300">{formatNumber(ad.clicks)}</span>
+                                        </td>
+                                        <td className="py-3 text-center px-2">
+                                          <span className="text-[13px] font-semibold text-violet-600 dark:text-violet-300">{ad.clicks > 0 ? formatMoney(ad.spend / ad.clicks) : "—"}</span>
+                                        </td>
+                                        <td className="py-3 text-center px-2">
                                           <span className="text-[13px] font-semibold text-violet-600 dark:text-violet-300">{ad.ctr.toFixed(2)}%</span>
                                         </td>
                                       </tr>
@@ -1379,14 +1470,27 @@ export default function PanelGeneralPage() {
                             <p className="text-sm text-muted-foreground text-center py-4">No hay promociones inactivas en este periodo.</p>
                           ) : (
                             <div className="overflow-x-auto">
-                              <table className="w-full">
+                              <table className="w-full table-fixed">
+                                <colgroup>
+                                  <col style={{ width: "28%" }} />
+                                  <col style={{ width: "10%" }} />
+                                  <col style={{ width: "12%" }} />
+                                  <col style={{ width: "12%" }} />
+                                  <col style={{ width: "10%" }} />
+                                  <col style={{ width: "12%" }} />
+                                  <col style={{ width: "8%" }} />
+                                  <col style={{ width: "8%" }} />
+                                </colgroup>
                                 <thead>
                                   <tr className="border-b border-border/30">
-                                    <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-left pb-3">Anuncio</th>
-                                    <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right pb-3">Estado</th>
-                                    <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right pb-3">Gasto</th>
-                                    <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right pb-3">Impresiones</th>
-                                    <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-right pb-3">CTR</th>
+                                    <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-left pb-3 px-2">Anuncio</th>
+                                    <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-center pb-3 px-2">Estado</th>
+                                    <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-center pb-3 px-2">Gasto</th>
+                                    <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-center pb-3 px-2">Impr.</th>
+                                    <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-center pb-3 px-2">Clics</th>
+                                    <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-center pb-3 px-2">Costo/Clic</th>
+                                    <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-center pb-3 px-2">CTR</th>
+                                    <th className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-center pb-3 px-2">Conv.</th>
                                   </tr>
                                 </thead>
                                 <tbody>
@@ -1394,18 +1498,18 @@ export default function PanelGeneralPage() {
                                     .sort((a, b) => b.spend - a.spend)
                                     .map((ad) => (
                                       <tr key={ad.adId} className="border-b border-border/10 last:border-0 hover:bg-slate-50 dark:hover:bg-white/[0.03] transition-colors">
-                                        <td className="py-3 pr-6">
+                                        <td className="py-3 px-2">
                                           <div className="flex items-center gap-3">
                                             {ad.thumbnailUrl && (
                                               <img src={ad.thumbnailUrl} alt="" className="h-9 w-9 rounded-md object-cover flex-shrink-0 opacity-60" />
                                             )}
                                             <div className="min-w-0">
-                                              <p className="text-[13px] font-medium truncate max-w-[280px] text-muted-foreground">{ad.adName}</p>
-                                              <p className="text-xs text-muted-foreground/70 truncate max-w-[280px]">{ad.linkUrl || ad.campaignName}</p>
+                                              <p className="text-[13px] font-medium truncate text-muted-foreground">{ad.adName}</p>
+                                              <p className="text-xs text-muted-foreground/70 truncate">{ad.linkUrl || ad.campaignName}</p>
                                             </div>
                                           </div>
                                         </td>
-                                        <td className="py-3 text-right">
+                                        <td className="py-3 text-center px-2">
                                           <span className="text-[11px] font-medium px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
                                             {ad.effectiveStatus === "PAUSED" ? "Pausada" :
                                              ad.effectiveStatus === "ARCHIVED" ? "Archivada" :
@@ -1413,14 +1517,23 @@ export default function PanelGeneralPage() {
                                              "Inactiva"}
                                           </span>
                                         </td>
-                                        <td className="py-3 text-right">
+                                        <td className="py-3 text-center px-2">
                                           <span className="text-[13px] font-semibold text-muted-foreground">{formatMoney(ad.spend)}</span>
                                         </td>
-                                        <td className="py-3 text-right">
+                                        <td className="py-3 text-center px-2">
                                           <span className="text-[13px] font-semibold text-muted-foreground">{formatNumber(ad.impressions)}</span>
                                         </td>
-                                        <td className="py-3 text-right">
+                                        <td className="py-3 text-center px-2">
+                                          <span className="text-[13px] font-semibold text-muted-foreground">{formatNumber(ad.clicks)}</span>
+                                        </td>
+                                        <td className="py-3 text-center px-2">
+                                          <span className="text-[13px] font-semibold text-muted-foreground">{ad.clicks > 0 ? formatMoney(ad.spend / ad.clicks) : "—"}</span>
+                                        </td>
+                                        <td className="py-3 text-center px-2">
                                           <span className="text-[13px] font-semibold text-muted-foreground">{ad.ctr.toFixed(2)}%</span>
+                                        </td>
+                                        <td className="py-3 text-center px-2">
+                                          <span className="text-[13px] font-semibold text-muted-foreground">{ad.conversions > 0 ? ad.conversions : "—"}</span>
                                         </td>
                                       </tr>
                                     ))}
@@ -1443,7 +1556,7 @@ export default function PanelGeneralPage() {
         </TabsContent>
 
         {/* ── Tab: Clarity ─────────────────────────────────────────────── */}
-        <TabsContent
+        {!isClarityDisabled && <TabsContent
           value="clarity"
           className="flex-1 min-h-0 overflow-hidden mt-2 flex flex-col animate-in fade-in-0 duration-200"
         >
@@ -1464,13 +1577,13 @@ export default function PanelGeneralPage() {
 
             {/* Sub-tab: Resumen */}
             <TabsContent value="cl-resumen" className="flex-1 min-h-0 overflow-hidden pt-2 animate-in fade-in-0 duration-150" onTouchStart={claritySwipe.onTouchStart} onTouchEnd={claritySwipe.onTouchEnd}>
-              <div className="h-full flex flex-col gap-2 overflow-hidden">
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <div className="grid gap-2 grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 flex-1">
-                    <KPICard title="Sesiones Totales (Periodo)" value={claritySesiones.totalValue} formattedValue={claritySesiones.totalFormatted} icon={Eye} iconClassName="text-blue-500" isLoading={clarity.isLoading || allProfilesClarityLoading} breakdown={claritySesiones.items} breakdownLoading={allProfilesClarityLoading} />
-                    <KPICard title="Usuarios Únicos" value={clarityUsuarios.totalValue} formattedValue={clarityUsuarios.totalFormatted} icon={Users} iconClassName="text-violet-500" isLoading={clarity.isLoading || allProfilesClarityLoading} breakdown={clarityUsuarios.items} breakdownLoading={allProfilesClarityLoading} />
-                    <KPICard title="Prof. de Scroll" value={clarityScroll.totalValue} formattedValue={clarityScroll.totalFormatted} icon={ArrowDownUp} iconClassName="text-amber-500" isLoading={clarity.isLoading || allProfilesClarityLoading} breakdown={clarityScroll.items} breakdownLoading={allProfilesClarityLoading} />
-                    <KPICard title="Tiempo Activo" value={clarityTiempo.totalValue} formattedValue={clarityTiempo.totalFormatted} icon={Clock} iconClassName="text-emerald-500" isLoading={clarity.isLoading || allProfilesClarityLoading} breakdown={clarityTiempo.items} breakdownLoading={allProfilesClarityLoading} />
+              <div className="h-full flex flex-col gap-4 overflow-hidden">
+                <div className="flex items-center gap-4 flex-shrink-0">
+                  <div className="grid gap-4 grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 flex-1 items-start">
+                    <KPICard title="Sesiones Totales" value={claritySesiones.totalValue} formattedValue={claritySesiones.totalFormatted} icon={Eye} iconClassName="text-blue-500" isLoading={clarity.isLoading || allProfilesClarityLoading} breakdown={claritySesiones.items} breakdownLoading={allProfilesClarityLoading} subtitle={`~${formatNumber(Math.round(claritySesiones.totalValue / dayCount))}/día`} />
+                    <KPICard title="Usuarios Únicos" value={clarityUsuarios.totalValue} formattedValue={clarityUsuarios.totalFormatted} icon={Users} iconClassName="text-violet-500" isLoading={clarity.isLoading || allProfilesClarityLoading} breakdown={clarityUsuarios.items} breakdownLoading={allProfilesClarityLoading} subtitle={`~${formatNumber(Math.round(clarityUsuarios.totalValue / dayCount))}/día`} />
+                    <KPICard title="Prof. de Scroll" value={clarityScroll.totalValue} formattedValue={clarityScroll.totalFormatted} icon={ArrowDownUp} iconClassName="text-amber-500" isLoading={clarity.isLoading || allProfilesClarityLoading} breakdown={clarityScroll.items} breakdownLoading={allProfilesClarityLoading} subtitle="promedio del periodo" />
+                    <KPICard title="Tiempo Activo" value={clarityTiempo.totalValue} formattedValue={clarityTiempo.totalFormatted} icon={Clock} iconClassName="text-emerald-500" isLoading={clarity.isLoading || allProfilesClarityLoading} breakdown={clarityTiempo.items} breakdownLoading={allProfilesClarityLoading} subtitle="promedio por sesión" />
                   </div>
                 </div>
                 <div className="flex-1 min-h-0 grid grid-cols-12 gap-4">
@@ -1616,7 +1729,7 @@ export default function PanelGeneralPage() {
               </div>
             </TabsContent>
           </Tabs>
-        </TabsContent>
+        </TabsContent>}
 
       </Tabs>
     </div>

@@ -1,13 +1,13 @@
-import { schedule } from "@netlify/functions";
+import type { Config } from "@netlify/functions";
 
 // 02:59 UTC = 23:59 Argentina (UTC-3, no DST)
-export const handler = schedule("59 2 * * *", async () => {
+export default async () => {
   const siteUrl = process.env.URL || process.env.NEXT_PUBLIC_APP_URL;
   const cronSecret = process.env.CRON_SECRET;
 
   if (!siteUrl || !cronSecret) {
     console.error("[clarity-cron] Missing URL or CRON_SECRET env vars");
-    return { statusCode: 500, body: "Missing configuration" };
+    return new Response("Missing configuration", { status: 500 });
   }
 
   console.log(`[clarity-cron] Running at ${new Date().toISOString()} → ${siteUrl}/api/clarity/cron`);
@@ -30,13 +30,14 @@ export const handler = schedule("59 2 * * *", async () => {
     const text = await response.text();
     console.log(`[clarity-cron] Response ${response.status}: ${text}`);
 
-    return {
-      statusCode: response.status,
-      body: text,
-    };
+    return new Response(text, { status: response.status });
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
     console.error(`[clarity-cron] Fetch error: ${msg}`);
-    return { statusCode: 500, body: `Cron execution failed: ${msg}` };
+    return new Response(`Cron execution failed: ${msg}`, { status: 500 });
   }
-});
+};
+
+export const config: Config = {
+  schedule: "59 2 * * *",
+};

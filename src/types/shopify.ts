@@ -90,5 +90,9 @@ export interface AnalyticsData {
     currentPeriodRevenue: number;
     previousPeriodRevenue: number;
     percentChange: number;
+    currentPeriodOrderCount: number;
+    previousPeriodOrderCount: number;
+    currentPeriodAOV: number;
+    previousPeriodAOV: number;
   };
 }

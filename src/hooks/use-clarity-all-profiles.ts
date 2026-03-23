@@ -24,7 +24,7 @@ export function useClarityAllProfiles() {
   const [rateLimited, setRateLimited] = useState(false);
 
   const clarityProfiles = profiles.filter(
-    (p) => p.isActive && p.configuredServices.includes("clarity")
+    (p) => p.isActive && p.configuredServices.includes("clarity") && !p.disabledServices?.includes("clarity")
   );
 
   const results = useQueries({

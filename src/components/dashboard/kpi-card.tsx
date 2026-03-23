@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { ChevronDown } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -46,10 +46,23 @@ export function KPICard({
   subtitle,
 }: KPICardProps) {
   const [expanded, setExpanded] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
 
   const hasBreakdown = breakdown && breakdown.length > 0;
   const hasDetails = detailItems && detailItems.length > 0;
   const isExpandable = hasBreakdown || hasDetails;
+
+  // Close on click outside
+  useEffect(() => {
+    if (!expanded) return;
+    const handler = (e: MouseEvent) => {
+      if (cardRef.current && !cardRef.current.contains(e.target as Node)) {
+        setExpanded(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [expanded]);
 
   if (isLoading) {
     return (
@@ -75,124 +88,129 @@ export function KPICard({
     : "";
 
   return (
-    <Card
-      className={cn(
-        "overflow-hidden transition-all duration-200 py-0 gap-0",
-        isExpandable && "cursor-pointer hover:shadow-md"
-      )}
-      onClick={() => isExpandable && setExpanded(!expanded)}
-    >
-      <CardContent className={cn("px-3 flex flex-col justify-center h-full", featured && !compact ? "py-3" : featured && compact ? "py-2" : "py-2.5 sm:py-2")}>
-        {/* Top row: title + icon */}
-        <div className="flex items-center justify-between mb-0.5 sm:mb-1">
-          <span className={cn("font-semibold uppercase tracking-wider text-muted-foreground", featured ? "text-xs" : "text-[9px] sm:text-[10px]")}>
-            {title}
-          </span>
-          <div className="flex items-center gap-1">
-            {isExpandable && (
-              <ChevronDown
-                className={cn(
-                  "h-3 w-3 text-muted-foreground transition-transform duration-200",
-                  expanded && "rotate-180"
-                )}
-              />
-            )}
-            {Icon && (
-              <div className={cn(
-                "flex items-center justify-center rounded-md",
-                featured && !compact ? "h-8 w-8" : "h-5 w-5 sm:h-6 sm:w-6",
-                iconClassName?.includes("emerald") ? "bg-emerald-500/10" :
-                iconClassName?.includes("blue") ? "bg-blue-500/10" :
-                iconClassName?.includes("red") ? "bg-red-500/10" :
-                iconClassName?.includes("teal") ? "bg-teal-500/10" :
-                iconClassName?.includes("orange") ? "bg-orange-500/10" :
-                iconClassName?.includes("violet") ? "bg-violet-500/10" :
-                iconClassName?.includes("amber") ? "bg-amber-500/10" :
-                "bg-muted"
-              )}>
-                <Icon className={cn(featured && !compact ? "h-4.5 w-4.5" : "h-3 w-3 sm:h-3.5 sm:w-3.5", iconClassName || "text-muted-foreground")} />
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Value */}
-        <div className={cn("font-bold tracking-tight", featured && !compact ? "text-[3rem] leading-none" : featured && compact ? "text-[2rem] leading-none" : "text-xl sm:text-xl", valueColorClass)}>
-          {formattedValue}
-        </div>
-
-        {/* Subtitle */}
-        {subtitle && (
-          <p className={cn("mt-0.5 sm:mt-1 font-medium", featured ? "text-xs text-muted-foreground" : "text-[10px] sm:text-[11px] text-sky-600 dark:text-sky-400/80")}>{subtitle}</p>
+    <div ref={cardRef} className="relative">
+      <Card
+        className={cn(
+          "overflow-visible transition-all duration-200 py-0 gap-0",
+          isExpandable && "cursor-pointer hover:shadow-md"
         )}
-
-        {/* Trend */}
-        {trend && (
-          <div className={cn("inline-flex items-center gap-1 mt-1 sm:mt-2 px-1.5 py-0.5 rounded-md", trendBg)}>
-            <TrendIcon className={cn("h-3 w-3 sm:h-3.5 sm:w-3.5", trendColor)} />
-            <span className={cn("text-[10px] sm:text-xs font-semibold", trendColor)}>
-              {trend.direction !== "neutral" ? `${trend.direction === "up" ? "+" : ""}${trend.value.toFixed(1)}%` : "—"}
+        onClick={() => isExpandable && setExpanded(!expanded)}
+      >
+        <CardContent className={cn("px-3 flex flex-col justify-center", featured && !compact ? "py-3" : featured && compact ? "py-2" : "py-2.5 sm:py-2")}>
+          {/* Top row: title + icon */}
+          <div className="flex items-center justify-between mb-0.5 sm:mb-1">
+            <span className={cn("font-semibold uppercase tracking-wider text-muted-foreground", featured ? "text-xs" : "text-[9px] sm:text-[10px]")}>
+              {title}
             </span>
-            <span className="text-[10px] sm:text-[11px] text-muted-foreground">vs ant.</span>
+            <div className="flex items-center gap-1">
+              {isExpandable && (
+                <ChevronDown
+                  className={cn(
+                    "h-3 w-3 text-muted-foreground transition-transform duration-200",
+                    expanded && "rotate-180"
+                  )}
+                />
+              )}
+              {Icon && (
+                <div className={cn(
+                  "flex items-center justify-center rounded-md",
+                  featured && !compact ? "h-8 w-8" : "h-5 w-5 sm:h-6 sm:w-6",
+                  iconClassName?.includes("emerald") ? "bg-emerald-500/10" :
+                  iconClassName?.includes("blue") ? "bg-blue-500/10" :
+                  iconClassName?.includes("red") ? "bg-red-500/10" :
+                  iconClassName?.includes("teal") ? "bg-teal-500/10" :
+                  iconClassName?.includes("orange") ? "bg-orange-500/10" :
+                  iconClassName?.includes("violet") ? "bg-violet-500/10" :
+                  iconClassName?.includes("amber") ? "bg-amber-500/10" :
+                  "bg-muted"
+                )}>
+                  <Icon className={cn(featured && !compact ? "h-4.5 w-4.5" : "h-3 w-3 sm:h-3.5 sm:w-3.5", iconClassName || "text-muted-foreground")} />
+                </div>
+              )}
+            </div>
           </div>
-        )}
 
-        {/* Collapsible detail / breakdown */}
+          {/* Value */}
+          <div className={cn("font-bold tracking-tight", featured && !compact ? "text-[3rem] leading-none" : featured && compact ? "text-[2rem] leading-none" : "text-xl sm:text-xl", valueColorClass)}>
+            {formattedValue}
+          </div>
+
+          {/* Bottom row — fixed height so all cards match */}
+          <div className="mt-1 sm:mt-1.5 h-[20px] sm:h-[22px] flex items-center">
+            {trend ? (
+              <div className={cn("inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md", trendBg)}>
+                <TrendIcon className={cn("h-3 w-3 sm:h-3.5 sm:w-3.5", trendColor)} />
+                <span className={cn("text-[10px] sm:text-xs font-semibold", trendColor)}>
+                  {trend.direction !== "neutral" ? `${trend.direction === "up" ? "+" : ""}${trend.value.toFixed(1)}%` : "—"}
+                </span>
+                <span className="text-[10px] sm:text-[11px] text-muted-foreground">vs ant.</span>
+              </div>
+            ) : subtitle ? (
+              <p className={cn("font-medium", featured ? "text-xs text-muted-foreground" : "text-[10px] sm:text-[11px] text-sky-600 dark:text-sky-400/80")}>{subtitle}</p>
+            ) : null}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Floating detail / breakdown panel */}
+      {isExpandable && (
         <div
           className={cn(
-            "overflow-hidden transition-all duration-200 ease-in-out",
-            expanded ? "max-h-96 opacity-100 mt-2" : "max-h-0 opacity-0"
+            "absolute left-0 right-0 top-full z-50 transition-all duration-200 ease-in-out",
+            expanded ? "opacity-100 translate-y-1 pointer-events-auto" : "opacity-0 -translate-y-1 pointer-events-none"
           )}
         >
-          <div className="border-t border-border/50 dark:border-border/10 pt-2 space-y-1.5">
-            {/* Detail items (composition) */}
-            {hasDetails && detailItems.map((item) => (
-              <div
-                key={item.label}
-                className="flex items-center justify-between text-xs"
-              >
-                <span className="text-muted-foreground truncate">{item.label}</span>
-                <span className={cn(
-                  "font-medium ml-2 whitespace-nowrap",
-                  item.highlighted ? (iconClassName?.includes("emerald") || iconClassName?.includes("teal") ? "text-emerald-600 dark:text-emerald-400" : iconClassName?.includes("red") ? "text-red-600 dark:text-red-400" : iconClassName?.includes("blue") ? "text-blue-600 dark:text-blue-400" : iconClassName?.includes("orange") ? "text-orange-600 dark:text-orange-400" : "text-foreground") : "text-foreground"
-                )}>
-                  {item.value}
-                </span>
-              </div>
-            ))}
+          <Card className="py-0 gap-0 shadow-lg border-border/80">
+            <CardContent className="px-3 py-2.5 space-y-1.5">
+              {/* Detail items (composition) */}
+              {hasDetails && detailItems.map((item) => (
+                <div
+                  key={item.label}
+                  className="flex items-center justify-between text-xs"
+                >
+                  <span className="text-muted-foreground truncate">{item.label}</span>
+                  <span className={cn(
+                    "font-medium ml-2 whitespace-nowrap",
+                    item.highlighted ? (iconClassName?.includes("emerald") || iconClassName?.includes("teal") ? "text-emerald-600 dark:text-emerald-400" : iconClassName?.includes("red") ? "text-red-600 dark:text-red-400" : iconClassName?.includes("blue") ? "text-blue-600 dark:text-blue-400" : iconClassName?.includes("orange") ? "text-orange-600 dark:text-orange-400" : "text-foreground") : "text-foreground"
+                  )}>
+                    {item.value}
+                  </span>
+                </div>
+              ))}
 
-            {/* Profile breakdown (multi-profile) */}
-            {hasBreakdown && (
-              <>
-                {hasDetails && <div className="border-t border-border/30 my-1.5" />}
-                {breakdownLoading ? (
-                  Array.from({ length: 2 }).map((_, i) => (
-                    <Skeleton key={i} className="h-4 w-full" />
-                  ))
-                ) : (
-                  breakdown?.map((item) => (
-                    <div
-                      key={item.profileName}
-                      className="flex items-center justify-between text-xs"
-                    >
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <span
-                          className="h-2 w-2 rounded-full flex-shrink-0"
-                          style={{ backgroundColor: item.profileColor }}
-                        />
-                        <span className="truncate">{item.profileName}</span>
+              {/* Profile breakdown (multi-profile) */}
+              {hasBreakdown && (
+                <>
+                  {hasDetails && <div className="border-t border-border/30 my-1.5" />}
+                  {breakdownLoading ? (
+                    Array.from({ length: 2 }).map((_, i) => (
+                      <Skeleton key={i} className="h-4 w-full" />
+                    ))
+                  ) : (
+                    breakdown?.map((item) => (
+                      <div
+                        key={item.profileName}
+                        className="flex items-center justify-between text-xs"
+                      >
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span
+                            className="h-2 w-2 rounded-full flex-shrink-0"
+                            style={{ backgroundColor: item.profileColor }}
+                          />
+                          <span className="truncate">{item.profileName}</span>
+                        </div>
+                        <span className="font-medium ml-2 whitespace-nowrap">
+                          {item.formattedValue}
+                        </span>
                       </div>
-                      <span className="font-medium ml-2 whitespace-nowrap">
-                        {item.formattedValue}
-                      </span>
-                    </div>
-                  ))
-                )}
-              </>
-            )}
-          </div>
+                    ))
+                  )}
+                </>
+              )}
+            </CardContent>
+          </Card>
         </div>
-      </CardContent>
-    </Card>
+      )}
+    </div>
   );
 }

@@ -105,6 +105,10 @@ export function useShopifyAnalytics() {
         currentPeriodRevenue: currentRevenue,
         previousPeriodRevenue: previousRevenue,
         percentChange,
+        currentPeriodOrderCount: successful.reduce((s, d) => s + (d.periodComparison?.currentPeriodOrderCount ?? 0), 0),
+        previousPeriodOrderCount: successful.reduce((s, d) => s + (d.periodComparison?.previousPeriodOrderCount ?? 0), 0),
+        currentPeriodAOV: successful.reduce((s, d) => s + (d.periodComparison?.currentPeriodAOV ?? 0), 0) / (successful.length || 1),
+        previousPeriodAOV: successful.reduce((s, d) => s + (d.periodComparison?.previousPeriodAOV ?? 0), 0) / (successful.length || 1),
       },
     };
   }

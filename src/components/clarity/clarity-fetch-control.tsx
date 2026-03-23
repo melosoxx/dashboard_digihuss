@@ -51,10 +51,10 @@ function getMonday(dateStr: string): Date {
   return d;
 }
 
-/** Get Mon-Fri date strings for a week starting at the given Monday */
+/** Get Mon-Sun date strings for a week starting at the given Monday */
 function getWeekdays(monday: Date): string[] {
   const days: string[] = [];
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < 7; i++) {
     const d = new Date(monday);
     d.setDate(monday.getDate() + i);
     days.push(d.toISOString().slice(0, 10));
@@ -63,11 +63,11 @@ function getWeekdays(monday: Date): string[] {
 }
 
 function formatWeekLabel(monday: Date): string {
-  const friday = new Date(monday);
-  friday.setDate(monday.getDate() + 4);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
   const fmt = (d: Date) =>
     `${d.getDate()}/${d.getMonth() + 1}`;
-  return `${fmt(monday)} — ${fmt(friday)}`;
+  return `${fmt(monday)} — ${fmt(sunday)}`;
 }
 
 export function ClarityWeekStrip({
@@ -103,7 +103,17 @@ export function ClarityWeekStrip({
 
   const weekdays = useMemo(() => getWeekdays(currentMonday), [currentMonday.getTime()]);
 
-  const DAY_LABELS = ["Lun", "Mar", "Mié", "Jue", "Vie"];
+  const DAY_LABELS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+
+  const MONTH_LABELS = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+
+  // Precompute per-day metadata for month/year labels
+  const dayMetas = useMemo(() => {
+    return weekdays.map((date) => {
+      const d = new Date(date + "T00:00:00");
+      return { month: d.getMonth(), year: d.getFullYear() };
+    });
+  }, [weekdays]);
 
   return (
     <div className={cn("flex items-center", large ? "gap-4" : "gap-1.5")}>
@@ -132,33 +142,46 @@ export function ClarityWeekStrip({
           const hasData = available.has(date);
           const isToday = date === today;
           const dayNum = new Date(date + "T00:00:00").getDate();
+          const meta = dayMetas[i];
           return (
-            <Tooltip key={date}>
-              <TooltipTrigger asChild>
-                <div
-                  className={cn(
-                    "flex flex-col items-center justify-center rounded font-medium cursor-default select-none",
-                    large
-                      ? "w-16 h-16 text-sm gap-0.5"
-                      : "w-9 h-9 text-[10px]",
-                    hasData
-                      ? "bg-emerald-50 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30"
-                      : "bg-muted/20 text-muted-foreground/40 border border-border/10",
-                    isToday && "ring-1 ring-cyan-500/60"
-                  )}
-                >
-                  <span className={cn(
-                    "text-muted-foreground/50 leading-none",
-                    large ? "text-[10px]" : "text-[8px]"
-                  )}>{DAY_LABELS[i]}</span>
-                  <span className={cn("leading-none", large && "text-lg font-bold")}>{dayNum}</span>
-                </div>
-              </TooltipTrigger>
-              <TooltipContent side="top" className="text-[11px]">
-                {date} — {hasData ? "Con datos" : "Sin datos"}
-                {isToday ? " · Hoy" : ""}
-              </TooltipContent>
-            </Tooltip>
+            <div key={date} className="flex flex-col items-center">
+              {/* Year label */}
+              <span className={cn(
+                "leading-none font-semibold text-muted-foreground/50",
+                large ? "text-[9px] mb-0.5" : "text-[7px] mb-px"
+              )}>{meta.year}</span>
+              {/* Month label */}
+              <span className={cn(
+                "leading-none font-medium text-muted-foreground/70",
+                large ? "text-[10px] mb-1" : "text-[8px] mb-0.5"
+              )}>{MONTH_LABELS[meta.month]}</span>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div
+                    className={cn(
+                      "flex flex-col items-center justify-center rounded font-medium cursor-default select-none",
+                      large
+                        ? "w-16 h-16 text-sm gap-0.5"
+                        : "w-9 h-9 text-[10px]",
+                      hasData
+                        ? "bg-emerald-50 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30"
+                        : "bg-muted/20 text-muted-foreground/40 border border-border/10",
+                      isToday && "ring-1 ring-cyan-500/60"
+                    )}
+                  >
+                    <span className={cn(
+                      "text-muted-foreground/50 leading-none",
+                      large ? "text-[10px]" : "text-[8px]"
+                    )}>{DAY_LABELS[i]}</span>
+                    <span className={cn("leading-none", large && "text-lg font-bold")}>{dayNum}</span>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="text-[11px]">
+                  {date} — {hasData ? "Con datos" : "Sin datos"}
+                  {isToday ? " · Hoy" : ""}
+                </TooltipContent>
+              </Tooltip>
+            </div>
           );
         })}
       </div>

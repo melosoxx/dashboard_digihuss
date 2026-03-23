@@ -81,6 +81,10 @@ export function useMetaAccount() {
       (s, d) => s + d.purchaseRevenue,
       0
     );
+    const previousPeriodSpend = successful.reduce(
+      (s, d) => s + (d.previousPeriodSpend ?? 0),
+      0
+    );
 
     data = {
       spend,
@@ -93,6 +97,7 @@ export function useMetaAccount() {
       purchaseRevenue,
       costPerAcquisition: conversions > 0 ? spend / conversions : 0,
       dailyMetrics: mergeDailyMetrics(successful.map((d) => d.dailyMetrics)),
+      previousPeriodSpend,
     };
   }
 

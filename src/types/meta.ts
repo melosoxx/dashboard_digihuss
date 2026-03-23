@@ -41,6 +41,7 @@ export interface MetaAccountInsights {
   purchaseRevenue: number;
   costPerAcquisition: number;
   dailyMetrics: MetaDailyMetric[];
+  previousPeriodSpend?: number;
 }
 
 export interface MetaDailyMetric {

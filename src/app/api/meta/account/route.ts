@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { resolveMetaClientByProfile } from "@/lib/credentials";
+import { getPreviousPeriod } from "@/lib/date-utils";
 
 const querySchema = z.object({
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -31,12 +32,16 @@ export async function GET(request: NextRequest) {
     }
     const client = await resolveMetaClientByProfile(profileId);
 
-    const data = await client.getAccountInsights(
-      parsed.data.startDate,
-      parsed.data.endDate
-    );
+    const previousPeriod = getPreviousPeriod(parsed.data);
+    const [data, previousData] = await Promise.all([
+      client.getAccountInsights(parsed.data.startDate, parsed.data.endDate),
+      client.getAccountInsights(previousPeriod.startDate, previousPeriod.endDate),
+    ]);
 
-    return NextResponse.json(data);
+    return NextResponse.json({
+      ...data,
+      previousPeriodSpend: previousData.spend,
+    });
   } catch (error: any) {
     console.error("Meta account error:", error);
     return NextResponse.json(

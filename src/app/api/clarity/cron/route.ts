@@ -90,7 +90,7 @@ function subtractNamedItems<T extends Record<string, unknown>>(
     .filter((item) => Number(item[valueField]) > 0);
 }
 
-export async function GET(request: NextRequest) {
+async function handleCron(request: NextRequest) {
   try {
     // Authenticate via CRON_SECRET
     const authHeader = request.headers.get("authorization");
@@ -236,4 +236,12 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+export async function GET(request: NextRequest) {
+  return handleCron(request);
+}
+
+export async function POST(request: NextRequest) {
+  return handleCron(request);
 }

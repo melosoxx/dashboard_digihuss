@@ -71,6 +71,10 @@ export async function GET(request: NextRequest) {
           current.totalRevenue,
           previous.totalRevenue
         ),
+        currentPeriodOrderCount: current.orderCount,
+        previousPeriodOrderCount: previous.orderCount,
+        currentPeriodAOV: current.averageOrderValue,
+        previousPeriodAOV: previous.averageOrderValue,
       },
     });
   } catch (error) {

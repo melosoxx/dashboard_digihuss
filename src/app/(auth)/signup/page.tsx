@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
-import { Mail, Lock, Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 
 export default function SignupPage() {
   const [email, setEmail] = useState("");
@@ -57,125 +57,108 @@ export default function SignupPage() {
 
   if (success) {
     return (
-      <>
-        <div className="px-8 py-5" />
-        <div className="flex flex-1 items-center justify-center px-8">
-          <div className="modern-form" style={{ textAlign: "center" }}>
-            <h2 className="form-title">Revisa tu email</h2>
-            <p className="form-subtitle">
-              Enviamos un link de confirmacion a <strong>{email}</strong>.
-              Hace click en el link para activar tu cuenta.
-            </p>
+      <div className="auth-card" style={{ maxWidth: 480 }}>
+        <div className="auth-card-form" style={{ width: "100%", textAlign: "center" }}>
+          <img src="/logoo.png" alt="Logo" style={{ width: 64, height: 64, margin: "0 auto 16px" }} />
+          <h2 className="auth-title">Revisa tu email</h2>
+          <p className="auth-subtitle">
+            Enviamos un link de confirmacion a <strong>{email}</strong>.
+            Hace click en el link para activar tu cuenta.
+          </p>
+          <div className="auth-actions" style={{ justifyContent: "center", marginTop: 24 }}>
             <button
               type="button"
-              className="submit-button"
+              className="auth-submit"
               onClick={() => router.push("/login")}
             >
               Volver al login
             </button>
           </div>
         </div>
-      </>
+      </div>
     );
   }
 
   return (
-    <>
-      {/* Header */}
-      <div className="flex items-center justify-between px-8 py-5">
-        <span className="text-lg font-semibold text-white tracking-wide">digihuss</span>
-        <p className="text-sm text-slate-400">
-          Ya tenes cuenta?{" "}
-          <Link href="/login" className="font-medium text-white hover:underline underline-offset-4">
-            Iniciar sesion
-          </Link>
-        </p>
+    <div className="auth-card">
+      {/* Left side - Branding */}
+      <div className="auth-card-brand">
+        <img src="/logoo.png" alt="Logo" className="auth-logo" />
+        <h1 className="auth-brand-name">WorldWideHustle</h1>
+        <p className="auth-brand-sub">Digital Products Dashboard</p>
       </div>
 
-      {/* Form centered */}
-      <div className="flex flex-1 items-center justify-center px-8">
-        <form className="modern-form" onSubmit={handleSubmit}>
-          <h2 className="form-title">Crear Cuenta</h2>
-          <p className="form-subtitle">Registrate en Digital Products Dashboard</p>
+      {/* Right side - Form */}
+      <div className="auth-card-form">
+        <h2 className="auth-title">Crear cuenta</h2>
+        <p className="auth-subtitle">Registrate para comenzar</p>
 
-          <div className="input-group">
-            <label htmlFor="email">Email</label>
-            <div className="input-wrapper">
-              <Mail className="input-icon" />
-              <input
-                id="email"
-                type="email"
-                className="form-input"
-                placeholder="tu@email.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                autoComplete="email"
-              />
-            </div>
+        <form onSubmit={handleSubmit} className="auth-form">
+          <div className="auth-field">
+            <label htmlFor="email">Correo electronico</label>
+            <input
+              id="email"
+              type="email"
+              placeholder="tu@email.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              autoComplete="email"
+            />
           </div>
 
-          <div className="input-group">
+          <div className="auth-field">
             <label htmlFor="password">Contraseña</label>
-            <div className="input-wrapper">
-              <Lock className="input-icon" />
+            <div className="auth-password-wrapper">
               <input
                 id="password"
                 type={showPassword ? "text" : "password"}
-                className="form-input"
                 placeholder="Minimo 6 caracteres"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 autoComplete="new-password"
-                style={{ paddingRight: 40 }}
               />
               <button
                 type="button"
-                className="password-toggle"
+                className="auth-eye-toggle"
                 onClick={() => setShowPassword(!showPassword)}
               >
-                {showPassword ? <EyeOff className="eye-icon" /> : <Eye className="eye-icon" />}
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
             </div>
           </div>
 
-          <div className="input-group">
-            <label htmlFor="confirmPassword">Confirmar Contraseña</label>
-            <div className="input-wrapper">
-              <Lock className="input-icon" />
-              <input
-                id="confirmPassword"
-                type={showPassword ? "text" : "password"}
-                className="form-input"
-                placeholder="Repetir contraseña"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                required
-                autoComplete="new-password"
-                style={{ paddingRight: 40 }}
-              />
-            </div>
+          <div className="auth-field">
+            <label htmlFor="confirmPassword">Confirmar contraseña</label>
+            <input
+              id="confirmPassword"
+              type={showPassword ? "text" : "password"}
+              placeholder="Repetir contraseña"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+              autoComplete="new-password"
+            />
           </div>
 
-          {error && <p className="form-error">{error}</p>}
+          {error && <p className="auth-error">{error}</p>}
 
-          <button type="submit" className="submit-button" disabled={loading}>
-            <span className="button-glow" />
-            {loading ? "Creando cuenta..." : "Crear cuenta"}
-          </button>
-
-          <div className="form-footer">
-            <Link href="/login" className="login-link">
-              Ya tenes cuenta? <span>Iniciar sesion</span>
+          <div className="auth-actions">
+            <Link href="/login" className="auth-link">
+              Iniciar sesion
             </Link>
+            <button type="submit" className="auth-submit" disabled={loading}>
+              {loading ? "Creando..." : "Siguiente"}
+            </button>
           </div>
-
-          <p className="form-legal">
-            Al registrarte, aceptas nuestros Terminos de Servicio y Politica de Privacidad.
-          </p>
         </form>
+
+        <p className="auth-legal">
+          Al registrarte, aceptas nuestros Terminos de Servicio y Politica de
+          Privacidad.
+        </p>
       </div>
-    </>
+    </div>
   );
 }

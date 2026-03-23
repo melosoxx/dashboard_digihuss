@@ -205,7 +205,27 @@ export function BusinessProfileProvider({ children }: { children: ReactNode }) {
       });
       if (!res.ok) throw new Error("Failed to update profile");
     },
-    onSuccess: (_data, variables) => {
+    onMutate: async ({ id, updates }) => {
+      // Cancel any outgoing refetches so they don't overwrite our optimistic update
+      await queryClient.cancelQueries({ queryKey: ["profiles"] });
+      const previous = queryClient.getQueryData<ProfilesApiResponse>(["profiles"]);
+      if (previous) {
+        queryClient.setQueryData<ProfilesApiResponse>(["profiles"], {
+          ...previous,
+          profiles: previous.profiles.map((p) =>
+            p.id === id ? { ...p, ...updates } : p
+          ),
+        });
+      }
+      return { previous };
+    },
+    onError: (_err, _variables, context) => {
+      // Rollback on error
+      if (context?.previous) {
+        queryClient.setQueryData(["profiles"], context.previous);
+      }
+    },
+    onSettled: (_data, _error, variables) => {
       queryClient.invalidateQueries({ queryKey: ["profiles"] });
       if (variables.updates.mp_keywords !== undefined) {
         queryClient.invalidateQueries({ queryKey: ["mercadopago"] });
