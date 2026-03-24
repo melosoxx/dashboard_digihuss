@@ -3,6 +3,7 @@ import {
   Wallet,
   Settings,
   Wrench,
+  BotMessageSquare,
 } from "lucide-react";
 
 export const NAV_ITEMS: ReadonlyArray<{
@@ -12,6 +13,7 @@ export const NAV_ITEMS: ReadonlyArray<{
   badge?: string;
 }> = [
   { label: "Panel General", href: "/panel", icon: LayoutGrid },
+  { label: "Huss", href: "/huss", icon: BotMessageSquare },
   { label: "Finanzas", href: "/finanzas", icon: Wallet },
   { label: "Configuracion", href: "/configuracion", icon: Settings },
   { label: "Admin Tools", href: "/admin-tools", icon: Wrench },

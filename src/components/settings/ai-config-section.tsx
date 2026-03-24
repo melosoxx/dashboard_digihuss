@@ -131,7 +131,7 @@ export function AIConfigSection() {
   };
 
   const handleDelete = async () => {
-    if (!confirm("¿Eliminar la configuración del asistente IA?")) return;
+    if (!confirm("¿Eliminar la configuración de Huss?")) return;
     setDeleteStatus("deleting");
     try {
       await fetch("/api/ai/config", { method: "DELETE" });
@@ -161,7 +161,7 @@ export function AIConfigSection() {
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-lg">
           <Sparkles className="h-5 w-5 text-cyan-500" />
-          Asistente IA
+          Huss (Asistente IA)
           {config?.configured && (
             <span className="text-xs font-normal px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-500/15 text-green-700 dark:text-green-400">
               Configurado

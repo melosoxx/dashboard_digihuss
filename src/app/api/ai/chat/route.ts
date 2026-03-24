@@ -3,11 +3,12 @@ import { requireAuth } from "@/lib/supabase/auth-guard";
 import { decrypt } from "@/lib/encryption";
 import type { DashboardContext, AIChatMessage } from "@/types/ai";
 
-function buildSystemPrompt(ctx: DashboardContext): string {
+function buildSystemPrompt(ctx: DashboardContext, memoriesText?: string): string {
   const lines: string[] = [
-    `Eres un analista experto en ecommerce y marketing digital. Tu nombre es "Asistente DigiHuss".`,
-    `Respondes siempre en español (Argentina). Eres conciso, directo, y basas tus respuestas exclusivamente en los datos proporcionados.`,
-    `Cuando citas números, usa el formato exacto del dashboard. Si no tienes datos suficientes para responder, dilo explícitamente.`,
+    `Tu nombre es "Huss". Sos un analista experto en ecommerce y marketing digital, y el asistente personal de inteligencia de negocio de este usuario.`,
+    `Tenés personalidad: sos directo, inteligente, y hablás en español argentino con un tono profesional pero cercano. Usás "vos" en vez de "tú".`,
+    `Cuando citás números, usá el formato exacto del dashboard. Si no tenés datos suficientes para responder, decilo explícitamente.`,
+    `Si el usuario te comparte información relevante sobre su negocio, decisiones o proyecciones, sugerile guardarla como memoria para recordarla en futuras conversaciones.`,
     ``,
     `CONTEXTO DEL DASHBOARD:`,
     `- Período: ${ctx.dateRange.startDate} a ${ctx.dateRange.endDate}`,
@@ -101,14 +102,23 @@ function buildSystemPrompt(ctx: DashboardContext): string {
     );
   }
 
+  // Inject memories if available
+  if (memoriesText) {
+    lines.push(
+      ``,
+      `MEMORIA DEL NEGOCIO (información que el usuario guardó para que recuerdes):`,
+      memoriesText
+    );
+  }
+
   lines.push(
     ``,
     `Instrucciones adicionales:`,
-    `- Usa formato markdown para estructurar tus respuestas`,
-    `- Cuando analices tendencias, usa los datos diarios si están disponibles`,
-    `- Sugiere acciones concretas basadas en los datos`,
-    `- Si el ROAS es bajo, explica por qué y sugiere mejoras`,
-    `- Compara métricas cuando sea relevante (ej: CPA vs ticket promedio)`
+    `- Usá formato markdown para estructurar tus respuestas`,
+    `- Cuando analices tendencias, usá los datos diarios si están disponibles`,
+    `- Sugerí acciones concretas basadas en los datos`,
+    `- Si el ROAS es bajo, explicá por qué y sugerí mejoras`,
+    `- Compará métricas cuando sea relevante (ej: CPA vs ticket promedio)`
   );
 
   return lines.join("\n");
@@ -169,7 +179,7 @@ export async function POST(request: Request) {
 
     if (configError || !config) {
       return NextResponse.json(
-        { error: "Configura tu asistente IA en Configuración" },
+        { error: "Configurá a Huss en Configuración" },
         { status: 404 }
       );
     }
@@ -184,7 +194,21 @@ export async function POST(request: Request) {
       );
     }
 
-    const systemPrompt = buildSystemPrompt(context);
+    // Fetch user's memories to inject into system prompt
+    let memoriesText: string | undefined;
+    const { data: memories } = await supabase
+      .from("ai_memories")
+      .select("category, title, content")
+      .order("category")
+      .limit(30);
+
+    if (memories?.length) {
+      memoriesText = memories
+        .map((m) => `[${m.category.toUpperCase()}] ${m.title}: ${m.content}`)
+        .join("\n");
+    }
+
+    const systemPrompt = buildSystemPrompt(context, memoriesText);
 
     // Build message history (last 10 messages for context)
     const rawMessages = history.slice(-10).map((m) => ({

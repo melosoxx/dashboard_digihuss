@@ -181,7 +181,7 @@ export function AIAssistantBar({
           {/* Label */}
           <div className="hidden sm:flex items-center justify-center gap-2 mb-2">
             <Sparkles className="h-3.5 w-3.5 text-primary" />
-            <span className="text-xs font-semibold text-primary tracking-widest uppercase">Asistente IA</span>
+            <span className="text-xs font-semibold text-primary tracking-widest uppercase">Huss</span>
             {!isConfigured && !configLoading && (
               <Link
                 href="/configuracion"
@@ -268,7 +268,7 @@ export function AIAssistantBar({
                     <div className="h-5 w-5 rounded-md bg-cyan-500/15 flex items-center justify-center">
                       <Sparkles className="h-3 w-3 text-cyan-600 dark:text-cyan-400" />
                     </div>
-                    <span className="text-xs font-medium text-muted-foreground">Asistente IA</span>
+                    <span className="text-xs font-medium text-muted-foreground">Huss</span>
                   </div>
                   <div className="flex items-center gap-1">
                     {hasMessages && (

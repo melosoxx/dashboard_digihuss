@@ -85,6 +85,44 @@ export interface AIConfigResponse {
   configured: boolean;
 }
 
+// Huss AI - Conversations & Memories
+
+export interface AIConversation {
+  id: string;
+  user_id: string;
+  title: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AIMessage {
+  id: string;
+  conversation_id: string;
+  role: "user" | "assistant";
+  content: string;
+  created_at: string;
+}
+
+export type AIMemoryCategory = "negocio" | "decisiones" | "proyecciones" | "preferencias" | "general";
+
+export interface AIMemory {
+  id: string;
+  user_id: string;
+  category: AIMemoryCategory;
+  title: string;
+  content: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export const MEMORY_CATEGORY_LABELS: Record<AIMemoryCategory, string> = {
+  negocio: "Negocio",
+  decisiones: "Decisiones",
+  proyecciones: "Proyecciones",
+  preferencias: "Preferencias",
+  general: "General",
+};
+
 export const AI_MODELS: Record<AIProvider, Array<{ id: string; label: string }>> = {
   openai: [
     { id: "gpt-4o", label: "GPT-4o" },
