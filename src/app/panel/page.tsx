@@ -44,6 +44,7 @@ import { buildDashboardContext } from "@/lib/ai-context-builder";
 import { CampaignTable } from "@/components/ads/campaign-table";
 import { AdsetTable } from "@/components/ads/adset-table";
 import { ActiveAdsCard } from "@/components/panel/top-campaigns-card";
+import { AdsResumenTab } from "@/components/ads/ads-resumen-tab";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -265,7 +266,7 @@ export default function PanelGeneralPage() {
   const [resumenView, setResumenView] = useState<"kpis" | "alertas" | "atribucion">("kpis");
   const [expandedInsight, setExpandedInsight] = useState<number | null>(null);
   const [rendimientoTab, setRendimientoTab] = useState("embudo");
-  const [anunciosTab, setAnunciosTab] = useState("meta-ads");
+  const [anunciosTab, setAnunciosTab] = useState("ads-resumen");
   const [promoStatusTab, setPromoStatusTab] = useState("promo-activas");
   const [clarityTab, setClarityTab] = useState("cl-resumen");
   const isLoadingMain = shopify.isLoading || meta.isLoading || promotions.isLoading || mp.isLoading;
@@ -311,7 +312,7 @@ export default function PanelGeneralPage() {
     enabled: isMobile,
   });
   const anunciosSwipe = useSwipeNavigation({
-    items: ["meta-ads", "campanas-table", "conjuntos-table", "promociones-ig"],
+    items: ["ads-resumen", "meta-ads", "campanas-table", "conjuntos-table", "promociones-ig"],
     active: anunciosTab,
     onChangeAction: setAnunciosTab,
     enabled: isMobile,
@@ -345,23 +346,26 @@ export default function PanelGeneralPage() {
     ? allProfilesDailyBreakdown
     : clarity.dailyBreakdown;
 
-  // Merge topPages across all profiles (aggregate mode)
-  const clarityTopPages = useMemo(() => {
-    const isReal = (url: string) => !url.includes("localhost");
-    if (!aggregateMode) return (clarity.data?.topPages ?? []).filter((p) => isReal(p.url));
-    const map = new Map<string, number>();
-    for (const p of allProfilesClarity) {
-      if (!p.data) continue;
-      for (const page of p.data.topPages) {
-        if (!isReal(page.url)) continue;
-        map.set(page.url, (map.get(page.url) ?? 0) + page.visits);
-      }
+  // Aggregate frustration signals across profiles
+  const clarityFrustration = useMemo(() => {
+    const empty = { deadClicks: 0, rageClicks: 0, quickbacks: 0, errorClicks: 0, scriptErrors: 0, excessiveScrolls: 0 };
+    if (!aggregateMode) {
+      const f = clarity.data?.frustration;
+      return f ?? empty;
     }
-    return Array.from(map.entries())
-      .map(([url, visits]) => ({ url, visits }))
-      .sort((a, b) => b.visits - a.visits)
-      .slice(0, 10);
-  }, [aggregateMode, allProfilesClarity, clarity.data?.topPages]);
+    const totals = { ...empty };
+    for (const p of allProfilesClarity) {
+      if (!p.data?.frustration) continue;
+      const f = p.data.frustration;
+      totals.deadClicks += f.deadClicks;
+      totals.rageClicks += f.rageClicks;
+      totals.quickbacks += f.quickbacks;
+      totals.errorClicks += f.errorClicks;
+      totals.scriptErrors += f.scriptErrors;
+      totals.excessiveScrolls += f.excessiveScrolls;
+    }
+    return totals;
+  }, [aggregateMode, allProfilesClarity, clarity.data?.frustration]);
 
   const clarityIsWorking = clarityIsFetching || clarityIsManualFetching;
 
@@ -507,6 +511,8 @@ export default function PanelGeneralPage() {
     const revenueByDate = new Map<string, number>();
     const ordersByDate = new Map<string, number>();
     const spendByDate = new Map<string, number>();
+    const impressionsByDate = new Map<string, number>();
+    const clicksByDate = new Map<string, number>();
 
     for (const day of shopify.data?.dailyRevenue ?? []) {
       const normalizedDate = normalizeDate(day.date);
@@ -515,8 +521,9 @@ export default function PanelGeneralPage() {
     }
     for (const day of meta.data?.dailyMetrics ?? []) {
       const normalizedDate = normalizeDate(day.date);
-      const existing = spendByDate.get(normalizedDate) || 0;
-      spendByDate.set(normalizedDate, existing + day.spend);
+      spendByDate.set(normalizedDate, (spendByDate.get(normalizedDate) || 0) + day.spend);
+      impressionsByDate.set(normalizedDate, (impressionsByDate.get(normalizedDate) || 0) + day.impressions);
+      clicksByDate.set(normalizedDate, (clicksByDate.get(normalizedDate) || 0) + day.clicks);
     }
 
     const allDates = new Set([...revenueByDate.keys(), ...spendByDate.keys()]);
@@ -527,6 +534,8 @@ export default function PanelGeneralPage() {
         revenue: revenueByDate.get(date) ?? 0,
         adSpend: spendByDate.get(date) ?? 0,
         orders: ordersByDate.get(date) ?? 0,
+        impressions: impressionsByDate.get(date) ?? 0,
+        clicks: clicksByDate.get(date) ?? 0,
       }));
   }, [shopify.data, meta.data]);
 
@@ -775,6 +784,46 @@ export default function PanelGeneralPage() {
       }));
   }, [ads.data?.activeAds]);
 
+  const adsCpcDetails: KPIDetailItem[] = useMemo(() => {
+    const allAds = ads.data?.activeAds ?? [];
+    if (!allAds.length) return [];
+    const byCampaign: Record<string, { spend: number; clicks: number }> = {};
+    allAds.forEach((ad) => {
+      if (!byCampaign[ad.campaignName]) byCampaign[ad.campaignName] = { spend: 0, clicks: 0 };
+      byCampaign[ad.campaignName].spend += ad.spend;
+      byCampaign[ad.campaignName].clicks += ad.clicks;
+    });
+    return Object.entries(byCampaign)
+      .filter(([, d]) => d.clicks > 0)
+      .map(([name, d]) => ({ name, cpc: d.spend / d.clicks }))
+      .sort((a, b) => a.cpc - b.cpc)
+      .slice(0, 5)
+      .map(({ name, cpc }) => ({
+        label: name.length > 30 ? name.substring(0, 28) + "…" : name,
+        value: formatMoney(cpc),
+      }));
+  }, [ads.data?.activeAds, formatMoney]);
+
+  const adsCpmDetails: KPIDetailItem[] = useMemo(() => {
+    const allAds = ads.data?.activeAds ?? [];
+    if (!allAds.length) return [];
+    const byCampaign: Record<string, { spend: number; impressions: number }> = {};
+    allAds.forEach((ad) => {
+      if (!byCampaign[ad.campaignName]) byCampaign[ad.campaignName] = { spend: 0, impressions: 0 };
+      byCampaign[ad.campaignName].spend += ad.spend;
+      byCampaign[ad.campaignName].impressions += ad.impressions;
+    });
+    return Object.entries(byCampaign)
+      .filter(([, d]) => d.impressions > 0)
+      .map(([name, d]) => ({ name, cpm: (d.spend / d.impressions) * 1000 }))
+      .sort((a, b) => a.cpm - b.cpm)
+      .slice(0, 5)
+      .map(({ name, cpm }) => ({
+        label: name.length > 30 ? name.substring(0, 28) + "…" : name,
+        value: formatMoney(cpm),
+      }));
+  }, [ads.data?.activeAds, formatMoney]);
+
   // ── Promociones IG breakdowns ─────────────────────────────────────────────
   // Aggregate mode: breakdown by business profile
   const promoGastoBreakdown = useMemo(() =>
@@ -861,6 +910,54 @@ export default function PanelGeneralPage() {
         highlighted: ad.ctr >= (promotions.data?.ctr ?? 0),
       }));
   }, [promotions.ads, promotions.perProfile, promotions.data?.ctr]);
+
+  const promoCpcBreakdown = useMemo(() =>
+    promotions.perProfile?.map((p) => ({
+      profileName: p.profileName,
+      profileColor: p.profileColor,
+      formattedValue: p.insights.clicks > 0 ? formatMoney(p.insights.spend / p.insights.clicks) : "—",
+      rawValue: p.insights.clicks > 0 ? p.insights.spend / p.insights.clicks : 0,
+    })),
+  [promotions.perProfile, formatMoney]);
+
+  const promoCpmBreakdown = useMemo(() =>
+    promotions.perProfile?.map((p) => ({
+      profileName: p.profileName,
+      profileColor: p.profileColor,
+      formattedValue: p.insights.impressions > 0 ? formatMoney((p.insights.spend / p.insights.impressions) * 1000) : "—",
+      rawValue: p.insights.impressions > 0 ? (p.insights.spend / p.insights.impressions) * 1000 : 0,
+    })),
+  [promotions.perProfile, formatMoney]);
+
+  const promoCpcDetails: KPIDetailItem[] = useMemo(() => {
+    if (promotions.perProfile) return [];
+    const allAds = promotions.ads;
+    if (!allAds.length) return [];
+    return [...allAds]
+      .filter((ad) => ad.clicks > 0)
+      .map((ad) => ({ name: ad.adName, cpc: ad.spend / ad.clicks }))
+      .sort((a, b) => a.cpc - b.cpc)
+      .slice(0, 5)
+      .map(({ name, cpc }) => ({
+        label: name.length > 30 ? name.substring(0, 28) + "…" : name,
+        value: formatMoney(cpc),
+      }));
+  }, [promotions.ads, promotions.perProfile, formatMoney]);
+
+  const promoCpmDetails: KPIDetailItem[] = useMemo(() => {
+    if (promotions.perProfile) return [];
+    const allAds = promotions.ads;
+    if (!allAds.length) return [];
+    return [...allAds]
+      .filter((ad) => ad.impressions > 0)
+      .map((ad) => ({ name: ad.adName, cpm: (ad.spend / ad.impressions) * 1000 }))
+      .sort((a, b) => a.cpm - b.cpm)
+      .slice(0, 5)
+      .map(({ name, cpm }) => ({
+        label: name.length > 30 ? name.substring(0, 28) + "…" : name,
+        value: formatMoney(cpm),
+      }));
+  }, [promotions.ads, promotions.perProfile, formatMoney]);
 
   const activeProfileName = aggregateMode
     ? profiles.filter((p) => selectedProfileIds.includes(p.id)).map((p) => p.name).join(", ") || "Todos"
@@ -978,18 +1075,21 @@ export default function PanelGeneralPage() {
                 )}
 
                 {resumenView === "alertas" && (
-                  <Card className="py-0 gap-0 rounded-2xl">
-                    <CardContent className="p-5">
-                      <div className="flex items-center gap-2 mb-5">
-                        <h3 className="text-sm font-semibold bg-gradient-to-r from-foreground to-foreground/70 dark:from-cyan-300 dark:to-blue-400 bg-clip-text text-transparent">
-                          Alertas & Insights
-                        </h3>
-                        {!isLoadingMain && insights.length > 0 && (
-                          <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20">
-                            {insights.length}
-                          </span>
-                        )}
+                  <Card className="py-0 gap-0 rounded-2xl overflow-hidden flex flex-col max-h-[500px]">
+                    <CardContent className="p-0 flex-1 overflow-y-auto">
+                      <div className="sticky top-0 z-10 bg-card px-5 pt-5 pb-3">
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-sm font-semibold bg-gradient-to-r from-foreground to-foreground/70 dark:from-cyan-300 dark:to-blue-400 bg-clip-text text-transparent">
+                            Alertas & Insights
+                          </h3>
+                          {!isLoadingMain && insights.length > 0 && (
+                            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20">
+                              {insights.length}
+                            </span>
+                          )}
+                        </div>
                       </div>
+                      <div className="px-5 pb-5">
                       {isLoadingMain ? (
                         <div className="space-y-3">
                           {[1, 2, 3, 4].map((i) => (
@@ -1044,6 +1144,7 @@ export default function PanelGeneralPage() {
                       ) : (
                         <p className="text-sm text-muted-foreground">Sin alertas para este periodo.</p>
                       )}
+                      </div>
                     </CardContent>
                   </Card>
                 )}
@@ -1076,17 +1177,20 @@ export default function PanelGeneralPage() {
               {/* Alertas + Attribution */}
               <div className="grid grid-cols-12 gap-6 flex-1 min-h-0">
                 <Card className="col-span-12 lg:col-span-5 h-full overflow-hidden flex flex-col rounded-2xl py-0 gap-0">
-                  <CardContent className="p-4 pt-4 flex-1 overflow-y-auto">
-                    <div className="flex items-center gap-2 mb-5">
-                      <h3 className="text-sm font-semibold bg-gradient-to-r from-foreground to-foreground/70 dark:from-cyan-300 dark:to-blue-400 bg-clip-text text-transparent">
-                        Alertas & Insights
-                      </h3>
-                      {!isLoadingMain && insights.length > 0 && (
-                        <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20">
-                          {insights.length}
-                        </span>
-                      )}
+                  <CardContent className="p-0 flex-1 overflow-y-auto">
+                    <div className="sticky top-0 z-10 bg-card px-4 pt-4 pb-3">
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-sm font-semibold bg-gradient-to-r from-foreground to-foreground/70 dark:from-cyan-300 dark:to-blue-400 bg-clip-text text-transparent">
+                          Alertas & Insights
+                        </h3>
+                        {!isLoadingMain && insights.length > 0 && (
+                          <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20">
+                            {insights.length}
+                          </span>
+                        )}
+                      </div>
                     </div>
+                    <div className="px-4 pb-4">
                     {isLoadingMain ? (
                       <div className="space-y-3">
                         {[1, 2, 3, 4].map((i) => (
@@ -1141,6 +1245,7 @@ export default function PanelGeneralPage() {
                     ) : (
                       <p className="text-sm text-muted-foreground">Sin alertas para este periodo.</p>
                     )}
+                    </div>
                   </CardContent>
                 </Card>
 
@@ -1168,9 +1273,9 @@ export default function PanelGeneralPage() {
               variant="line"
               className="flex-shrink-0 w-full h-8 border-b border-border rounded-none bg-transparent gap-0 overflow-x-auto scrollbar-none"
             >
-              <TabsTrigger value="embudo" className="text-xs flex-none sm:flex-1 px-3 rounded-none border-b-2 border-transparent data-[state=active]:border-b-primary data-[state=active]:text-foreground text-muted-foreground/60 hover:text-muted-foreground">Embudo</TabsTrigger>
-              <TabsTrigger value="conversiones" className="text-xs flex-none sm:flex-1 px-3 rounded-none border-b-2 border-transparent data-[state=active]:border-b-primary data-[state=active]:text-foreground text-muted-foreground/60 hover:text-muted-foreground">Pedidos y Gasto Ads</TabsTrigger>
-              <TabsTrigger value="roas" className="text-xs flex-none sm:flex-1 px-3 rounded-none border-b-2 border-transparent data-[state=active]:border-b-primary data-[state=active]:text-foreground text-muted-foreground/60 hover:text-muted-foreground">ROAS Diario</TabsTrigger>
+              <TabsTrigger value="embudo" className="text-xs flex-none sm:flex-1 px-3 rounded-none border-b-2 border-transparent data-[state=active]:border-b-primary data-[state=active]:text-foreground text-muted-foreground/60 hover:text-muted-foreground">Funnel</TabsTrigger>
+              <TabsTrigger value="conversiones" className="text-xs flex-none sm:flex-1 px-3 rounded-none border-b-2 border-transparent data-[state=active]:border-b-primary data-[state=active]:text-foreground text-muted-foreground/60 hover:text-muted-foreground">Análisis de Rendimiento</TabsTrigger>
+              <TabsTrigger value="roas" className="text-xs flex-none sm:flex-1 px-3 rounded-none border-b-2 border-transparent data-[state=active]:border-b-primary data-[state=active]:text-foreground text-muted-foreground/60 hover:text-muted-foreground">Análisis de ROAS</TabsTrigger>
             </TabsList>
 
             {/* Sub-tab: Embudo — marketing funnel */}
@@ -1258,14 +1363,28 @@ export default function PanelGeneralPage() {
               variant="line"
               className="flex-shrink-0 w-full h-8 border-b border-border rounded-none bg-transparent gap-0 overflow-x-auto scrollbar-none"
             >
+              <TabsTrigger value="ads-resumen" className="text-xs flex-none sm:flex-1 px-3 rounded-none border-b-2 border-transparent data-[state=active]:border-b-primary data-[state=active]:text-foreground text-muted-foreground/60 hover:text-muted-foreground">Resumen</TabsTrigger>
               <TabsTrigger value="meta-ads" className="text-xs flex-none sm:flex-1 px-3 rounded-none border-b-2 border-transparent data-[state=active]:border-b-primary data-[state=active]:text-foreground text-muted-foreground/60 hover:text-muted-foreground">Meta Ads</TabsTrigger>
               <TabsTrigger value="promociones-ig" className="text-xs flex-none sm:flex-1 px-3 rounded-none border-b-2 border-transparent data-[state=active]:border-b-primary data-[state=active]:text-foreground text-muted-foreground/60 hover:text-muted-foreground">Promociones</TabsTrigger>
             </TabsList>
 
+            {/* Sub-tab: Resumen — combined ads overview with insights */}
+            <TabsContent value="ads-resumen" className="flex-1 min-h-0 overflow-hidden pt-2 animate-in fade-in-0 duration-150" onTouchStart={anunciosSwipe.onTouchStart} onTouchEnd={anunciosSwipe.onTouchEnd}>
+              <AdsResumenTab
+                metaAds={ads.data}
+                metaAccount={meta.data}
+                promotionsData={promotions.data}
+                promotionAds={promotions.ads}
+                promotionsConfigured={promotions.configured}
+                isLoading={ads.isLoading || promotions.isLoading || meta.isLoading}
+                dayCount={dayCount}
+              />
+            </TabsContent>
+
             {/* Sub-tab: Publicidad — active ads with preview */}
             <TabsContent value="meta-ads" className="flex-1 min-h-0 overflow-hidden pt-2 animate-in fade-in-0 duration-150" onTouchStart={anunciosSwipe.onTouchStart} onTouchEnd={anunciosSwipe.onTouchEnd}>
-              <div className="h-full flex flex-col gap-4 overflow-hidden">
-                <div className="grid gap-4 grid-cols-2 sm:grid-cols-4 flex-shrink-0 items-start">
+              <div className="h-full flex gap-3 overflow-hidden">
+                <div className="w-1/3 min-w-0 flex-shrink-0 grid gap-3 grid-cols-2 grid-rows-3 items-start content-start">
                   <KPICard
                     title="Gasto Meta"
                     value={ads.data?.activeAds.reduce((sum, ad) => sum + ad.spend, 0) ?? 0}
@@ -1319,8 +1438,52 @@ export default function PanelGeneralPage() {
                     detailItems={adsCtrDetails}
                     subtitle={`${formatNumber(ads.data?.activeAds.reduce((sum, ad) => sum + ad.impressions, 0) ?? 0)} impresiones`}
                   />
+                  <KPICard
+                    title="CPC Meta"
+                    value={
+                      (() => {
+                        const totalSpend = ads.data?.activeAds.reduce((sum, ad) => sum + ad.spend, 0) ?? 0;
+                        const totalClicks = ads.data?.activeAds.reduce((sum, ad) => sum + ad.clicks, 0) ?? 0;
+                        return totalClicks > 0 ? totalSpend / totalClicks : 0;
+                      })()
+                    }
+                    formattedValue={
+                      (() => {
+                        const totalSpend = ads.data?.activeAds.reduce((sum, ad) => sum + ad.spend, 0) ?? 0;
+                        const totalClicks = ads.data?.activeAds.reduce((sum, ad) => sum + ad.clicks, 0) ?? 0;
+                        return totalClicks > 0 ? formatMoney(totalSpend / totalClicks) : formatMoney(0);
+                      })()
+                    }
+                    icon={DollarSign}
+                    iconClassName="text-blue-500"
+                    isLoading={ads.isLoading}
+                    detailItems={adsCpcDetails}
+                    subtitle="costo por clic"
+                  />
+                  <KPICard
+                    title="CPM Meta"
+                    value={
+                      (() => {
+                        const totalSpend = ads.data?.activeAds.reduce((sum, ad) => sum + ad.spend, 0) ?? 0;
+                        const totalImpressions = ads.data?.activeAds.reduce((sum, ad) => sum + ad.impressions, 0) ?? 0;
+                        return totalImpressions > 0 ? (totalSpend / totalImpressions) * 1000 : 0;
+                      })()
+                    }
+                    formattedValue={
+                      (() => {
+                        const totalSpend = ads.data?.activeAds.reduce((sum, ad) => sum + ad.spend, 0) ?? 0;
+                        const totalImpressions = ads.data?.activeAds.reduce((sum, ad) => sum + ad.impressions, 0) ?? 0;
+                        return totalImpressions > 0 ? formatMoney((totalSpend / totalImpressions) * 1000) : formatMoney(0);
+                      })()
+                    }
+                    icon={BarChart3}
+                    iconClassName="text-blue-500"
+                    isLoading={ads.isLoading}
+                    detailItems={adsCpmDetails}
+                    subtitle="costo por mil impr."
+                  />
                 </div>
-                <div className="flex-1 min-h-0 flex flex-col">
+                <div className="flex-1 min-h-0 min-w-0 flex flex-col">
                   <ActiveAdsCard
                     activeAds={ads.data?.activeAds ?? []}
                     inactiveAds={ads.data?.inactiveAds ?? []}
@@ -1333,8 +1496,8 @@ export default function PanelGeneralPage() {
             {/* Sub-tab: Promociones IG — Instagram promotions */}
             <TabsContent value="promociones-ig" className="flex-1 min-h-0 overflow-hidden pt-2 animate-in fade-in-0 duration-150" onTouchStart={anunciosSwipe.onTouchStart} onTouchEnd={anunciosSwipe.onTouchEnd}>
               {(promotions.configured || promotions.isLoading) ? (
-                <div className="h-full flex flex-col gap-4 overflow-hidden">
-                  <div className="grid gap-4 grid-cols-2 sm:grid-cols-4 flex-shrink-0 items-start">
+                <div className="h-full flex gap-3 overflow-hidden">
+                  <div className="w-1/3 min-w-0 flex-shrink-0 grid gap-3 grid-cols-2 grid-rows-3 items-start content-start">
                     <KPICard
                       title="Gasto Promos"
                       value={promotions.data?.spend ?? 0}
@@ -1379,8 +1542,42 @@ export default function PanelGeneralPage() {
                       breakdown={promoCtrBreakdown}
                       subtitle={`${formatNumber(promotions.data?.impressions ?? 0)} impresiones`}
                     />
+                    <KPICard
+                      title="CPC Promos"
+                      value={promotions.data?.cpc ?? 0}
+                      formattedValue={formatMoney(promotions.data?.cpc ?? 0)}
+                      icon={DollarSign}
+                      iconClassName="text-fuchsia-500"
+                      isLoading={promotions.isLoading}
+                      detailItems={promoCpcDetails}
+                      breakdown={promoCpcBreakdown}
+                      subtitle="costo por clic"
+                    />
+                    <KPICard
+                      title="CPM Promos"
+                      value={
+                        (() => {
+                          const spend = promotions.data?.spend ?? 0;
+                          const impressions = promotions.data?.impressions ?? 0;
+                          return impressions > 0 ? (spend / impressions) * 1000 : 0;
+                        })()
+                      }
+                      formattedValue={
+                        (() => {
+                          const spend = promotions.data?.spend ?? 0;
+                          const impressions = promotions.data?.impressions ?? 0;
+                          return impressions > 0 ? formatMoney((spend / impressions) * 1000) : formatMoney(0);
+                        })()
+                      }
+                      icon={BarChart3}
+                      iconClassName="text-fuchsia-500"
+                      isLoading={promotions.isLoading}
+                      detailItems={promoCpmDetails}
+                      breakdown={promoCpmBreakdown}
+                      subtitle="costo por mil impr."
+                    />
                   </div>
-                  <Card className="flex-1 min-h-0 flex flex-col overflow-hidden">
+                  <Card className="flex-1 min-h-0 min-w-0 flex flex-col overflow-hidden">
                     <CardContent className="flex-1 min-h-0 overflow-hidden px-5 py-4 flex flex-col">
                       <Tabs value={promoStatusTab} onValueChange={setPromoStatusTab} className="flex-1 flex flex-col min-h-0">
                         <TabsList variant="line" className="flex-shrink-0 w-full h-7 border-b border-border rounded-none bg-transparent gap-0 mb-3">
@@ -1577,16 +1774,16 @@ export default function PanelGeneralPage() {
 
             {/* Sub-tab: Resumen */}
             <TabsContent value="cl-resumen" className="flex-1 min-h-0 overflow-hidden pt-2 animate-in fade-in-0 duration-150" onTouchStart={claritySwipe.onTouchStart} onTouchEnd={claritySwipe.onTouchEnd}>
-              <div className="h-full flex flex-col gap-4 overflow-hidden">
-                <div className="flex items-center gap-4 flex-shrink-0">
-                  <div className="grid gap-4 grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 flex-1 items-start">
+              <div className="h-full flex flex-col gap-3 overflow-hidden">
+                <div className="flex items-center gap-3 flex-shrink-0">
+                  <div className="grid gap-3 grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 flex-1 items-start">
                     <KPICard title="Sesiones Totales" value={claritySesiones.totalValue} formattedValue={claritySesiones.totalFormatted} icon={Eye} iconClassName="text-blue-500" isLoading={clarity.isLoading || allProfilesClarityLoading} breakdown={claritySesiones.items} breakdownLoading={allProfilesClarityLoading} subtitle={`~${formatNumber(Math.round(claritySesiones.totalValue / dayCount))}/día`} />
                     <KPICard title="Usuarios Únicos" value={clarityUsuarios.totalValue} formattedValue={clarityUsuarios.totalFormatted} icon={Users} iconClassName="text-violet-500" isLoading={clarity.isLoading || allProfilesClarityLoading} breakdown={clarityUsuarios.items} breakdownLoading={allProfilesClarityLoading} subtitle={`~${formatNumber(Math.round(clarityUsuarios.totalValue / dayCount))}/día`} />
-                    <KPICard title="Prof. de Scroll" value={clarityScroll.totalValue} formattedValue={clarityScroll.totalFormatted} icon={ArrowDownUp} iconClassName="text-amber-500" isLoading={clarity.isLoading || allProfilesClarityLoading} breakdown={clarityScroll.items} breakdownLoading={allProfilesClarityLoading} subtitle="promedio del periodo" />
-                    <KPICard title="Tiempo Activo" value={clarityTiempo.totalValue} formattedValue={clarityTiempo.totalFormatted} icon={Clock} iconClassName="text-emerald-500" isLoading={clarity.isLoading || allProfilesClarityLoading} breakdown={clarityTiempo.items} breakdownLoading={allProfilesClarityLoading} subtitle="promedio por sesión" />
+                    <KPICard title="Prof. de Scroll" value={clarityScroll.totalValue} formattedValue={clarityScroll.totalFormatted} icon={ArrowDownUp} iconClassName="text-amber-500" isLoading={clarity.isLoading || allProfilesClarityLoading} breakdown={clarityScroll.items} breakdownLoading={allProfilesClarityLoading} subtitle={`${clarityPaginas.totalFormatted} págs/sesión`} />
+                    <KPICard title="Tiempo Activo" value={clarityTiempo.totalValue} formattedValue={clarityTiempo.totalFormatted} icon={Clock} iconClassName="text-emerald-500" isLoading={clarity.isLoading || allProfilesClarityLoading} breakdown={clarityTiempo.items} breakdownLoading={allProfilesClarityLoading} subtitle={`${formatSeconds(Math.round(clarityTiempo.totalValue * claritySesiones.totalValue))} total`} />
                   </div>
                 </div>
-                <div className="flex-1 min-h-0 grid grid-cols-12 gap-4">
+                <div className="flex-1 min-h-0 grid grid-cols-12 gap-3">
                   <div className="col-span-12 lg:col-span-7 min-h-0">
                     <SessionsDailyChart
                       data={clarityDailyBreakdown}
@@ -1595,31 +1792,41 @@ export default function PanelGeneralPage() {
                     />
                   </div>
                   <Card className="col-span-12 lg:col-span-5 overflow-hidden flex flex-col min-h-0">
-                    <CardContent className="px-4 py-3 flex-1 overflow-y-auto">
-                      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Páginas más visitadas</p>
+                    <CardContent className="px-4 py-3 flex-1 flex flex-col min-h-0">
+                      <div className="flex items-center gap-1.5 mb-2 flex-shrink-0">
+                        <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
+                        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Señales de Frustración</p>
+                      </div>
                       {(clarity.isLoading || allProfilesClarityLoading) ? (
-                        <div className="space-y-2.5">{[1, 2, 3, 4, 5].map((i) => <div key={i} className="h-4 bg-muted/40 rounded animate-pulse" />)}</div>
-                      ) : clarityTopPages.length > 0 ? (
-                        <div className="space-y-2">
-                          {clarityTopPages.map((page) => {
-                            const maxVisits = clarityTopPages[0]?.visits ?? 1;
-                            const pct = (page.visits / maxVisits) * 100;
-                            return (
-                              <div key={page.url}>
-                                <div className="flex items-center justify-between text-[13px] mb-0.5">
-                                  <span className="truncate mr-2 text-foreground/90">{page.url}</span>
-                                  <span className="text-muted-foreground whitespace-nowrap">{formatNumber(page.visits)}</span>
+                        <div className="space-y-2">{[1, 2, 3, 4, 5].map((i) => <div key={i} className="h-3 bg-muted/40 rounded animate-pulse" />)}</div>
+                      ) : (() => {
+                        const items = [
+                          { label: "Dead Clicks", value: clarityFrustration.deadClicks, color: "bg-red-500/70" },
+                          { label: "Rage Clicks", value: clarityFrustration.rageClicks, color: "bg-orange-500/70" },
+                          { label: "Quick Backs", value: clarityFrustration.quickbacks, color: "bg-amber-500/70" },
+                          { label: "Error Clicks", value: clarityFrustration.errorClicks, color: "bg-rose-500/70" },
+                          { label: "Errores de Script", value: clarityFrustration.scriptErrors, color: "bg-purple-500/70" },
+                          { label: "Scroll Excesivo", value: clarityFrustration.excessiveScrolls, color: "bg-blue-500/70" },
+                        ];
+                        const maxVal = Math.max(...items.map((i) => i.value), 1);
+                        const total = items.reduce((s, i) => s + i.value, 0);
+                        return (
+                          <div className="flex flex-col gap-1.5 flex-1 min-h-0">
+                            <p className="text-lg font-bold text-foreground flex-shrink-0">{formatNumber(total)} <span className="text-xs font-normal text-muted-foreground">eventos</span></p>
+                            {items.map((item) => (
+                              <div key={item.label} className="flex-shrink-0">
+                                <div className="flex items-center justify-between text-[12px] leading-tight">
+                                  <span className="text-foreground/90">{item.label}</span>
+                                  <span className="text-muted-foreground font-medium">{formatNumber(item.value)}</span>
                                 </div>
-                                <div className="h-1 bg-muted rounded-full overflow-hidden">
-                                  <div className="h-full bg-cyan-500/60 rounded-full" style={{ width: `${pct}%` }} />
+                                <div className="h-1 bg-muted rounded-full overflow-hidden mt-0.5">
+                                  <div className={`h-full ${item.color} rounded-full transition-all`} style={{ width: `${(item.value / maxVal) * 100}%` }} />
                                 </div>
                               </div>
-                            );
-                          })}
-                        </div>
-                      ) : (
-                        <p className="text-[13px] text-muted-foreground">Sin datos de páginas.</p>
-                      )}
+                            ))}
+                          </div>
+                        );
+                      })()}
                     </CardContent>
                   </Card>
                 </div>

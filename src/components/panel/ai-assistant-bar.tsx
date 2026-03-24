@@ -182,6 +182,7 @@ export function AIAssistantBar({
           <div className="hidden sm:flex items-center justify-center gap-2 mb-2">
             <Sparkles className="h-3.5 w-3.5 text-primary" />
             <span className="text-xs font-semibold text-primary tracking-widest uppercase">Huss</span>
+            <span className="text-[10px] text-muted-foreground/70 font-medium">Tu asistente de negocios IA</span>
             {!isConfigured && !configLoading && (
               <Link
                 href="/configuracion"

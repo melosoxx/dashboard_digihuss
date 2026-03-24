@@ -26,7 +26,25 @@ export function useAIConversations() {
       if (!res.ok) throw new Error("Error creando conversación");
       return res.json() as Promise<AIConversation>;
     },
-    onSuccess: () => {
+    onMutate: async (title) => {
+      await queryClient.cancelQueries({ queryKey: CONVERSATIONS_KEY });
+      const previous = queryClient.getQueryData<AIConversation[]>(CONVERSATIONS_KEY);
+      const optimistic: AIConversation = {
+        id: `temp-${Date.now()}`,
+        user_id: "",
+        title: title || "Nueva conversación",
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      queryClient.setQueryData<AIConversation[]>(CONVERSATIONS_KEY, (old = []) => [optimistic, ...old]);
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(CONVERSATIONS_KEY, context.previous);
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: CONVERSATIONS_KEY });
     },
   });
@@ -52,7 +70,18 @@ export function useAIConversations() {
       });
       if (!res.ok) throw new Error("Error eliminando conversación");
     },
-    onSuccess: () => {
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: CONVERSATIONS_KEY });
+      const previous = queryClient.getQueryData<AIConversation[]>(CONVERSATIONS_KEY);
+      queryClient.setQueryData<AIConversation[]>(CONVERSATIONS_KEY, (old = []) => old.filter((c) => c.id !== id));
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(CONVERSATIONS_KEY, context.previous);
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: CONVERSATIONS_KEY });
     },
   });

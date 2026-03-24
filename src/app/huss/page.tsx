@@ -210,6 +210,7 @@ export default function HussPage() {
               {sidebarOpen ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeft className="h-4 w-4" />}
             </button>
             <span className="text-sm font-medium text-foreground">Huss</span>
+            <span className="text-[10px] text-muted-foreground/70 font-medium">Tu asistente de negocios IA</span>
             {activeConversationId && (
               <span className="text-xs text-muted-foreground/60 truncate max-w-[200px]">
                 {conversations.find((c) => c.id === activeConversationId)?.title}
@@ -244,6 +245,7 @@ export default function HussPage() {
           configLoading={configLoading}
           onSend={handleSend}
           onStop={stopStreaming}
+          onNewConversation={handleNewConversation}
           hasConversation={!!activeConversationId}
         />
       </div>

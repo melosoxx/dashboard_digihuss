@@ -12,6 +12,10 @@ export function useHussChat() {
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const conversationIdRef = useRef<string | null>(null);
+  const messagesRef = useRef<AIChatMessage[]>([]);
+  messagesRef.current = messages;
+  const userMsgCountRef = useRef(0);
+  const titleGeneratedRef = useRef(false);
   const queryClient = useQueryClient();
 
   const setConversationId = useCallback((id: string | null) => {
@@ -21,6 +25,8 @@ export function useHussChat() {
   const loadMessages = useCallback((msgs: AIChatMessage[]) => {
     setMessages(msgs);
     setError(null);
+    userMsgCountRef.current = msgs.filter((m) => m.role === "user").length;
+    titleGeneratedRef.current = userMsgCountRef.current >= 2;
   }, []);
 
   const sendMessage = useCallback(
@@ -30,6 +36,7 @@ export function useHussChat() {
       const userMsg: AIChatMessage = { role: "user", content: question };
       const assistantMsg: AIChatMessage = { role: "assistant", content: "" };
 
+      userMsgCountRef.current += 1;
       setMessages((prev) => [...prev, userMsg, assistantMsg]);
       setIsStreaming(true);
 
@@ -37,7 +44,7 @@ export function useHussChat() {
       abortRef.current = controller;
 
       try {
-        const history = messages.slice(-10);
+        const history = messagesRef.current.slice(-10);
 
         const res = await fetch("/api/ai/chat", {
           method: "POST",
@@ -59,19 +66,37 @@ export function useHussChat() {
         const reader = res.body!.getReader();
         const decoder = new TextDecoder();
         let fullResponse = "";
+        let rafId: number | null = null;
+        let pendingContent = "";
+
+        const flushUpdate = () => {
+          const content = pendingContent;
+          setMessages((prev) => {
+            const updated = [...prev];
+            updated[updated.length - 1] = { ...updated[updated.length - 1], content };
+            return updated;
+          });
+          rafId = null;
+        };
 
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
           const chunk = decoder.decode(value, { stream: true });
           fullResponse += chunk;
-          setMessages((prev) => {
-            const updated = [...prev];
-            const last = updated[updated.length - 1];
-            updated[updated.length - 1] = { ...last, content: last.content + chunk };
-            return updated;
-          });
+          pendingContent = fullResponse;
+          if (!rafId) {
+            rafId = requestAnimationFrame(flushUpdate);
+          }
         }
+
+        // Final flush
+        if (rafId) cancelAnimationFrame(rafId);
+        setMessages((prev) => {
+          const updated = [...prev];
+          updated[updated.length - 1] = { ...updated[updated.length - 1], content: fullResponse };
+          return updated;
+        });
 
         // Persist messages to conversation if we have one
         if (conversationIdRef.current && fullResponse) {
@@ -86,6 +111,18 @@ export function useHussChat() {
             }),
           }).then(() => {
             queryClient.invalidateQueries({ queryKey: ["ai-conversations"] });
+
+            // Auto-generate title after 2nd user message
+            if (userMsgCountRef.current === 2 && !titleGeneratedRef.current && conversationIdRef.current) {
+              titleGeneratedRef.current = true;
+              fetch(`/api/ai/conversations/${conversationIdRef.current}/generate-title`, {
+                method: "POST",
+              }).then(() => {
+                queryClient.invalidateQueries({ queryKey: ["ai-conversations"] });
+              }).catch(() => {
+                // Silent fail — title generation is non-critical
+              });
+            }
           }).catch(() => {
             // Silent fail for persistence — chat still works
           });
@@ -106,7 +143,7 @@ export function useHussChat() {
         abortRef.current = null;
       }
     },
-    [messages, queryClient]
+    [queryClient]
   );
 
   const clearChat = useCallback(() => {
@@ -115,6 +152,8 @@ export function useHussChat() {
     setError(null);
     setIsStreaming(false);
     conversationIdRef.current = null;
+    userMsgCountRef.current = 0;
+    titleGeneratedRef.current = false;
   }, []);
 
   const stopStreaming = useCallback(() => {

@@ -169,7 +169,7 @@ export function MarketingFunnel({
   return (
     <Card className={fillHeight ? "h-full flex flex-col py-4 gap-3" : ""}>
       <CardHeader>
-        <CardTitle className="text-sm font-semibold">Embudo de Conversión</CardTitle>
+        <CardTitle className="text-sm font-semibold">Funnel</CardTitle>
       </CardHeader>
       <CardContent className={fillHeight ? "flex-1 min-h-0 overflow-hidden" : ""}>
         <TooltipProvider>

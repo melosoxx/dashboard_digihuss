@@ -20,6 +20,8 @@ interface DailyDataPoint {
   revenue: number;
   adSpend: number;
   orders: number;
+  impressions: number;
+  clicks: number;
 }
 
 interface RoasDailyChartProps {
