@@ -76,6 +76,9 @@ export interface MetaActiveAd {
   clicks: number;
   ctr: number;
   conversions: number;
+  results: number;
+  costPerResult: number;
+  resultType?: string;
   createdAt: string;
   thumbnailUrl?: string;
   objectType?: string;

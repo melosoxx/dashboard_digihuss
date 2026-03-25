@@ -1730,7 +1730,7 @@ export default function PanelGeneralPage() {
                                           <span className="text-[13px] font-semibold text-muted-foreground">{ad.ctr.toFixed(2)}%</span>
                                         </td>
                                         <td className="py-3 text-center px-2">
-                                          <span className="text-[13px] font-semibold text-muted-foreground">{ad.conversions > 0 ? ad.conversions : "—"}</span>
+                                          <span className="text-[13px] font-semibold text-muted-foreground">{ad.results > 0 ? ad.results : "—"}</span>
                                         </td>
                                       </tr>
                                     ))}

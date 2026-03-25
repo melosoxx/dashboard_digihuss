@@ -117,16 +117,16 @@ function AdsRow({ ad, muted, showActive, setPreviewAd, formatMoney }: {
         </Badge>
       </td>
       <td className={cn(tdClass, "text-center px-2")}>
-        {ad.conversions > 0 ? (
+        {ad.results > 0 ? (
           <Badge variant="outline" className="text-[10px] font-semibold border bg-emerald-50 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/25">
-            {ad.conversions}
+            {ad.results}
           </Badge>
         ) : (
           <span className="text-[13px] text-muted-foreground/50">—</span>
         )}
       </td>
       <td className={cn(tdClass, "text-center text-muted-foreground text-[13px] px-2")}>
-        {ad.conversions > 0 ? formatMoney(ad.spend / ad.conversions) : <span className="text-muted-foreground/50">—</span>}
+        {ad.results > 0 ? formatMoney(ad.costPerResult || ad.spend / ad.results) : <span className="text-muted-foreground/50">—</span>}
       </td>
       <td className={cn(tdClass, "text-center text-muted-foreground text-[13px] px-2")}>
         {ad.impressions.toLocaleString("es-AR")}

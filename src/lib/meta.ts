@@ -60,6 +60,31 @@ class MetaAdsClient {
     return purchase ? parseInt(purchase.value) : 0;
   }
 
+  private static RESULT_ACTION_TYPES = [
+    "omni_purchase", "purchase",
+    "initiate_checkout", "omni_initiate_checkout",
+    "lead", "onsite_conversion.lead_grouped",
+    "onsite_conversion.messaging_first_reply",
+    "complete_registration", "omni_complete_registration",
+    "link_click", "landing_page_view",
+  ];
+
+  private extractResults(insight: MetaRawInsight): { count: number; actionType: string } {
+    for (const actionType of MetaAdsClient.RESULT_ACTION_TYPES) {
+      const action = insight.actions?.find((a) => a.action_type === actionType);
+      if (action && parseInt(action.value) > 0) {
+        return { count: parseInt(action.value), actionType };
+      }
+    }
+    return { count: 0, actionType: "" };
+  }
+
+  private extractCostPerResult(insight: MetaRawInsight, actionType: string): number {
+    if (!actionType || !insight.cost_per_action_type) return 0;
+    const cost = insight.cost_per_action_type.find((a) => a.action_type === actionType);
+    return cost ? parseFloat(cost.value) : 0;
+  }
+
   async getAccountInsights(startDate: string, endDate: string): Promise<MetaAccountInsights> {
     const params = new URLSearchParams({
       fields: "spend,impressions,clicks,cpc,ctr,actions,action_values,cost_per_action_type",
@@ -230,7 +255,7 @@ class MetaAdsClient {
 
     // Get insights for active ads
     const insightsParams = new URLSearchParams({
-      fields: "ad_id,ad_name,campaign_name,adset_name,spend,impressions,clicks,ctr,actions",
+      fields: "ad_id,ad_name,campaign_name,adset_name,spend,impressions,clicks,ctr,actions,cost_per_action_type",
       time_range: JSON.stringify({ since: startDate, until: endDate }),
       level: "ad",
       filtering: JSON.stringify([
@@ -272,6 +297,7 @@ class MetaAdsClient {
         row.actions?.find((a) => a.action_type === "link_click")?.value || "0"
       );
       const linkCtr = impressions > 0 ? (linkClicks / impressions) * 100 : 0;
+      const resultsData = this.extractResults(row);
 
       result.push({
         adId,
@@ -283,6 +309,9 @@ class MetaAdsClient {
         clicks: linkClicks,
         ctr: linkCtr,
         conversions: this.extractConversions(row),
+        results: resultsData.count,
+        costPerResult: this.extractCostPerResult(row, resultsData.actionType),
+        resultType: resultsData.actionType,
         createdAt: adMeta?.created_time ?? new Date().toISOString(),
         thumbnailUrl: adMeta?.creative?.thumbnail_url,
         objectType: adMeta?.creative?.object_type,
@@ -305,6 +334,8 @@ class MetaAdsClient {
             clicks: 0,
             ctr: 0,
             conversions: 0,
+            results: 0,
+            costPerResult: 0,
             createdAt: ad.created_time,
             thumbnailUrl: ad.creative?.thumbnail_url,
             objectType: ad.creative?.object_type,
@@ -342,7 +373,7 @@ class MetaAdsClient {
     }
 
     const insightsParams = new URLSearchParams({
-      fields: "ad_id,ad_name,campaign_name,adset_name,spend,impressions,clicks,ctr,actions",
+      fields: "ad_id,ad_name,campaign_name,adset_name,spend,impressions,clicks,ctr,actions,cost_per_action_type",
       time_range: JSON.stringify({ since: startDate, until: endDate }),
       level: "ad",
       limit: "200",
@@ -379,6 +410,7 @@ class MetaAdsClient {
         row.actions?.find((a) => a.action_type === "link_click")?.value || "0"
       );
       const linkCtr = impressions > 0 ? (linkClicks / impressions) * 100 : 0;
+      const resultsData = this.extractResults(row);
 
       result.push({
         adId,
@@ -390,6 +422,9 @@ class MetaAdsClient {
         clicks: linkClicks,
         ctr: linkCtr,
         conversions: this.extractConversions(row),
+        results: resultsData.count,
+        costPerResult: this.extractCostPerResult(row, resultsData.actionType),
+        resultType: resultsData.actionType,
         createdAt: adMeta?.created_time ?? new Date().toISOString(),
         thumbnailUrl: adMeta?.creative?.thumbnail_url,
         objectType: adMeta?.creative?.object_type,
@@ -412,6 +447,8 @@ class MetaAdsClient {
             clicks: 0,
             ctr: 0,
             conversions: 0,
+            results: 0,
+            costPerResult: 0,
             createdAt: ad.created_time,
             thumbnailUrl: ad.creative?.thumbnail_url,
             objectType: ad.creative?.object_type,
