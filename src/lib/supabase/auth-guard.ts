@@ -12,5 +12,5 @@ export async function requireAuth() {
     throw new Error("Unauthorized");
   }
 
-  return { supabase, user };
+  return { supabase, user, userId: user.id };
 }
