@@ -197,10 +197,10 @@ export function ActiveAdsCard({ activeAds, inactiveAds, isLoading }: ActiveAdsCa
     : [...inactiveAds].sort((a, b) => b.spend - a.spend);
 
   return (
-    <Card className="flex flex-col overflow-hidden">
-      <CardContent className="px-5 py-4 flex flex-col overflow-hidden">
-        {/* FIXED: Tabs */}
-        <div className="flex-shrink-0 w-full h-8 border-b border-border mb-3 flex">
+    <Card className="h-full flex flex-col overflow-hidden">
+      <CardContent className="px-5 py-4 flex-1 flex flex-col overflow-hidden">
+        {/* Tabs */}
+        <div className="w-full h-8 border-b border-border mb-3 flex">
           <button
             className={cn(
               "flex-1 text-xs px-3 border-b-2 transition-colors",
@@ -225,8 +225,8 @@ export function ActiveAdsCard({ activeAds, inactiveAds, isLoading }: ActiveAdsCa
           </button>
         </div>
 
-        {/* FIXED: Table header */}
-        <table className="w-full text-sm flex-shrink-0 table-fixed">
+        {/* Table header */}
+        <table className="w-full text-sm table-fixed">
           <ColGroup showActive={showActive} />
           <thead>
             <tr className="border-b border-border/30">

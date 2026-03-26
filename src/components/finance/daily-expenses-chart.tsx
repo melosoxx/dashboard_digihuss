@@ -1,9 +1,8 @@
 "use client";
 
 import {
-  ComposedChart,
+  BarChart,
   Bar,
-  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -17,14 +16,12 @@ import { useCurrency } from "@/providers/currency-provider";
 
 interface DailyFinancePoint {
   date: string;
-  revenue: number;
   adSpend: number;
   mpFees: number;
   otherExpenses: number;
-  netProfit: number;
 }
 
-interface RevenueExpensesChartProps {
+interface DailyExpensesChartProps {
   data: DailyFinancePoint[];
   isLoading: boolean;
 }
@@ -38,17 +35,17 @@ const TOOLTIP_STYLE = {
   color: "var(--tooltip-color)",
 };
 
-export function RevenueExpensesChart({
+export function DailyExpensesChart({
   data,
   isLoading,
-}: RevenueExpensesChartProps) {
+}: DailyExpensesChartProps) {
   const { formatMoney, convert, currencySymbol } = useCurrency();
 
   if (isLoading) {
     return (
       <Card className="h-full flex flex-col">
         <CardHeader className="flex-shrink-0 py-3">
-          <Skeleton className="h-5 w-48" />
+          <Skeleton className="h-5 w-40" />
         </CardHeader>
         <CardContent className="flex-1 min-h-0">
           <Skeleton className="h-full w-full" />
@@ -60,13 +57,11 @@ export function RevenueExpensesChart({
   return (
     <Card className="h-full flex flex-col">
       <CardHeader className="flex-shrink-0 py-3">
-        <CardTitle className="text-sm font-semibold">
-          Ingresos vs Egresos
-        </CardTitle>
+        <CardTitle className="text-sm font-semibold">Egresos Diarios</CardTitle>
       </CardHeader>
       <CardContent className="flex-1 min-h-0 pb-3">
         <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart data={data} barGap={2}>
+          <BarChart data={data} barGap={2}>
             <CartesianGrid
               strokeDasharray="3 3"
               stroke="var(--chart-grid)"
@@ -94,30 +89,16 @@ export function RevenueExpensesChart({
               formatter={(value, name) => [formatMoney(Number(value)), name]}
               contentStyle={TOOLTIP_STYLE}
               itemStyle={{ color: "var(--chart-item-style)" }}
-              labelStyle={{
-                color: "var(--chart-label-style)",
-                marginBottom: 4,
-              }}
-              cursor={{ fill: "rgba(100, 120, 180, 0.06)" }}
+              labelStyle={{ color: "var(--chart-label-style)", marginBottom: 4 }}
             />
             <Legend
-              wrapperStyle={{
-                fontSize: 12,
-                color: "rgba(100, 116, 139, 0.7)",
-              }}
-            />
-            <Bar
-              dataKey="revenue"
-              fill="#10b981"
-              fillOpacity={0.85}
-              radius={[4, 4, 0, 0]}
-              name="Ingresos"
+              wrapperStyle={{ fontSize: 12, color: "rgba(100, 116, 139, 0.7)" }}
             />
             <Bar
               dataKey="adSpend"
               fill="#f43f5e"
               fillOpacity={0.85}
-              radius={[4, 4, 0, 0]}
+              radius={[0, 0, 0, 0]}
               name="Publicidad"
               stackId="expenses"
             />
@@ -137,15 +118,7 @@ export function RevenueExpensesChart({
               name="Otros Gastos"
               stackId="expenses"
             />
-            <Line
-              type="monotone"
-              dataKey="netProfit"
-              stroke="#8b5cf6"
-              strokeWidth={2.5}
-              dot={false}
-              name="Ganancia Neta"
-            />
-          </ComposedChart>
+          </BarChart>
         </ResponsiveContainer>
       </CardContent>
     </Card>

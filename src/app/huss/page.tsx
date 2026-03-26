@@ -8,7 +8,7 @@ import { HussChatArea } from "@/components/huss/huss-chat-area";
 import { HussMemoryPanel } from "@/components/huss/huss-memory-panel";
 import { useAIConversations, useConversationMessages } from "@/hooks/use-ai-conversations";
 import { useAIMemories } from "@/hooks/use-ai-memories";
-import { useHussChat } from "@/hooks/use-huss-chat";
+import { useHussChat, type MemoryEvent } from "@/hooks/use-huss-chat";
 import { useAIConfig } from "@/hooks/use-ai-config";
 import { buildDashboardContext } from "@/lib/ai-context-builder";
 import { useShopifyOrders } from "@/hooks/use-shopify-orders";
@@ -35,6 +35,11 @@ export default function HussPage() {
   const { memories, isLoading: memoriesLoading, createMemory, updateMemory, deleteMemory } = useAIMemories();
   const { data: conversationData } = useConversationMessages(activeConversationId);
 
+  const handleMemoryEvent = useCallback((event: MemoryEvent) => {
+    // Auto-open memory panel when memories are saved or deleted via chat
+    setShowMemory(true);
+  }, []);
+
   const {
     messages,
     isStreaming,
@@ -44,7 +49,7 @@ export default function HussPage() {
     stopStreaming,
     loadMessages,
     setConversationId,
-  } = useHussChat();
+  } = useHussChat(handleMemoryEvent);
 
   // Dashboard context (same data sources as panel)
   const { activeProfile, profiles, aggregateMode, selectedProfileIds } = useBusinessProfile();

@@ -1,12 +1,58 @@
 import { useState, useCallback, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import type { AIChatMessage, DashboardContext } from "@/types/ai";
+import type { AIChatMessage, DashboardContext, AIMemoryCategory } from "@/types/ai";
+
+const MEMORY_TAG_REGEX = /\[SAVE_MEMORY\s*\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|\s*([^\]]+?)\s*\]/g;
+const DELETE_MEMORY_TAG_REGEX = /\[DELETE_MEMORY\s*\|\s*([^\]]+?)\s*\]/g;
+const VALID_CATEGORIES: AIMemoryCategory[] = ["negocio", "decisiones", "proyecciones", "preferencias", "general"];
+
+interface MemoryAction {
+  type: "save" | "delete";
+  category?: AIMemoryCategory;
+  title: string;
+  content?: string;
+}
+
+function extractMemoryActions(text: string): {
+  cleanText: string;
+  actions: MemoryAction[];
+} {
+  const actions: MemoryAction[] = [];
+
+  let cleaned = text.replace(MEMORY_TAG_REGEX, (_, cat, title, content) => {
+    const category = VALID_CATEGORIES.includes(cat.trim() as AIMemoryCategory)
+      ? (cat.trim() as AIMemoryCategory)
+      : "general";
+    actions.push({
+      type: "save",
+      category,
+      title: title.trim(),
+      content: content.trim(),
+    });
+    return "";
+  });
+
+  cleaned = cleaned.replace(DELETE_MEMORY_TAG_REGEX, (_, title) => {
+    actions.push({
+      type: "delete",
+      title: title.trim(),
+    });
+    return "";
+  });
+
+  return { cleanText: cleaned.trim(), actions };
+}
+
+export interface MemoryEvent {
+  type: "saved" | "deleted";
+  count: number;
+}
 
 /**
  * Enhanced chat hook for Huss assistant page.
  * Supports persisting messages to a conversation and loading history.
  */
-export function useHussChat() {
+export function useHussChat(onMemoryEvent?: (event: MemoryEvent) => void) {
   const [messages, setMessages] = useState<AIChatMessage[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -16,6 +62,8 @@ export function useHussChat() {
   messagesRef.current = messages;
   const userMsgCountRef = useRef(0);
   const titleGeneratedRef = useRef(false);
+  const onMemoryEventRef = useRef(onMemoryEvent);
+  onMemoryEventRef.current = onMemoryEvent;
   const queryClient = useQueryClient();
 
   const setConversationId = useCallback((id: string | null) => {
@@ -90,30 +138,85 @@ export function useHussChat() {
           }
         }
 
-        // Final flush
+        // Final flush — extract memory actions and clean response
         if (rafId) cancelAnimationFrame(rafId);
+        const { cleanText, actions } = extractMemoryActions(fullResponse);
+        const displayResponse = cleanText;
         setMessages((prev) => {
           const updated = [...prev];
-          updated[updated.length - 1] = { ...updated[updated.length - 1], content: fullResponse };
+          updated[updated.length - 1] = { ...updated[updated.length - 1], content: displayResponse };
           return updated;
         });
 
+        // Process memory actions
+        const saves = actions.filter((a) => a.type === "save");
+        const deletes = actions.filter((a) => a.type === "delete");
+
+        if (saves.length > 0) {
+          Promise.all(
+            saves.map((mem) =>
+              fetch("/api/ai/memories", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  category: mem.category,
+                  title: mem.title,
+                  content: mem.content,
+                }),
+              })
+            )
+          ).then(() => {
+            queryClient.invalidateQueries({ queryKey: ["ai-memories"] });
+            onMemoryEventRef.current?.({ type: "saved", count: saves.length });
+          }).catch(() => {
+            // Silent fail
+          });
+        }
+
+        if (deletes.length > 0) {
+          // Fetch current memories to find IDs by title match
+          fetch("/api/ai/memories")
+            .then((r) => r.json())
+            .then((allMemories: { id: string; title: string }[]) => {
+              const toDelete = deletes
+                .map((d) => allMemories.find((m) =>
+                  m.title.toLowerCase().includes(d.title.toLowerCase()) ||
+                  d.title.toLowerCase().includes(m.title.toLowerCase())
+                ))
+                .filter(Boolean) as { id: string }[];
+
+              if (toDelete.length > 0) {
+                Promise.all(
+                  toDelete.map((m) =>
+                    fetch(`/api/ai/memories/${m.id}`, { method: "DELETE" })
+                  )
+                ).then(() => {
+                  queryClient.invalidateQueries({ queryKey: ["ai-memories"] });
+                  onMemoryEventRef.current?.({ type: "deleted", count: toDelete.length });
+                });
+              }
+            })
+            .catch(() => {
+              // Silent fail
+            });
+        }
+
         // Persist messages to conversation if we have one
-        if (conversationIdRef.current && fullResponse) {
+        if (conversationIdRef.current && displayResponse) {
           fetch(`/api/ai/conversations/${conversationIdRef.current}/messages`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               messages: [
                 { role: "user", content: question },
-                { role: "assistant", content: fullResponse },
+                { role: "assistant", content: displayResponse },
               ],
             }),
           }).then(() => {
             queryClient.invalidateQueries({ queryKey: ["ai-conversations"] });
 
-            // Auto-generate title after 2nd user message
-            if (userMsgCountRef.current === 2 && !titleGeneratedRef.current && conversationIdRef.current) {
+            // Auto-generate title after first message exchange
+            if (!titleGeneratedRef.current && conversationIdRef.current) {
               titleGeneratedRef.current = true;
               fetch(`/api/ai/conversations/${conversationIdRef.current}/generate-title`, {
                 method: "POST",

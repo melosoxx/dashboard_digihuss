@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@plugin "@tailwindcss/typography";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -300,6 +301,35 @@
   }
   .funnel-stage {
     animation: funnel-slide-in 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  /* Memory panel animations */
+  @keyframes memory-in {
+    0% {
+      opacity: 0;
+      transform: translateY(-8px) scale(0.95);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  /* AI chat prose table styling */
+  .prose table {
+    @apply text-xs border-collapse w-full my-2;
+  }
+  .prose thead th {
+    @apply text-left font-semibold px-3 py-1.5 border-b-2 border-border text-foreground/80;
+  }
+  .prose tbody td {
+    @apply px-3 py-1.5 border-b border-border/50;
+  }
+  .prose tbody tr:last-child td {
+    @apply border-b-0;
+  }
+  .prose tbody tr:hover {
+    @apply bg-muted/50;
   }
 
   /* Hide scrollbar utility */

@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Send, Square, BotMessageSquare, Settings, Sparkles, Plus } from "lucide-react";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import type { AIChatMessage } from "@/types/ai";
@@ -147,9 +148,18 @@ export function HussChatArea({
                 <div className="flex-shrink-0 h-7 w-7 rounded-lg bg-gradient-to-br from-cyan-500/20 to-blue-500/20 flex items-center justify-center mt-0.5 border border-cyan-500/20">
                   <BotMessageSquare className="h-4 w-4 text-cyan-500" />
                 </div>
-                <div className="text-sm text-foreground/90 leading-relaxed prose prose-sm dark:prose-invert max-w-none prose-p:my-1.5 prose-headings:my-2 prose-ul:my-1.5 prose-li:my-0.5">
+                <div className="text-sm text-foreground/90 leading-relaxed prose prose-sm dark:prose-invert max-w-none prose-p:my-1.5 prose-headings:my-2 prose-ul:my-1.5 prose-li:my-0.5 overflow-hidden">
                   {msg.content ? (
-                    <ReactMarkdown>{msg.content}</ReactMarkdown>
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        table: ({ children }) => (
+                          <div className="overflow-x-auto my-2 rounded-lg border border-border/60">
+                            <table>{children}</table>
+                          </div>
+                        ),
+                      }}
+                    >{msg.content}</ReactMarkdown>
                   ) : isStreaming && i === messages.length - 1 ? (
                     <div className="flex items-center gap-1.5 pt-1">
                       <span className="h-1.5 w-1.5 rounded-full bg-cyan-600/60 dark:bg-cyan-400/60 animate-bounce [animation-delay:0ms]" />

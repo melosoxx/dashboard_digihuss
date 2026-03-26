@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { Sparkles, Send, X, Trash2, Settings, Square } from "lucide-react";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { useAIConfig } from "@/hooks/use-ai-config";
 import { useAIChat } from "@/hooks/use-ai-chat";
 import type { DashboardContext } from "@/types/ai";
@@ -308,7 +309,7 @@ export function AIAssistantBar({
                           </div>
                           <div className="text-sm text-foreground/90 leading-relaxed prose prose-sm dark:prose-invert max-w-none prose-p:my-1.5 prose-headings:my-2 prose-ul:my-1.5 prose-li:my-0.5">
                             {msg.content ? (
-                              <ReactMarkdown>{msg.content}</ReactMarkdown>
+                              <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
                             ) : isStreaming && i === messages.length - 1 ? (
                               <div className="flex items-center gap-1.5 pt-1">
                                 <span className="h-1.5 w-1.5 rounded-full bg-cyan-600/60 dark:bg-cyan-400/60 animate-bounce [animation-delay:0ms]" />

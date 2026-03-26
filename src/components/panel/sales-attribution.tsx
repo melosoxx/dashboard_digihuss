@@ -2,7 +2,7 @@
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Info, Sprout } from "lucide-react";
+import { Sprout } from "lucide-react";
 import { formatNumber } from "@/lib/utils";
 import { useCurrency } from "@/providers/currency-provider";
 
@@ -86,39 +86,34 @@ export function SalesAttribution({
         </div>
 
         {/* Sub-cards */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-4 flex-1 min-h-0">
           {/* Meta Ads Card */}
-          <div className="relative overflow-hidden rounded-xl border border-blue-100 dark:border-blue-500/20 bg-blue-50 dark:bg-blue-900/10 px-5 py-3 flex flex-col justify-end">
+          <div className="relative overflow-hidden rounded-xl border border-blue-100 dark:border-blue-500/20 bg-blue-50 dark:bg-blue-900/10 px-6 py-5 flex flex-col justify-center">
             {/* Decorative icon — centered right */}
-            <MetaLogoIcon className="absolute top-1/2 -translate-y-1/2 right-4 w-14 h-14 text-blue-500 opacity-20 pointer-events-none" />
+            <MetaLogoIcon className="absolute top-1/2 -translate-y-1/2 right-5 w-20 h-20 text-blue-500 opacity-15 pointer-events-none" />
             {/* Percentage badge */}
-            <span className="absolute top-3 right-3 text-[9px] font-semibold text-muted-foreground bg-blue-100 dark:bg-blue-500/10 rounded-full px-2 py-0.5">{metaPct.toFixed(1)}%</span>
+            <span className="absolute top-3 right-3 text-[10px] font-semibold text-muted-foreground bg-blue-100 dark:bg-blue-500/10 rounded-full px-2.5 py-0.5">{metaPct.toFixed(1)}%</span>
             <div className="z-10">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-blue-600 dark:text-blue-400 block mb-1">Meta Ads</span>
-              <p className="text-2xl font-bold leading-tight mb-0.5">{formatMoney(metaRevenue)}</p>
-              <p className="text-xs text-muted-foreground">{formatNumber(metaConversions)} pedidos</p>
+              <span className="text-[11px] font-bold uppercase tracking-widest text-blue-600 dark:text-blue-400 block mb-2">Meta Ads</span>
+              <p className="text-3xl font-bold leading-tight mb-1">{formatMoney(metaRevenue)}</p>
+              <p className="text-sm text-muted-foreground">{formatNumber(metaConversions)} pedidos</p>
             </div>
           </div>
 
           {/* Organic Card */}
-          <div className="relative overflow-hidden rounded-xl border border-emerald-100 dark:border-emerald-500/20 bg-emerald-50 dark:bg-emerald-900/10 px-5 py-3 flex flex-col justify-end">
+          <div className="relative overflow-hidden rounded-xl border border-emerald-100 dark:border-emerald-500/20 bg-emerald-50 dark:bg-emerald-900/10 px-6 py-5 flex flex-col justify-center">
             {/* Decorative icon — centered right */}
-            <Sprout className="absolute top-1/2 -translate-y-1/2 right-4 w-14 h-14 text-emerald-500 opacity-20 pointer-events-none" />
+            <Sprout className="absolute top-1/2 -translate-y-1/2 right-5 w-20 h-20 text-emerald-500 opacity-15 pointer-events-none" />
             {/* Percentage badge */}
-            <span className="absolute top-3 right-3 text-[9px] font-semibold text-muted-foreground bg-emerald-100 dark:bg-emerald-500/10 rounded-full px-2 py-0.5">{organicPct.toFixed(1)}%</span>
+            <span className="absolute top-3 right-3 text-[10px] font-semibold text-muted-foreground bg-emerald-100 dark:bg-emerald-500/10 rounded-full px-2.5 py-0.5">{organicPct.toFixed(1)}%</span>
             <div className="z-10">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-400 block mb-1">Orgánico</span>
-              <p className="text-2xl font-bold leading-tight mb-0.5">{formatMoney(organicRevenue)}</p>
-              <p className="text-xs text-muted-foreground">{formatNumber(organicOrders)} pedidos</p>
+              <span className="text-[11px] font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-400 block mb-2">Orgánico</span>
+              <p className="text-3xl font-bold leading-tight mb-1">{formatMoney(organicRevenue)}</p>
+              <p className="text-sm text-muted-foreground">{formatNumber(organicOrders)} pedidos</p>
             </div>
           </div>
         </div>
 
-        {/* Disclaimer */}
-        <p className="mt-6 text-[10px] text-muted-foreground/40 flex items-center gap-1.5 flex-shrink-0">
-          <Info className="h-3 w-3 flex-shrink-0" />
-          Atribución basada en Meta Ads (7 días clic, 1 día vista).
-        </p>
       </CardContent>
     </Card>
   );

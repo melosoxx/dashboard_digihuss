@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import {
   ComposedChart,
   Bar,
@@ -10,6 +11,8 @@ import {
   Tooltip,
   ResponsiveContainer,
   Legend,
+  ReferenceLine,
+  Cell,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -17,14 +20,10 @@ import { useCurrency } from "@/providers/currency-provider";
 
 interface DailyFinancePoint {
   date: string;
-  revenue: number;
-  adSpend: number;
-  mpFees: number;
-  otherExpenses: number;
   netProfit: number;
 }
 
-interface RevenueExpensesChartProps {
+interface ProfitMarginChartProps {
   data: DailyFinancePoint[];
   isLoading: boolean;
 }
@@ -38,17 +37,25 @@ const TOOLTIP_STYLE = {
   color: "var(--tooltip-color)",
 };
 
-export function RevenueExpensesChart({
+export function ProfitMarginChart({
   data,
   isLoading,
-}: RevenueExpensesChartProps) {
+}: ProfitMarginChartProps) {
   const { formatMoney, convert, currencySymbol } = useCurrency();
+
+  const chartData = useMemo(() => {
+    let cumulative = 0;
+    return data.map((d) => {
+      cumulative += d.netProfit;
+      return { ...d, cumulative };
+    });
+  }, [data]);
 
   if (isLoading) {
     return (
       <Card className="h-full flex flex-col">
         <CardHeader className="flex-shrink-0 py-3">
-          <Skeleton className="h-5 w-48" />
+          <Skeleton className="h-5 w-44" />
         </CardHeader>
         <CardContent className="flex-1 min-h-0">
           <Skeleton className="h-full w-full" />
@@ -60,13 +67,11 @@ export function RevenueExpensesChart({
   return (
     <Card className="h-full flex flex-col">
       <CardHeader className="flex-shrink-0 py-3">
-        <CardTitle className="text-sm font-semibold">
-          Ingresos vs Egresos
-        </CardTitle>
+        <CardTitle className="text-sm font-semibold">Ganancia Diaria y Acumulada</CardTitle>
       </CardHeader>
       <CardContent className="flex-1 min-h-0 pb-3">
         <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart data={data} barGap={2}>
+          <ComposedChart data={chartData}>
             <CartesianGrid
               strokeDasharray="3 3"
               stroke="var(--chart-grid)"
@@ -85,6 +90,15 @@ export function RevenueExpensesChart({
               }
             />
             <YAxis
+              yAxisId="daily"
+              tick={{ fontSize: 11, fill: "var(--chart-tick)" }}
+              tickLine={false}
+              axisLine={false}
+              tickFormatter={(v) => `${currencySymbol}${(convert(v) / 1000).toFixed(0)}k`}
+            />
+            <YAxis
+              yAxisId="cumulative"
+              orientation="right"
               tick={{ fontSize: 11, fill: "var(--chart-tick)" }}
               tickLine={false}
               axisLine={false}
@@ -94,56 +108,34 @@ export function RevenueExpensesChart({
               formatter={(value, name) => [formatMoney(Number(value)), name]}
               contentStyle={TOOLTIP_STYLE}
               itemStyle={{ color: "var(--chart-item-style)" }}
-              labelStyle={{
-                color: "var(--chart-label-style)",
-                marginBottom: 4,
-              }}
-              cursor={{ fill: "rgba(100, 120, 180, 0.06)" }}
+              labelStyle={{ color: "var(--chart-label-style)", marginBottom: 4 }}
             />
             <Legend
-              wrapperStyle={{
-                fontSize: 12,
-                color: "rgba(100, 116, 139, 0.7)",
-              }}
+              wrapperStyle={{ fontSize: 12, color: "rgba(100, 116, 139, 0.7)" }}
             />
+            <ReferenceLine yAxisId="daily" y={0} stroke="var(--chart-grid)" strokeDasharray="3 3" />
             <Bar
-              dataKey="revenue"
-              fill="#10b981"
-              fillOpacity={0.85}
-              radius={[4, 4, 0, 0]}
-              name="Ingresos"
-            />
-            <Bar
-              dataKey="adSpend"
-              fill="#f43f5e"
-              fillOpacity={0.85}
-              radius={[4, 4, 0, 0]}
-              name="Publicidad"
-              stackId="expenses"
-            />
-            <Bar
-              dataKey="mpFees"
-              fill="#f59e0b"
-              fillOpacity={0.85}
-              radius={[0, 0, 0, 0]}
-              name="Comisiones MP"
-              stackId="expenses"
-            />
-            <Bar
-              dataKey="otherExpenses"
-              fill="#6b7280"
-              fillOpacity={0.85}
-              radius={[4, 4, 0, 0]}
-              name="Otros Gastos"
-              stackId="expenses"
-            />
-            <Line
-              type="monotone"
+              yAxisId="daily"
               dataKey="netProfit"
+              name="Ganancia Diaria"
+              radius={[4, 4, 0, 0]}
+              fillOpacity={0.85}
+            >
+              {chartData.map((entry, index) => (
+                <Cell
+                  key={index}
+                  fill={entry.netProfit >= 0 ? "#10b981" : "#f43f5e"}
+                />
+              ))}
+            </Bar>
+            <Line
+              yAxisId="cumulative"
+              type="monotone"
+              dataKey="cumulative"
               stroke="#8b5cf6"
               strokeWidth={2.5}
               dot={false}
-              name="Ganancia Neta"
+              name="Acumulada"
             />
           </ComposedChart>
         </ResponsiveContainer>

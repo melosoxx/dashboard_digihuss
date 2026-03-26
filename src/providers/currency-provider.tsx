@@ -10,7 +10,7 @@ import {
   type ReactNode,
 } from "react";
 
-export type CurrencyCode = "ARS" | "USD" | "EUR" | "BRL";
+export type CurrencyCode = "ARS" | "USD";
 
 interface CurrencyConfig {
   code: CurrencyCode;
@@ -23,8 +23,6 @@ interface CurrencyConfig {
 export const CURRENCIES: Record<CurrencyCode, CurrencyConfig> = {
   ARS: { code: "ARS", label: "Peso Argentino", locale: "es-AR", symbol: "$", decimals: 2 },
   USD: { code: "USD", label: "Dólar Estadounidense", locale: "en-US", symbol: "US$", decimals: 2 },
-  EUR: { code: "EUR", label: "Euro", locale: "de-DE", symbol: "€", decimals: 2 },
-  BRL: { code: "BRL", label: "Real Brasileño", locale: "pt-BR", symbol: "R$", decimals: 2 },
 };
 
 interface RatesCache {
@@ -111,7 +109,7 @@ function formatWithCurrency(amount: number, config: CurrencyConfig): string {
 
 export function CurrencyProvider({ children }: { children: ReactNode }) {
   const [currency, setCurrencyState] = useState<CurrencyCode>("ARS");
-  const [rates, setRates] = useState<Record<string, number>>({ ARS: 1, USD: 1, EUR: 1, BRL: 1 });
+  const [rates, setRates] = useState<Record<string, number>>({ ARS: 1, USD: 1 });
   const [ratesTimestamp, setRatesTimestamp] = useState<Date | null>(null);
   const [ratesError, setRatesError] = useState(false);
   const [isLoadingRates, setIsLoadingRates] = useState(false);

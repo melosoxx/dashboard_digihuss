@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Brain, Plus, Pencil, Trash2, Check, X, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AIMemory, AIMemoryCategory } from "@/types/ai";
@@ -12,6 +12,7 @@ interface HussMemoryPanelProps {
   onCreate: (memory: { title: string; content: string; category: AIMemoryCategory }) => Promise<unknown>;
   onUpdate: (data: { id: string; title?: string; content?: string; category?: AIMemoryCategory }) => Promise<unknown>;
   onDelete: (id: string) => Promise<unknown>;
+  highlightIds?: string[];
 }
 
 const CATEGORIES: AIMemoryCategory[] = ["negocio", "decisiones", "proyecciones", "preferencias", "general"];
@@ -30,11 +31,52 @@ export function HussMemoryPanel({
   onCreate,
   onUpdate,
   onDelete,
+  highlightIds = [],
 }: HussMemoryPanelProps) {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ title: "", content: "", category: "general" as AIMemoryCategory });
   const [expandedCategory, setExpandedCategory] = useState<AIMemoryCategory | null>(null);
+  const [animatingIds, setAnimatingIds] = useState<Set<string>>(new Set());
+  const prevMemoryIdsRef = useRef<Set<string>>(new Set());
+
+  // Detect new memories and auto-expand their category
+  useEffect(() => {
+    const currentIds = new Set(memories.map((m) => m.id));
+    const prevIds = prevMemoryIdsRef.current;
+
+    if (prevIds.size > 0) {
+      const newIds = new Set<string>();
+      for (const id of currentIds) {
+        if (!prevIds.has(id)) newIds.add(id);
+      }
+
+      if (newIds.size > 0) {
+        setAnimatingIds(newIds);
+        // Auto-expand the category of new memories
+        const newMemory = memories.find((m) => newIds.has(m.id));
+        if (newMemory) {
+          setExpandedCategory(newMemory.category);
+        }
+        // Clear animation after 2s
+        const timer = setTimeout(() => setAnimatingIds(new Set()), 2000);
+        return () => clearTimeout(timer);
+      }
+    }
+
+    prevMemoryIdsRef.current = currentIds;
+  }, [memories]);
+
+  // Handle highlight from external (chat-created memories)
+  useEffect(() => {
+    if (highlightIds.length > 0) {
+      setAnimatingIds(new Set(highlightIds));
+      const mem = memories.find((m) => highlightIds.includes(m.id));
+      if (mem) setExpandedCategory(mem.category);
+      const timer = setTimeout(() => setAnimatingIds(new Set()), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [highlightIds, memories]);
 
   function resetForm() {
     setForm({ title: "", content: "", category: "general" });
@@ -165,7 +207,12 @@ export function HussMemoryPanel({
                 {isExpanded && items.map((memory) => (
                   <div
                     key={memory.id}
-                    className="group ml-5 rounded-lg border border-border/50 p-2.5 hover:border-border transition-colors"
+                    className={cn(
+                      "group ml-5 rounded-lg border p-2.5 transition-all duration-500",
+                      animatingIds.has(memory.id)
+                        ? "border-primary/50 bg-primary/5 ring-1 ring-primary/20 animate-[memory-in_0.4s_ease-out]"
+                        : "border-border/50 hover:border-border"
+                    )}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 flex-1">

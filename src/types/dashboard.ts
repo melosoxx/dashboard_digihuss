@@ -7,7 +7,7 @@ export interface DateRange {
 
 export interface KPIData {
   title: string;
-  value: number;
+  value?: number;
   formattedValue: string;
   trend?: {
     value: number;

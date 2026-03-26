@@ -91,7 +91,7 @@ export function ImportResult({
           Importar otro archivo
         </Button>
         <Button asChild>
-          <Link href="/finanzas">Ir a Finanzas</Link>
+          <Link href="/finanzas">Ir a P&L</Link>
         </Button>
       </div>
     </div>

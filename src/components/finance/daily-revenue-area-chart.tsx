@@ -1,9 +1,8 @@
 "use client";
 
 import {
-  ComposedChart,
-  Bar,
-  Line,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -15,17 +14,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCurrency } from "@/providers/currency-provider";
 
-interface DailyFinancePoint {
+interface DailyPayment {
   date: string;
-  revenue: number;
-  adSpend: number;
-  mpFees: number;
-  otherExpenses: number;
-  netProfit: number;
+  gross: number;
+  net: number;
+  fees: number;
 }
 
-interface RevenueExpensesChartProps {
-  data: DailyFinancePoint[];
+interface DailyRevenueAreaChartProps {
+  data: DailyPayment[];
   isLoading: boolean;
 }
 
@@ -38,17 +35,17 @@ const TOOLTIP_STYLE = {
   color: "var(--tooltip-color)",
 };
 
-export function RevenueExpensesChart({
+export function DailyRevenueAreaChart({
   data,
   isLoading,
-}: RevenueExpensesChartProps) {
+}: DailyRevenueAreaChartProps) {
   const { formatMoney, convert, currencySymbol } = useCurrency();
 
   if (isLoading) {
     return (
       <Card className="h-full flex flex-col">
         <CardHeader className="flex-shrink-0 py-3">
-          <Skeleton className="h-5 w-48" />
+          <Skeleton className="h-5 w-44" />
         </CardHeader>
         <CardContent className="flex-1 min-h-0">
           <Skeleton className="h-full w-full" />
@@ -60,13 +57,21 @@ export function RevenueExpensesChart({
   return (
     <Card className="h-full flex flex-col">
       <CardHeader className="flex-shrink-0 py-3">
-        <CardTitle className="text-sm font-semibold">
-          Ingresos vs Egresos
-        </CardTitle>
+        <CardTitle className="text-sm font-semibold">Ingresos Diarios</CardTitle>
       </CardHeader>
       <CardContent className="flex-1 min-h-0 pb-3">
         <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart data={data} barGap={2}>
+          <AreaChart data={data}>
+            <defs>
+              <linearGradient id="gradGross" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+              </linearGradient>
+              <linearGradient id="gradNet" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.3} />
+                <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0} />
+              </linearGradient>
+            </defs>
             <CartesianGrid
               strokeDasharray="3 3"
               stroke="var(--chart-grid)"
@@ -94,58 +99,28 @@ export function RevenueExpensesChart({
               formatter={(value, name) => [formatMoney(Number(value)), name]}
               contentStyle={TOOLTIP_STYLE}
               itemStyle={{ color: "var(--chart-item-style)" }}
-              labelStyle={{
-                color: "var(--chart-label-style)",
-                marginBottom: 4,
-              }}
-              cursor={{ fill: "rgba(100, 120, 180, 0.06)" }}
+              labelStyle={{ color: "var(--chart-label-style)", marginBottom: 4 }}
             />
             <Legend
-              wrapperStyle={{
-                fontSize: 12,
-                color: "rgba(100, 116, 139, 0.7)",
-              }}
+              wrapperStyle={{ fontSize: 12, color: "rgba(100, 116, 139, 0.7)" }}
             />
-            <Bar
-              dataKey="revenue"
-              fill="#10b981"
-              fillOpacity={0.85}
-              radius={[4, 4, 0, 0]}
-              name="Ingresos"
-            />
-            <Bar
-              dataKey="adSpend"
-              fill="#f43f5e"
-              fillOpacity={0.85}
-              radius={[4, 4, 0, 0]}
-              name="Publicidad"
-              stackId="expenses"
-            />
-            <Bar
-              dataKey="mpFees"
-              fill="#f59e0b"
-              fillOpacity={0.85}
-              radius={[0, 0, 0, 0]}
-              name="Comisiones MP"
-              stackId="expenses"
-            />
-            <Bar
-              dataKey="otherExpenses"
-              fill="#6b7280"
-              fillOpacity={0.85}
-              radius={[4, 4, 0, 0]}
-              name="Otros Gastos"
-              stackId="expenses"
-            />
-            <Line
+            <Area
               type="monotone"
-              dataKey="netProfit"
-              stroke="#8b5cf6"
-              strokeWidth={2.5}
-              dot={false}
-              name="Ganancia Neta"
+              dataKey="gross"
+              stroke="#10b981"
+              fill="url(#gradGross)"
+              strokeWidth={2}
+              name="Bruto"
             />
-          </ComposedChart>
+            <Area
+              type="monotone"
+              dataKey="net"
+              stroke="#0ea5e9"
+              fill="url(#gradNet)"
+              strokeWidth={2}
+              name="Neto"
+            />
+          </AreaChart>
         </ResponsiveContainer>
       </CardContent>
     </Card>

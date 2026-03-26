@@ -9,8 +9,6 @@ import { useCurrency, CURRENCIES, type CurrencyCode } from "@/providers/currency
 const CURRENCY_FLAGS: Record<CurrencyCode, string> = {
   ARS: "🇦🇷",
   USD: "🇺🇸",
-  EUR: "🇪🇺",
-  BRL: "🇧🇷",
 };
 
 function formatRelativeTime(date: Date): string {

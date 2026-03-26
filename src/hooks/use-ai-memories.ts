@@ -53,7 +53,21 @@ export function useAIMemories() {
       });
       if (!res.ok) throw new Error("Error eliminando memoria");
     },
-    onSuccess: () => {
+    // Optimistic delete — remove immediately, restore on error
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: MEMORIES_KEY });
+      const previous = queryClient.getQueryData<AIMemory[]>(MEMORIES_KEY);
+      queryClient.setQueryData<AIMemory[]>(MEMORIES_KEY, (old = []) =>
+        old.filter((m) => m.id !== id)
+      );
+      return { previous };
+    },
+    onError: (_err, _id, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(MEMORIES_KEY, context.previous);
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: MEMORIES_KEY });
     },
   });
