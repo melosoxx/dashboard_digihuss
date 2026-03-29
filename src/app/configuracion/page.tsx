@@ -4,6 +4,7 @@ import { useBusinessProfile } from "@/providers/business-profile-provider";
 import { ProfileList } from "@/components/settings/profile-list";
 import { ProfileEditor } from "@/components/settings/profile-editor";
 import { AIConfigSection } from "@/components/settings/ai-config-section";
+import { SubscriptionSection } from "@/components/settings/subscription-section";
 
 import { CreateFirstProfileFlow } from "@/components/onboarding/create-first-profile";
 import { Settings } from "lucide-react";
@@ -40,6 +41,7 @@ export default function ConfiguracionPage() {
         </div>
       </div>
 
+      <SubscriptionSection />
       <AIConfigSection />
     </div>
   );

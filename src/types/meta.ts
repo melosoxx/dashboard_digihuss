@@ -20,6 +20,7 @@ export interface MetaRawInsight {
   adset_id?: string;
   ad_name?: string;
   ad_id?: string;
+  optimization_goal?: string;
 }
 
 export interface MetaInsightsResponse {

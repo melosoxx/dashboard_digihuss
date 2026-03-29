@@ -5,6 +5,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { NAV_ITEMS } from "@/lib/constants";
+import { useAuth } from "@/providers/auth-provider";
+import { Shield } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -14,6 +16,7 @@ import {
 export function Sidebar() {
   const pathname = usePathname();
   const [hovered, setHovered] = useState(false);
+  const { isSuperadmin } = useAuth();
 
   const expanded = hovered;
 
@@ -96,6 +99,52 @@ export function Sidebar() {
 
           return link;
         })}
+
+        {isSuperadmin && (
+          <>
+            <div className={cn("my-2 border-t border-sidebar-border", !expanded && "mx-1")} />
+            {(() => {
+              const isActive = pathname.startsWith("/admin");
+              const link = (
+                <Link
+                  href="/admin"
+                  className={cn(
+                    "flex items-center rounded-lg text-[13px] font-medium transition-all duration-150",
+                    expanded
+                      ? "gap-3 px-3 py-2.5"
+                      : "justify-center p-2.5",
+                    isActive
+                      ? "bg-primary/15 text-primary border border-primary/20"
+                      : "sidebar-nav-item hover:bg-sidebar-accent border border-transparent"
+                  )}
+                >
+                  <Shield className={cn("h-4 w-4 shrink-0", isActive ? "text-primary" : "sidebar-nav-icon")} />
+                  <span
+                    className={cn(
+                      "transition-all duration-300 whitespace-nowrap",
+                      expanded ? "opacity-100 w-auto" : "opacity-0 w-0 overflow-hidden"
+                    )}
+                  >
+                    Admin
+                  </span>
+                </Link>
+              );
+
+              if (!expanded) {
+                return (
+                  <Tooltip>
+                    <TooltipTrigger asChild>{link}</TooltipTrigger>
+                    <TooltipContent side="right" sideOffset={8}>
+                      Admin Panel
+                    </TooltipContent>
+                  </Tooltip>
+                );
+              }
+
+              return link;
+            })()}
+          </>
+        )}
       </nav>
 
       {/* Footer */}

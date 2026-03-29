@@ -69,7 +69,115 @@ class MetaAdsClient {
     "link_click", "landing_page_view",
   ];
 
-  private extractResults(insight: MetaRawInsight): { count: number; actionType: string } {
+  private static OPTIMIZATION_GOAL_TO_ACTION: Record<string, string[]> = {
+    OFFSITE_CONVERSIONS: ["omni_purchase", "purchase", "initiate_checkout", "omni_initiate_checkout", "add_to_cart", "complete_registration", "omni_complete_registration", "lead"],
+    LINK_CLICKS: ["link_click"],
+    LANDING_PAGE_VIEWS: ["landing_page_view"],
+    LEAD_GENERATION: ["lead", "onsite_conversion.lead_grouped"],
+    QUALITY_LEAD: ["lead", "onsite_conversion.lead_grouped"],
+    REACH: [],
+    IMPRESSIONS: [],
+    THRUPLAY: ["video_view"],
+    TWO_SECOND_CONTINUOUS_VIDEO_VIEWS: ["video_view"],
+    APP_INSTALLS: ["app_install"],
+    POST_ENGAGEMENT: ["post_engagement"],
+    VALUE: ["omni_purchase", "purchase"],
+    CONVERSATIONS: ["onsite_conversion.messaging_first_reply"],
+  };
+
+  private static CUSTOM_EVENT_TO_ACTION: Record<string, string[]> = {
+    PURCHASE: ["omni_purchase", "purchase"],
+    INITIATE_CHECKOUT: ["initiate_checkout", "omni_initiate_checkout"],
+    ADD_TO_CART: ["add_to_cart"],
+    COMPLETE_REGISTRATION: ["complete_registration", "omni_complete_registration"],
+    LEAD: ["lead", "onsite_conversion.lead_grouped"],
+    SEARCH: ["search"],
+    ADD_PAYMENT_INFO: ["add_payment_info"],
+    ADD_TO_WISHLIST: ["add_to_wishlist"],
+    CONTENT_VIEW: ["view_content", "content_view"],
+    CONTACT: ["contact"],
+    CUSTOMIZE_PRODUCT: ["customize_product"],
+    FIND_LOCATION: ["find_location"],
+    SCHEDULE: ["schedule"],
+    START_TRIAL: ["start_trial"],
+    SUBMIT_APPLICATION: ["submit_application"],
+    SUBSCRIBE: ["subscribe"],
+  };
+
+  private static OBJECTIVE_TO_ACTION: Record<string, string[]> = {
+    OUTCOME_SALES: ["omni_purchase", "purchase"],
+    OUTCOME_LEADS: ["lead", "onsite_conversion.lead_grouped"],
+    OUTCOME_ENGAGEMENT: ["post_engagement", "video_view"],
+    OUTCOME_AWARENESS: [],
+    OUTCOME_TRAFFIC: ["link_click", "landing_page_view"],
+    OUTCOME_APP_PROMOTION: ["app_install"],
+    CONVERSIONS: ["omni_purchase", "purchase", "initiate_checkout", "complete_registration"],
+    LINK_CLICKS: ["link_click"],
+    LEAD_GENERATION: ["lead", "onsite_conversion.lead_grouped"],
+    REACH: [],
+    VIDEO_VIEWS: ["video_view"],
+    POST_ENGAGEMENT: ["post_engagement"],
+    BRAND_AWARENESS: [],
+  };
+
+  private extractResults(
+    insight: MetaRawInsight,
+    optimizationGoal?: string,
+    campaignObjective?: string,
+    customEventType?: string,
+  ): { count: number; actionType: string } {
+    // TODO: Remove debug log after verifying results match Meta Ads Manager
+    console.log(`[extractResults] ad=${insight.ad_name}, optimizationGoal=${optimizationGoal}, customEventType=${customEventType}, actions=${JSON.stringify(insight.actions?.map(a => `${a.action_type}:${a.value}`))}`);
+
+    // 1. For OFFSITE_CONVERSIONS, use the specific custom_event_type from the adset
+    if (optimizationGoal === "OFFSITE_CONVERSIONS" && customEventType) {
+      const eventActions = MetaAdsClient.CUSTOM_EVENT_TO_ACTION[customEventType];
+      if (eventActions) {
+        for (const actionType of eventActions) {
+          const action = insight.actions?.find((a) => a.action_type === actionType);
+          if (action && parseInt(action.value) > 0) {
+            return { count: parseInt(action.value), actionType };
+          }
+        }
+        return { count: 0, actionType: eventActions[0] };
+      }
+    }
+
+    // 2. Try optimization_goal mapping (for non-OFFSITE_CONVERSIONS goals)
+    if (optimizationGoal) {
+      const goalActions = MetaAdsClient.OPTIMIZATION_GOAL_TO_ACTION[optimizationGoal];
+      if (goalActions !== undefined) {
+        if (goalActions.length === 0) {
+          return { count: parseInt(insight.impressions || "0"), actionType: "impressions" };
+        }
+        for (const actionType of goalActions) {
+          const action = insight.actions?.find((a) => a.action_type === actionType);
+          if (action && parseInt(action.value) > 0) {
+            return { count: parseInt(action.value), actionType };
+          }
+        }
+        return { count: 0, actionType: goalActions[0] };
+      }
+    }
+
+    // 2. Fallback to campaign objective
+    if (campaignObjective) {
+      const objActions = MetaAdsClient.OBJECTIVE_TO_ACTION[campaignObjective];
+      if (objActions !== undefined) {
+        if (objActions.length === 0) {
+          return { count: parseInt(insight.impressions || "0"), actionType: "impressions" };
+        }
+        for (const actionType of objActions) {
+          const action = insight.actions?.find((a) => a.action_type === actionType);
+          if (action && parseInt(action.value) > 0) {
+            return { count: parseInt(action.value), actionType };
+          }
+        }
+        return { count: 0, actionType: objActions[0] };
+      }
+    }
+
+    // 3. Final fallback: hardcoded priority list
     for (const actionType of MetaAdsClient.RESULT_ACTION_TYPES) {
       const action = insight.actions?.find((a) => a.action_type === actionType);
       if (action && parseInt(action.value) > 0) {
@@ -226,11 +334,11 @@ class MetaAdsClient {
 
   async getActiveAds(startDate: string, endDate: string): Promise<MetaActiveAd[]> {
     // Try to get active ads with creation date first
-    let adsMap = new Map<string, { id: string; name: string; created_time: string; campaign?: { name: string }; adset?: { name: string }; creative?: { thumbnail_url?: string; object_type?: string; video_id?: string; link_url?: string } }>();
+    let adsMap = new Map<string, { id: string; name: string; created_time: string; campaign?: { name: string; objective?: string }; adset?: { name: string; optimization_goal?: string; promoted_object?: { custom_event_type?: string } }; creative?: { thumbnail_url?: string; object_type?: string; video_id?: string; link_url?: string } }>();
 
     try {
       const adsParams = new URLSearchParams({
-        fields: "id,name,created_time,campaign{name},adset{name},creative{thumbnail_url,object_type,video_id,link_url}",
+        fields: "id,name,created_time,campaign{name,objective},adset{name,optimization_goal,promoted_object},creative{thumbnail_url,object_type,video_id,link_url}",
         filtering: JSON.stringify([
           { field: "effective_status", operator: "IN", value: ["ACTIVE"] },
         ]),
@@ -242,7 +350,7 @@ class MetaAdsClient {
       const adsResponse = await fetch(adsUrl);
 
       if (adsResponse.ok) {
-        const adsJson: { data: Array<{ id: string; name: string; created_time: string; campaign?: { name: string }; adset?: { name: string }; creative?: { thumbnail_url?: string; object_type?: string; video_id?: string; link_url?: string } }> } =
+        const adsJson: { data: Array<{ id: string; name: string; created_time: string; campaign?: { name: string; objective?: string }; adset?: { name: string; optimization_goal?: string; promoted_object?: { custom_event_type?: string } }; creative?: { thumbnail_url?: string; object_type?: string; video_id?: string; link_url?: string } }> } =
           await adsResponse.json();
         adsMap = new Map(
           (adsJson.data || []).map((ad) => [ad.id, ad])
@@ -255,7 +363,7 @@ class MetaAdsClient {
 
     // Get insights for active ads
     const insightsParams = new URLSearchParams({
-      fields: "ad_id,ad_name,campaign_name,adset_name,spend,impressions,clicks,ctr,actions,cost_per_action_type",
+      fields: "ad_id,ad_name,campaign_name,adset_name,spend,impressions,clicks,ctr,actions,cost_per_action_type,optimization_goal",
       time_range: JSON.stringify({ since: startDate, until: endDate }),
       level: "ad",
       filtering: JSON.stringify([
@@ -297,7 +405,7 @@ class MetaAdsClient {
         row.actions?.find((a) => a.action_type === "link_click")?.value || "0"
       );
       const linkCtr = impressions > 0 ? (linkClicks / impressions) * 100 : 0;
-      const resultsData = this.extractResults(row);
+      const resultsData = this.extractResults(row, row.optimization_goal || adMeta?.adset?.optimization_goal, adMeta?.campaign?.objective, adMeta?.adset?.promoted_object?.custom_event_type);
 
       result.push({
         adId,
@@ -350,11 +458,11 @@ class MetaAdsClient {
   }
 
   async getAllAds(startDate: string, endDate: string): Promise<MetaActiveAd[]> {
-    let adsMap = new Map<string, { id: string; name: string; created_time: string; effective_status: string; campaign?: { name: string }; adset?: { name: string }; creative?: { thumbnail_url?: string; object_type?: string; video_id?: string; link_url?: string } }>();
+    let adsMap = new Map<string, { id: string; name: string; created_time: string; effective_status: string; campaign?: { name: string; objective?: string }; adset?: { name: string; optimization_goal?: string; promoted_object?: { custom_event_type?: string } }; creative?: { thumbnail_url?: string; object_type?: string; video_id?: string; link_url?: string } }>();
 
     try {
       const adsParams = new URLSearchParams({
-        fields: "id,name,created_time,effective_status,campaign{name},adset{name},creative{thumbnail_url,object_type,video_id,link_url}",
+        fields: "id,name,created_time,effective_status,campaign{name,objective},adset{name,optimization_goal,promoted_object},creative{thumbnail_url,object_type,video_id,link_url}",
         limit: "200",
         access_token: this.accessToken,
       });
@@ -373,7 +481,7 @@ class MetaAdsClient {
     }
 
     const insightsParams = new URLSearchParams({
-      fields: "ad_id,ad_name,campaign_name,adset_name,spend,impressions,clicks,ctr,actions,cost_per_action_type",
+      fields: "ad_id,ad_name,campaign_name,adset_name,spend,impressions,clicks,ctr,actions,cost_per_action_type,optimization_goal",
       time_range: JSON.stringify({ since: startDate, until: endDate }),
       level: "ad",
       limit: "200",
@@ -410,7 +518,7 @@ class MetaAdsClient {
         row.actions?.find((a) => a.action_type === "link_click")?.value || "0"
       );
       const linkCtr = impressions > 0 ? (linkClicks / impressions) * 100 : 0;
-      const resultsData = this.extractResults(row);
+      const resultsData = this.extractResults(row, row.optimization_goal || adMeta?.adset?.optimization_goal, adMeta?.campaign?.objective, adMeta?.adset?.promoted_object?.custom_event_type);
 
       result.push({
         adId,

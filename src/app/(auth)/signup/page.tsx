@@ -60,10 +60,10 @@ export default function SignupPage() {
       <div className="auth-card" style={{ maxWidth: 480 }}>
         <div className="auth-card-form" style={{ width: "100%", textAlign: "center" }}>
           <img src="/logoo.png" alt="Logo" style={{ width: 64, height: 64, margin: "0 auto 16px" }} />
-          <h2 className="auth-title">Revisa tu email</h2>
+          <h2 className="auth-title">Cuenta creada</h2>
           <p className="auth-subtitle">
             Enviamos un link de confirmacion a <strong>{email}</strong>.
-            Hace click en el link para activar tu cuenta.
+            Despues de confirmar tu email, inicia sesion para completar el pago y acceder al dashboard.
           </p>
           <div className="auth-actions" style={{ justifyContent: "center", marginTop: 24 }}>
             <button
@@ -71,7 +71,7 @@ export default function SignupPage() {
               className="auth-submit"
               onClick={() => router.push("/login")}
             >
-              Volver al login
+              Ir al login
             </button>
           </div>
         </div>

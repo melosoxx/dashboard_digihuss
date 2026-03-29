@@ -14,9 +14,15 @@ import { useQueryClient } from "@tanstack/react-query";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import type { User, SupabaseClient } from "@supabase/supabase-js";
 
+export type UserRole = "user" | "superadmin";
+export type AccountStatus = "pending" | "active" | "paused" | "cancelled";
+
 interface AuthContextValue {
   user: User | null;
   loading: boolean;
+  role: UserRole;
+  accountStatus: AccountStatus;
+  isSuperadmin: boolean;
   signOut: () => Promise<void>;
   updateUser: (attributes: {
     password?: string;
@@ -109,8 +115,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.push("/login");
   }, [supabase, queryClient, router]);
 
+  const role: UserRole =
+    (user?.app_metadata?.role as UserRole) ?? "user";
+  const accountStatus: AccountStatus =
+    (user?.app_metadata?.account_status as AccountStatus) ?? "active";
+  const isSuperadmin = role === "superadmin";
+
   return (
-    <AuthContext.Provider value={{ user, loading, signOut, updateUser, refreshUser, verifyPassword, sendPasswordReset }}>
+    <AuthContext.Provider value={{ user, loading, role, accountStatus, isSuperadmin, signOut, updateUser, refreshUser, verifyPassword, sendPasswordReset }}>
       {children}
     </AuthContext.Provider>
   );

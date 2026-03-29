@@ -5,7 +5,8 @@ import { Sparkles, Send, X, Trash2, Settings, Square } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useAIConfig } from "@/hooks/use-ai-config";
-import { useAIChat } from "@/hooks/use-ai-chat";
+import { useHussChat } from "@/hooks/use-huss-chat";
+import { useAIConversations } from "@/hooks/use-ai-conversations";
 import type { DashboardContext } from "@/types/ai";
 import Link from "next/link";
 
@@ -79,7 +80,9 @@ export function AIAssistantBar({
   activeSection,
 }: AIAssistantBarProps) {
   const { isConfigured, isLoading: configLoading } = useAIConfig();
-  const { messages, isStreaming, error, sendMessage, clearChat, stopStreaming } = useAIChat();
+  const { messages, isStreaming, error, sendMessage, clearChat, stopStreaming, setConversationId } = useHussChat();
+  const { createConversation } = useAIConversations();
+  const conversationIdRef = useRef<string | null>(null);
 
   const [query, setQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
@@ -121,19 +124,33 @@ export function AIAssistantBar({
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, []);
 
+  async function ensureConversation(firstMessage: string) {
+    if (conversationIdRef.current) return;
+    try {
+      const title = firstMessage.length > 50 ? firstMessage.slice(0, 50) + "..." : firstMessage;
+      const conv = await createConversation(title);
+      conversationIdRef.current = conv.id;
+      setConversationId(conv.id);
+    } catch {
+      // Si falla la creación, el chat sigue funcionando sin persistir
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const trimmed = query.trim();
     if (!trimmed || !isConfigured || isStreaming || !dashboardContext) return;
     setIsOpen(true);
     setQuery("");
+    await ensureConversation(trimmed);
     sendMessage(trimmed, dashboardContext);
   }
 
-  function handleSuggestion(s: string) {
+  async function handleSuggestion(s: string) {
     if (!isConfigured || !dashboardContext) return;
     setQuery("");
     setIsOpen(true);
+    await ensureConversation(s);
     sendMessage(s, dashboardContext);
   }
 
@@ -143,6 +160,7 @@ export function AIAssistantBar({
 
   function handleClear() {
     clearChat();
+    conversationIdRef.current = null;
     setIsOpen(false);
   }
 
